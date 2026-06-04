@@ -122,7 +122,7 @@
             display: block;
         }
 
-        /* Animation pour le taux de change en bleu scintillant */
+        /* --- Animation Taux de Change --- */
         @keyframes scintillementBleu {
             0% {
                 color: #00d2ff;
@@ -732,6 +732,27 @@
         </div>
     </div>
 
+    <div class="modal fade" id="insufficientFundsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px; overflow: hidden;">
+                <div class="bg-danger text-white text-center p-4">
+                    <i class="fa-solid fa-triangle-exclamation fa-4x mb-3"></i>
+                    <h3 class="fw-bold mb-0">SOLDE INSUFFISANT</h3>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <h4 class="text-danger fw-bold mb-3">Fonds de caisse indisponibles</h4>
+                    <p class="text-muted mb-4" id="insufficientFundsMessage">Attention : Le solde disponible dans le système est insuffisant pour couvrir le montant net à payer cumulé avec ses frais de dossier. Veuillez faire une demande de recharge de <strong><span id="missingAmountDisplay">0</span> FCFA</strong> afin de débloquer et autoriser immédiatement cette opération de décaissement.</p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button class="btn btn-danger px-4" onclick="copyInsufficientFundsAlert()" style="border-radius: 50px;">
+                            <i class="fa-solid fa-copy me-2"></i>Copier l'alerte
+                        </button>
+                        <button class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 50px;">Fermer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <div class="container text-center">
             <div class="footer-text mb-2">&copy; 2026 <span class="concepteur-name">AFRI-LINK LEDGER</span>. Tous droits réservés.</div>
@@ -766,6 +787,8 @@
 
         // Variables globales du module
         let transfers = [];
+        let ledgerSupply = [];
+        let ledgerTransfersList = [];
         let USD_RATE = 600;
         let currentActiveTransfer = null; 
 
@@ -826,6 +849,29 @@
             buildHistoryTable();
             // Sauvegarde d'un miroir local de secours en arrière-plan sans écraser le Cloud
             localStorage.setItem('ledger_transfers', JSON.stringify(transfers));
+        });
+
+        // Écouteurs synchronisés en temps réel issus d'approvisionnement.html pour l'analyse financière
+        const supplyRef = ref(db, "ledger_supply");
+        onValue(supplyRef, (snapshot) => {
+            const data = snapshot.val();
+            ledgerSupply = [];
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    ledgerSupply.push({ fbKey: key, ...data[key] });
+                });
+            }
+        });
+
+        const ledgerTransfersRef = ref(db, "ledger_transfers");
+        onValue(ledgerTransfersRef, (snapshot) => {
+            const data = snapshot.val();
+            ledgerTransfersList = [];
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    ledgerTransfersList.push({ fbKey: key, ...data[key] });
+                });
+            }
         });
 
         // Fonction unifiée pour le contrôle d'accès, l'affichage utilisateur et le bouton déconnexion
@@ -1027,6 +1073,27 @@
             bootstrap.Modal.getInstance(document.getElementById('securityModal')).hide();
 
             if (currentActiveTransfer) {
+                // Analyse financière et calcul de la disponibilité du solde d'approvisionnement
+                const amountFCFA = currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0;
+                const feesFCFA = currentActiveTransfer.feesFCFA !== undefined ? currentActiveTransfer.feesFCFA : (currentActiveTransfer.fees || 0);
+                const requiredAmount = parseFloat(amountFCFA) + parseFloat(feesFCFA);
+
+                const validApprovs = ledgerSupply.filter(a => a.status === 'Validé');
+                const liq = validApprovs.filter(a => a.type === 'liquide').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+                const virt = validApprovs.filter(a => a.type === 'virtuel').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+                const totalApprov = liq + virt;
+                const totalEnvois = ledgerTransfersList.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+                const soldeFlux = totalApprov - totalEnvois;
+
+                // Blocage automatique et affichage de l'alerte si le solde global est insuffisant
+                if (soldeFlux < requiredAmount) {
+                    const missingAmount = requiredAmount - soldeFlux;
+                    document.getElementById('missingAmountDisplay').innerText = missingAmount.toLocaleString();
+                    const insufficientFundsModal = new bootstrap.Modal(document.getElementById('insufficientFundsModal'));
+                    insufficientFundsModal.show();
+                    return;
+                }
+                
                 let indexInArray = transfers.findIndex(t => t.secretCode === currentActiveTransfer.secretCode);
                 
                 if (indexInArray !== -1) {
@@ -1059,6 +1126,15 @@
                     });
                 }
             }
+        }
+
+        function copyInsufficientFundsAlert() {
+            const textToCopy = document.getElementById('insufficientFundsMessage').innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert("L'alerte de solde a bien été copiée dans le presse-papiers.");
+            }).catch(err => {
+                console.error("Erreur lors de la copie de l'alerte :", err);
+            });
         }
 
         function toggleHistoryTable() {
@@ -1116,6 +1192,7 @@
         // Attachement chirurgical aux éléments globaux de la fenêtre (Scope global pour attributs HTML onclick)
         window.promptWithdrawalConfirmation = promptWithdrawalConfirmation;
         window.executeWithdrawal = executeWithdrawal;
+        window.copyInsufficientFundsAlert = copyInsufficientFundsAlert;
         window.toggleHistoryTable = toggleHistoryTable;
         window.handleLogout = handleLogout;
         window.buildHistoryTable = buildHistoryTable;
