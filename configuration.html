@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration | AFRI-LINK LEDGER</title>
+    
+    <link class="jsbin" href="manifest.json" rel="manifest">
+    <meta name="theme-color" content="#075E54">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --wa-dark: #075E54;
+            --wa-medium: #128C7E;
+            --wa-light: #25D366;
+            --wa-bg: #F0F2F5;
+            --font-main: 'Poppins', sans-serif;
+            --font-title: 'Playfair Display', serif;
+            --font-brand: 'Montserrat', sans-serif;
+            --font-company: 'Orbitron', sans-serif;
+        }
+
+        body {
+            background-color: var(--wa-bg);
+            font-family: var(--font-main);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Header & Navigation --- */
+        header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-brand);
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: white !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-logo {
+            height: 45px;
+            width: auto;
+            object-fit: contain;
+            margin-right: 12px;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .sub-brand {
+            font-family: var(--font-title);
+            font-size: 0.9rem;
+            color: var(--wa-light);
+            font-style: italic;
+            display: block;
+        }
+
+        .company-display-header {
+            font-family: var(--font-company);
+            color: #FFD700;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 2px;
+            display: block;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .nav-link:hover {
+            color: var(--wa-light) !important;
+            transform: translateY(-2px);
+        }
+
+        .navbar-toggler {
+            border: none;
+            color: white;
+        }
+
+        /* --- Main Content Area --- */
+        main {
+            flex: 1;
+            padding: 40px 0;
+        }
+
+        .page-header {
+            border-left: 5px solid var(--wa-medium);
+            padding-left: 15px;
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-family: var(--font-title);
+            color: var(--wa-dark);
+            font-weight: 700;
+        }
+
+        /* --- Custom Styles for New Features --- */
+        .card-config {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .btn-wa {
+            background-color: var(--wa-medium);
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-wa:hover {
+            background-color: var(--wa-dark);
+            color: white;
+        }
+
+        /* Style spécifique pour les infos verrouillées */
+        .locked-info {
+            font-weight: bold !important;
+            color: #0d6efd !important;
+            background-color: #e9ecef !important;
+        }
+
+        /* Style spécifique pour le taux Dollar verrouillé */
+        .rate-locked {
+            font-size: 1.5rem !important;
+            font-weight: 900 !important;
+            color: #dc3545 !important;
+            background-color: #f8f9fa !important;
+            text-align: center;
+        }
+
+        /* Fullscreen Success Overlay */
+        #success-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .success-icon {
+            color: var(--wa-light);
+            font-size: 5rem;
+            animation: scaleUp 0.5s ease-out;
+        }
+
+        @keyframes scaleUp {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        /* --- PWA Intelligent Installation Button Style --- */
+        #pwaInstallBtn {
+            display: none;
+            position: fixed;
+            bottom: 85px;
+            right: 20px;
+            z-index: 9999;
+            background-color: #25D366;
+            color: white;
+            font-weight: 600;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 12px 24px;
+            border: none;
+            transition: all 0.3s ease;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #pwaInstallBtn:hover {
+            background-color: #128C7E;
+            transform: scale(1.05);
+        }
+
+        /* --- Footer --- */
+        footer {
+            background-color: white;
+            border-top: 3px solid var(--wa-medium);
+            padding: 20px 0;
+            margin-top: auto;
+        }
+
+        .footer-text {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .footer-contact i {
+            color: var(--wa-medium);
+            margin-right: 5px;
+        }
+
+        .concepteur-name {
+            font-weight: 600;
+            color: var(--wa-dark);
+        }
+
+        /* --- Indicateur de Statut Réseau --- */
+        #network-status-indicator {
+            position: fixed;
+            top: 85px;
+            right: 20px;
+            z-index: 1050;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+        .status-online {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+        }
+        .status-offline {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">
+                    <img src="logoarams.png" alt="Logo" class="navbar-logo">
+                    <div>
+                        <i class="fa-solid fa-building-columns me-2"></i>AFRI-LINK LEDGER
+                        <span class="sub-brand">Architecture de Finance Bilatérale</span>
+                        <span id="headerCompanyName" class="company-display-header"></span>
+                        <div id="headerUserSession" style="font-size: 0.75rem; color: #FFF; font-weight: 300; text-transform: none; margin-top: 4px; line-height: 1.2; font-family: var(--font-main);"></div>
+                    </div>
+                </a>
+                
+                <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav ms-auto" id="navLinksContainer">
+                        <li class="nav-item"><a class="nav-link" href="index.html"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link" href="approvisionnement.html"><i class="fa-solid fa-wallet me-1"></i> Approvisionnement</a></li>
+                        <li class="nav-item"><a class="nav-link" href="transfert-envoi.html"><i class="fa-solid fa-paper-plane me-1"></i> Envoi</a></li>
+                        <li class="nav-item"><a class="nav-link" href="transfert-reception.html"><i class="fa-solid fa-hand-holding-dollar me-1"></i> Retrait</a></li>
+                        <li class="nav-item"><a class="nav-link" href="report-codes.html"><i class="fa-solid fa-clock-rotate-left me-1"></i> Comptabilité et Grand Livre</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="configuration.html" style="color: var(--wa-light) !important;"><i class="fa-solid fa-gears me-1"></i> Configuration</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div id="network-status-indicator" class="status-offline">
+        <i class="fa-solid fa-circle-dot"></i> <span id="network-status-text">Hors ligne</span>
+    </div>
+
+    <main class="container">
+        <div class="page-header mb-4">
+            <h1>Configuration Entreprise</h1>
+            <p class="text-muted">Informations légales et identité de la structure.</p>
+        </div>
+
+        <div class="card card-config shadow-sm border-0 mb-5">
+            <div class="card-body p-4">
+                <form id="companyForm">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Dénomination</label>
+                            <input type="text" id="compName" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Pays</label>
+                            <input type="text" id="compCountry" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Localisation</label>
+                            <input type="text" id="compLoc" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Email Structure</label>
+                            <input type="email" id="compEmail" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Tél Structure</label>
+                            <input type="text" id="compPhone" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">N° Registre de Commerce</label>
+                            <input type="text" id="compRccm" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Nom du Promoteur</label>
+                            <input type="text" id="compPromoter" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Tél WhatsApp Promoteur</label>
+                            <input type="text" id="compPromoterWa" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Nom du Gestionnaire</label>
+                            <input type="text" id="compManager" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Tél Gestionnaire</label>
+                            <input type="text" id="compManagerPhone" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-12 d-flex justify-content-end mt-4">
+                            <button type="button" id="btnToggleLock" class="btn btn-wa px-5">
+                                <i class="fa-solid fa-lock me-2"></i>Enregistrer et verrouiller
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="page-header">
+            <h1>Configuration du Système</h1>
+            <p class="text-muted">Gestion des taux, des barèmes et des paramètres multi-pays.</p>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-12">
+                <div class="card card-config shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h5 class="card-title mb-4" style="color: var(--wa-dark); font-weight: 600;">
+                            <i class="fa-solid fa-dollar-sign me-2"></i>Correspondance de Change Dollar / FCFA
+                        </h5>
+                        <form id="dollarRateForm">
+                            <div class="row align-items-end g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Valeur de référence</label>
+                                    <input type="text" class="form-control bg-light text-center fw-bold" value="1 USD ($)" readonly>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-bold">Équivalent en Franc CFA (XOF/XAF)</label>
+                                    <input type="number" id="dollarExchangeRate" class="form-control" placeholder="Ex: 615" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" id="btnToggleRate" class="btn btn-wa w-100">
+                                        <i class="fa-solid fa-rotate me-2"></i>Mettre à jour le taux
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="card card-config h-100 shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h5 class="card-title mb-4" style="color: var(--wa-dark); font-weight: 600;">
+                            <i class="fa-solid fa-earth-africa me-2"></i>Nouveau Pays
+                        </h5>
+                        <form id="addCountryForm">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Nom du Pays</label>
+                                <input type="text" id="countryName" class="form-control" placeholder="Ex: Bénin" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Code Pays (Automatique)</label>
+                                <input type="text" id="countryCode" class="form-control bg-light" readonly placeholder="GEN-00">
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-wa">
+                                    <i class="fa-solid fa-plus me-2"></i>Ajouter
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#listCountryModal">
+                                    <i class="fa-solid fa-list me-2"></i>Voir la liste
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card card-config h-100 shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h5 class="card-title mb-4" style="color: var(--wa-dark); font-weight: 600;">
+                            <i class="fa-solid fa-coins me-2"></i>Nouvelle Devise
+                        </h5>
+                        <form id="addCurrencyForm">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Nom (Ex: Franc CFA)</label>
+                                <input type="text" id="currName" class="form-control" placeholder="Ex: Franc CFA" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Symbole (Ex: XOF)</label>
+                                <input type="text" id="currSymbol" class="form-control" placeholder="Ex: XOF" required>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-wa">
+                                    <i class="fa-solid fa-plus me-2"></i>Ajouter
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#listCurrencyModal">
+                                    <i class="fa-solid fa-list me-2"></i>Voir la liste
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card card-config h-100 shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h5 class="card-title mb-4" style="color: var(--wa-dark); font-weight: 600;">
+                            <i class="fa-solid fa-shop me-2"></i>Nouveau Guichet
+                        </h5>
+                        <form id="addDeskForm">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Nom du Guichet</label>
+                                <input type="text" id="deskName" class="form-control" placeholder="Ex: Agence Cotonou" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Pays de Rattachement</label>
+                                <select id="deskCountry" class="form-select" required>
+                                    <option value="">Sélectionner un pays...</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Code Guichet (Automatique)</label>
+                                <input type="text" id="deskCode" class="form-control bg-light" readonly placeholder="DSK-000">
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-wa">
+                                    <i class="fa-solid fa-plus me-2"></i>Ajouter
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#listDeskModal">
+                                    <i class="fa-solid fa-list me-2"></i>Voir la liste
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card card-config h-100 shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h5 class="card-title mb-4" style="color: var(--wa-dark); font-weight: 600;">
+                            <i class="fa-solid fa-user-tie me-2"></i>Nouvel Agent
+                        </h5>
+                        <form id="addAgentForm">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Nom Complet</label>
+                                <input type="text" id="agentName" class="form-control" placeholder="Ex: Jean Dupont" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Guichet d'Affectation</label>
+                                <select id="agentDesk" class="form-select" required>
+                                    <option value="">Sélectionner un guichet...</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Code Agent (Automatique)</label>
+                                <input type="text" id="agentCode" class="form-control bg-light" readonly placeholder="AGT-000">
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-wa">
+                                    <i class="fa-solid fa-plus me-2"></i>Ajouter
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#listAgentModal">
+                                    <i class="fa-solid fa-list me-2"></i>Voir la liste
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <button id="pwaInstallBtn"><i class="fa-solid fa-download"></i> Installer l'application</button>
+
+    <div id="success-overlay">
+        <i class="fa-solid fa-circle-check success-icon"></i>
+        <h4 class="mt-3 fw-bold" id="success-message">Opération réussie</h4>
+    </div>
+
+    <div class="modal fade" id="listCountryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header border-0 bg-light" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold" style="color: var(--wa-dark);">
+                        <i class="fa-solid fa-globe me-2"></i>Liste des Pays
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr><th>Code</th><th>Nom</th><th class="text-end">Actions</th></tr>
+                            </thead>
+                            <tbody id="countryTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="listCurrencyModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header border-0 bg-light" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold" style="color: var(--wa-dark);">
+                        <i class="fa-solid fa-coins me-2"></i>Liste des Devises
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr><th>Symbole</th><th>Nom de la Devise</th><th class="text-end">Actions</th></tr>
+                            </thead>
+                            <tbody id="currencyTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="listDeskModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header border-0 bg-light" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold" style="color: var(--wa-dark);">
+                        <i class="fa-solid fa-shop me-2"></i>Liste des Guichets
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr><th>Code</th><th>Guichet</th><th>Pays</th><th class="text-end">Actions</th></tr>
+                            </thead>
+                            <tbody id="deskTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="listAgentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header border-0 bg-light" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold" style="color: var(--wa-dark);">
+                        <i class="fa-solid fa-user-group me-2"></i>Liste des Agents
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr><th>Code</th><th>Nom Agent</th><th>Agence</th><th>Pays</th><th class="text-end">Actions</th></tr>
+                            </thead>
+                            <tbody id="agentTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <div class="footer-text mb-2">&copy; 2026 <span class="concepteur-name">AFRI-LINK LEDGER</span>. Tous droits réservés.</div>
+            <div class="footer-contact d-flex justify-content-center flex-wrap gap-3">
+                <span><i class="fa-solid fa-user"></i> Concepteur : <strong>Atizoun Plateny AMOUSSOU</strong></span>
+                <span><i class="fa-solid fa-envelope"></i> atizoun@gmail.com</span>
+                <span><i class="fa-solid fa-phone"></i> 01 97 74 40 35</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, remove, child } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+        // Configuration Firebase Cloud
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZQ51o3eor8aeowH5-SoC9fJE_Z71hMwU",
+            authDomain: "afri-link-ledger.firebaseapp.com",
+            projectId: "afri-link-ledger",
+            storageBucket: "afri-link-ledger.firebasestorage.app",
+            messagingSenderId: "120519932316",
+            appId: "1:120519932316:web:e555d0cd42bce8ef923059",
+            databaseURL: "https://afri-link-ledger-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+
+        // Initialisation globale
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- CONTRÔLE DE SÉCURITÉ ET ACCÈS FILTRÉ GESTIONNAIRE ---
+        const currentUser = JSON.parse(localStorage.getItem('current_user'));
+        if (!currentUser || currentUser.role !== 'Gestionnaire') {
+            window.location.href = 'index.html';
+        }
+
+        // Structure mémoire réactive globale
+        let ledgerConfig = {
+            companyName: "AFRI-LINK LEDGER",
+            dollarRate: 600,
+            countries: [],
+            currencies: [],
+            desks: [],
+            agents: [],
+            company: {
+                name: "", country: "", loc: "", email: "", phone: "", rccm: "", 
+                promoter: "", promoterWa: "", manager: "", managerPhone: "",
+                isLocked: false
+            },
+            dollarRateConfig: {
+                value: "",
+                isLocked: false
+            }
+        };
+
+        // --- ECOUTEUR TEMPS REEL FIREBASE (Remplace complètement LocalStorage) ---
+        const configRef = ref(db, 'ledger_config');
+        
+        // Indicateur élégant de statut Réseau / Firebase
+        const connectedRef = ref(db, '.info/connected');
+        onValue(connectedRef, (snap) => {
+            const indicator = document.getElementById('network-status-indicator');
+            const statusText = document.getElementById('network-status-text');
+            if (snap.val() === true) {
+                indicator.className = "status-online";
+                statusText.innerText = "En ligne";
+            } else {
+                indicator.className = "status-offline";
+                statusText.innerText = "Hors ligne";
+            }
+        });
+
+        // Synchronisation en temps réel descendante
+        onValue(configRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                // Rétrocompatibilité interne
+                ledgerConfig = data;
+                if (!ledgerConfig.countries) ledgerConfig.countries = [];
+                if (!ledgerConfig.currencies) ledgerConfig.currencies = [];
+                if (!ledgerConfig.desks) ledgerConfig.desks = [];
+                if (!ledgerConfig.agents) ledgerConfig.agents = [];
+                if (!ledgerConfig.company) {
+                    ledgerConfig.company = { name: "", country: "", loc: "", email: "", phone: "", rccm: "", promoter: "", promoterWa: "", manager: "", managerPhone: "", isLocked: false };
+                }
+                if (!ledgerConfig.dollarRateConfig) {
+                    ledgerConfig.dollarRateConfig = { value: "", isLocked: false };
+                }
+            } else {
+                // Premier push d'initialisation sur le cloud si vide
+                pushConfigToCloud();
+            }
+            
+            // Re-render automatique de tous les modules de l'interface
+            loadCompany();
+            loadDollarRate();
+            renderCountries();
+            renderCurrencies();
+            renderDesks(); 
+            renderAgents();
+        });
+
+        function pushConfigToCloud() {
+            set(configRef, ledgerConfig);
+        }
+
+        // --- INTERFACE UTILISATEUR : SESSION ET DECONNEXION ---
+        window.setupUserInterface = function() {
+            const sessionBox = document.getElementById('headerUserSession');
+            if (sessionBox && currentUser) {
+                sessionBox.innerHTML = `
+                    <i class="fa-solid fa-user-circle me-1"></i> ${currentUser.name} (${currentUser.role})<br>
+                    <i class="fa-solid fa-map-marker-alt me-1"></i> ${currentUser.desk}
+                `;
+            }
+
+            const navContainer = document.getElementById('navLinksContainer');
+            if (navContainer && !document.getElementById('nav-logout-btn')) {
+                const logoutLi = document.createElement('li');
+                logoutLi.className = 'nav-item ms-lg-2';
+                logoutLi.id = 'nav-logout-btn';
+                logoutLi.innerHTML = `
+                    <a class="nav-link btn btn-danger btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle" href="#" onclick="handleLogout(event)" style="background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important;">
+                        <i class="fa-solid fa-power-off me-1"></i> Déconnexion
+                    </a>
+                `;
+                navContainer.appendChild(logoutLi);
+            }
+        }
+
+        window.handleLogout = function(e) {
+            e.preventDefault();
+            localStorage.removeItem('current_user');
+            window.location.href = 'login.html';
+        }
+
+        // --- CONFIGURATION ENTREPRISE ---
+        window.loadCompany = function() {
+            document.getElementById('compName').value = ledgerConfig.company.name || "";
+            document.getElementById('compCountry').value = ledgerConfig.company.country || "";
+            document.getElementById('compLoc').value = ledgerConfig.company.loc || "";
+            document.getElementById('compEmail').value = ledgerConfig.company.email || "";
+            document.getElementById('compPhone').value = ledgerConfig.company.phone || "";
+            document.getElementById('compRccm').value = ledgerConfig.company.rccm || "";
+            document.getElementById('compPromoter').value = ledgerConfig.company.promoter || "";
+            document.getElementById('compPromoterWa').value = ledgerConfig.company.promoterWa || "";
+            document.getElementById('compManager').value = ledgerConfig.company.manager || "";
+            document.getElementById('compManagerPhone').value = ledgerConfig.company.managerPhone || "";
+            updateCompanyUI();
+        }
+
+        window.toggleCompanyLock = function() {
+            if (!ledgerConfig.company.isLocked) {
+                ledgerConfig.company.name = document.getElementById('compName').value;
+                ledgerConfig.company.country = document.getElementById('compCountry').value;
+                ledgerConfig.company.loc = document.getElementById('compLoc').value;
+                ledgerConfig.company.email = document.getElementById('compEmail').value;
+                ledgerConfig.company.phone = document.getElementById('compPhone').value;
+                ledgerConfig.company.rccm = document.getElementById('compRccm').value;
+                ledgerConfig.company.promoter = document.getElementById('compPromoter').value;
+                ledgerConfig.company.promoterWa = document.getElementById('compPromoterWa').value;
+                ledgerConfig.company.manager = document.getElementById('compManager').value;
+                ledgerConfig.company.managerPhone = document.getElementById('compManagerPhone').value;
+                
+                ledgerConfig.company.isLocked = true;
+                showSuccess("Configuration enregistrée et verrouillée");
+            } else {
+                ledgerConfig.company.isLocked = false;
+            }
+            updateCompanyUI();
+            pushConfigToCloud();
+        }
+
+        window.updateCompanyUI = function() {
+            const inputs = document.querySelectorAll('#companyForm input');
+            const btn = document.getElementById('btnToggleLock');
+            const headerName = document.getElementById('headerCompanyName');
+
+            if (ledgerConfig.company.isLocked) {
+                inputs.forEach(i => { i.readOnly = true; i.classList.add('locked-info'); });
+                btn.innerHTML = '<i class="fa-solid fa-unlock me-2"></i>Déverrouiller';
+                btn.className = "btn btn-outline-primary px-5";
+                headerName.innerText = ledgerConfig.company.name;
+            } else {
+                inputs.forEach(i => { i.readOnly = false; i.classList.remove('locked-info'); });
+                btn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Enregistrer et verrouiller';
+                btn.className = "btn btn-wa px-5";
+                headerName.innerText = "";
+            }
+        }
+
+        // --- GESTION DU TAUX DOLLAR ---
+        window.loadDollarRate = function() {
+            document.getElementById('dollarExchangeRate').value = ledgerConfig.dollarRateConfig.value || "";
+            updateRateUI();
+        }
+
+        window.toggleRateLock = function() {
+            const rateInput = document.getElementById('dollarExchangeRate');
+            
+            if (!ledgerConfig.dollarRateConfig.isLocked) {
+                if (!rateInput.value || isNaN(rateInput.value)) {
+                    alert("Veuillez saisir un taux valide.");
+                    return;
+                }
+                ledgerConfig.dollarRateConfig.value = rateInput.value;
+                ledgerConfig.dollarRate = parseFloat(rateInput.value); 
+                ledgerConfig.dollarRateConfig.isLocked = true;
+                showSuccess("Taux dollar mis à jour et verrouillé");
+            } else {
+                const code = prompt("Entrez le code de confirmation pour modifier le taux :");
+                if (code === "1234") {
+                    ledgerConfig.dollarRateConfig.isLocked = false;
+                } else {
+                    alert("Code incorrect ! Modification annulée.");
+                    return;
+                }
+            }
+            updateRateUI();
+            pushConfigToCloud();
+        }
+
+        window.updateRateUI = function() {
+            const rateInput = document.getElementById('dollarExchangeRate');
+            const btn = document.getElementById('btnToggleRate');
+
+            if (ledgerConfig.dollarRateConfig.isLocked) {
+                rateInput.readOnly = true;
+                rateInput.classList.add('rate-locked');
+                btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i>Remettre à jour';
+                btn.className = "btn btn-danger w-100";
+            } else {
+                rateInput.readOnly = false;
+                rateInput.classList.remove('rate-locked');
+                btn.innerHTML = '<i class="fa-solid fa-rotate me-2"></i>Mettre à jour le taux';
+                btn.className = "btn btn-wa w-100";
+            }
+        }
+
+        // --- PAYS ---
+        window.generateCountryCode = function() {
+            const name = document.getElementById('countryName').value;
+            if (name.length >= 2) {
+                const prefix = name.substring(0, 3).toUpperCase();
+                document.getElementById('countryCode').value = `${prefix}-${Math.floor(10 + Math.random() * 90)}`;
+            } else { document.getElementById('countryCode').value = ''; }
+        }
+
+        window.renderCountries = function() {
+            const tbody = document.getElementById('countryTableBody');
+            const selectDesk = document.getElementById('deskCountry');
+            if(!tbody || !selectDesk) return;
+
+            tbody.innerHTML = ledgerConfig.countries.map(c => `
+                <tr><td><span class="badge bg-light text-dark border">${c.code}</span></td>
+                <td class="fw-semibold">${c.name}</td>
+                <td class="text-end"><button onclick="deleteCountry(${c.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td></tr>
+            `).join('');
+            selectDesk.innerHTML = '<option value="">Sélectionner un pays...</option>' + 
+                ledgerConfig.countries.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        }
+
+        window.deleteCountry = function(id) {
+            if(confirm('Supprimer ce pays ?')) { 
+                const updatedCountries = ledgerConfig.countries.filter(c => c.id !== id);
+                // Utilisation ciblée de la suppression cloud
+                if (updatedCountries.length === 0) {
+                    remove(ref(db, 'ledger_config/countries')).then(() => { showSuccess("Pays supprimé"); });
+                } else {
+                    set(ref(db, 'ledger_config/countries'), updatedCountries).then(() => { showSuccess("Pays supprimé"); });
+                }
+            }
+        }
+
+        // --- DEVISES ---
+        window.renderCurrencies = function() {
+            const tbody = document.getElementById('currencyTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = ledgerConfig.currencies.map(c => `
+                <tr><td><span class="badge bg-info text-white">${c.symbol}</span></td>
+                <td class="fw-semibold">${c.name}</td>
+                <td class="text-end"><button onclick="deleteCurrency(${c.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td></tr>
+            `).join('');
+        }
+
+        window.deleteCurrency = function(id) {
+            if(confirm('Supprimer cette devise ?')) { 
+                const updatedCurrencies = ledgerConfig.currencies.filter(c => c.id !== id);
+                if (updatedCurrencies.length === 0) {
+                    remove(ref(db, 'ledger_config/currencies')).then(() => { showSuccess("Devise supprimée"); });
+                } else {
+                    set(ref(db, 'ledger_config/currencies'), updatedCurrencies).then(() => { showSuccess("Devise supprimée"); });
+                }
+            }
+        }
+
+        // --- GUICHETS ---
+        window.generateDeskCode = function() {
+            const name = document.getElementById('deskName').value;
+            if (name.length >= 2) {
+                const prefix = name.replace(/\s/g, '').substring(0, 3).toUpperCase();
+                document.getElementById('deskCode').value = `G-${prefix}-${Math.floor(100 + Math.random() * 899)}`;
+            } else { document.getElementById('deskCode').value = ''; }
+        }
+
+        window.renderDesks = function() {
+            const tbody = document.getElementById('deskTableBody');
+            const selectAgent = document.getElementById('agentDesk');
+            if(!tbody || !selectAgent) return;
+
+            tbody.innerHTML = ledgerConfig.desks.length === 0 ? '<tr><td colspan="4" class="text-center text-muted">Aucun guichet</td></tr>' :
+                ledgerConfig.desks.map(d => `
+                <tr><td><span class="badge bg-light text-dark border">${d.code}</span></td>
+                <td class="fw-semibold">${d.name}</td><td>${d.country}</td>
+                <td class="text-end"><button onclick="deleteDesk(${d.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td></tr>
+            `).join('');
+            selectAgent.innerHTML = '<option value="">Sélectionner un guichet...</option>' + 
+                ledgerConfig.desks.map(d => `<option value="${d.id}">${d.name} (${d.country})</option>`).join('');
+        }
+
+        window.deleteDesk = function(id) {
+            if(confirm('Supprimer ce guichet ?')) { 
+                const updatedDesks = ledgerConfig.desks.filter(d => d.id !== id);
+                if (updatedDesks.length === 0) {
+                    remove(ref(db, 'ledger_config/desks')).then(() => { showSuccess("Guichet supprimé"); });
+                } else {
+                    set(ref(db, 'ledger_config/desks'), updatedDesks).then(() => { showSuccess("Guichet supprimé"); });
+                }
+            }
+        }
+
+        // --- AGENTS ---
+        window.generateAgentCode = function() {
+            const name = document.getElementById('agentName').value;
+            if (name.length >= 2) {
+                const prefix = name.replace(/\s/g, '').substring(0, 3).toUpperCase();
+                document.getElementById('agentCode').value = `AGT-${prefix}-${Math.floor(100 + Math.random() * 899)}`;
+            } else { document.getElementById('agentCode').value = ''; }
+        }
+
+        window.renderAgents = function() {
+            const tbody = document.getElementById('agentTableBody');
+            if(!tbody) return;
+
+            tbody.innerHTML = ledgerConfig.agents.length === 0 ? '<tr><td colspan="5" class="text-center text-muted">Aucun agent</td></tr>' :
+                ledgerConfig.agents.map(a => {
+                    const deskObj = ledgerConfig.desks.find(d => d.id == a.deskId) || { name: 'N/A', country: 'N/A' };
+                    return `
+                    <tr><td><span class="badge bg-light text-dark border">${a.code}</span></td>
+                    <td class="fw-semibold">${a.name}</td><td>${deskObj.name}</td><td>${deskObj.country}</td>
+                    <td class="text-end"><button onclick="deleteAgent(${a.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
+                }).join('');
+        }
+
+        window.deleteAgent = function(id) {
+            if(confirm('Supprimer cet agent ?')) { 
+                const updatedAgents = ledgerConfig.agents.filter(a => a.id !== id);
+                if (updatedAgents.length === 0) {
+                    remove(ref(db, 'ledger_config/agents')).then(() => { showSuccess("Agent supprimé"); });
+                } else {
+                    set(ref(db, 'ledger_config/agents'), updatedAgents).then(() => { showSuccess("Agent supprimé"); });
+                }
+            }
+        }
+
+        // --- SOUCHETS D'ÉCOUTES DES FORMULAIRES ---
+        document.getElementById('addCountryForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            ledgerConfig.countries.push({ id: Date.now(), name: document.getElementById('countryName').value, code: document.getElementById('countryCode').value });
+            pushConfigToCloud(); showSuccess("Pays ajouté"); this.reset();
+        });
+
+        document.getElementById('addCurrencyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            ledgerConfig.currencies.push({ id: Date.now(), name: document.getElementById('currName').value, symbol: document.getElementById('currSymbol').value });
+            pushConfigToCloud(); showSuccess("Devise ajoutée"); this.reset();
+        });
+
+        document.getElementById('addDeskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            ledgerConfig.desks.push({ id: Date.now(), name: document.getElementById('deskName').value, country: document.getElementById('deskCountry').value, code: document.getElementById('deskCode').value });
+            pushConfigToCloud(); showSuccess("Guichet ajouté"); this.reset();
+        });
+
+        document.getElementById('addAgentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            ledgerConfig.agents.push({ id: Date.now(), name: document.getElementById('agentName').value, deskId: document.getElementById('agentDesk').value, code: document.getElementById('agentCode').value });
+            pushConfigToCloud(); showSuccess("Agent ajouté"); this.reset();
+        });
+
+        // Liaison des écouteurs de saisie dynamiques pour les codes automatiques
+        document.getElementById('countryName').addEventListener('input', generateCountryCode);
+        document.getElementById('deskName').addEventListener('input', generateDeskCode);
+        document.getElementById('agentName').addEventListener('input', generateAgentCode);
+        document.getElementById('btnToggleLock').addEventListener('click', toggleCompanyLock);
+        document.getElementById('btnToggleRate').addEventListener('click', toggleRateLock);
+
+        // --- UTILITAIRES ---
+        window.showSuccess = function(msg) {
+            document.getElementById('success-message').innerText = msg;
+            document.getElementById('success-overlay').style.display = 'flex';
+            setTimeout(() => { document.getElementById('success-overlay').style.display = 'none'; }, 1800);
+        }
+
+        // --- LOGIQUE PWA AVANCÉE ---
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwaInstallBtn');
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker enregistré avec succès.', reg.scope))
+                    .catch(err => console.error('Échec de l\'enregistrement du Service Worker.', err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (installBtn) { installBtn.style.display = 'flex'; }
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`Choix de l'utilisateur : ${outcome}`);
+                deferredPrompt = null;
+                installBtn.style.display = 'none';
+            });
+        }
+
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('AFRI-LINK LEDGER a été installée avec succès.');
+            if (installBtn) { installBtn.style.display = 'none'; }
+        });
+
+        // Exécution au chargement initial
+        setupUserInterface();
+    </script>
+</body>
+</html>

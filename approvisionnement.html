@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approvisionnement | AFRI-LINK LEDGER</title>
+    
+    <meta name="theme-color" content="#075E54">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AfriLink">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <link class="jsbin" href="manifest.json" rel="manifest">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --wa-dark: #075E54;
+            --wa-medium: #128C7E;
+            --wa-light: #25D366;
+            --wa-bg: #F0F2F5;
+            --font-main: 'Poppins', sans-serif;
+            --font-title: 'Playfair Display', serif;
+            --font-brand: 'Montserrat', sans-serif;
+            --font-company: 'Orbitron', sans-serif;
+        }
+
+        body {
+            background-color: var(--wa-bg);
+            font-family: var(--font-main);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Header & Navigation --- */
+        header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-brand);
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: white !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-logo {
+            height: 45px;
+            width: auto;
+            object-fit: contain;
+            margin-right: 12px;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .sub-brand {
+            font-family: var(--font-title);
+            font-size: 0.9rem;
+            color: var(--wa-light);
+            font-style: italic;
+            display: block;
+        }
+
+        .company-display-header {
+            font-family: var(--font-company);
+            color: #FFD700;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 2px;
+            display: block;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .nav-link:hover {
+            color: var(--wa-light) !important;
+            transform: translateY(-2px);
+        }
+
+        .navbar-toggler {
+            border: none;
+            color: white;
+        }
+
+        /* --- Main Content Area --- */
+        main {
+            flex: 1;
+            padding: 40px 0;
+        }
+
+        .page-header {
+            border-left: 5px solid var(--wa-medium);
+            padding-left: 15px;
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-family: var(--font-title);
+            color: var(--wa-dark);
+            font-weight: 700;
+        }
+
+        /* --- Plaquette Flottante ALLONGÉE --- */
+        .floating-total-box {
+            position: fixed;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            padding: 8px 20px;
+            border-radius: 25px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+            display: inline-flex;
+            align-items: center;
+            border: 1.5px solid var(--wa-medium);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 95%;
+            overflow: hidden;
+        }
+
+        /* Mode Minimalisé */
+        .floating-total-box.minimized {
+            padding: 8px 15px;
+            width: auto;
+            border-radius: 100px;
+        }
+
+        .floating-total-box.minimized .total-content-wrapper {
+            width: 0;
+            opacity: 0;
+            margin: 0;
+            pointer-events: none;
+            display: none;
+        }
+
+        .floating-total-box i.main-icon {
+            font-size: 1.2rem;
+            color: var(--wa-medium);
+            margin-right: 12px;
+        }
+
+        .total-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            transition: all 0.3s ease;
+        }
+
+        .total-item {
+            display: flex;
+            align-items: center;
+            line-height: 1.2;
+        }
+
+        .total-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #777;
+            letter-spacing: 0.5px;
+            margin-right: 6px;
+            white-space: nowrap;
+        }
+
+        .total-value {
+            font-family: var(--font-main);
+            font-size: 1rem;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        /* Responsive : Sur grand écran, on remet tout sur une seule ligne */
+        @media (min-width: 768px) {
+            .floating-total-box {
+                padding: 8px 30px;
+                border-radius: 100px;
+                max-width: 90%;
+            }
+            .total-content-wrapper {
+                flex-direction: row;
+                align-items: center;
+            }
+            .total-item {
+                align-items: center;
+            }
+            .total-value {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Classes de couleurs spécifiques pour la demande bicolore */
+        .text-blue-bold {
+            color: #0275d8 !important;
+            font-weight: 700;
+        }
+
+        .text-red-bold {
+            color: #d9534f !important;
+            font-weight: 700;
+        }
+
+        .toggle-minimize {
+            background: var(--wa-bg);
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 15px;
+            cursor: pointer;
+            color: var(--wa-medium);
+            transition: background 0.2s;
+        }
+
+        .toggle-minimize:hover {
+            background: #e0e0e0;
+        }
+
+        /* Ajustement de l'espacement du contenu */
+        .content-wrapper {
+            margin-top: 60px;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translate(-50%, -20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        /* --- Custom Styles for Financials --- */
+        .card-stats {
+            border-radius: 15px;
+            border: none;
+            transition: transform 0.3s ease;
+        }
+        .card-stats:hover { transform: translateY(-5px); }
+        
+        .caisse-liquide { border-bottom: 5px solid #ffc107; }
+        .caisse-virtuelle { border-bottom: 5px solid #0dcaf0; }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        .btn-wa {
+            background-color: var(--wa-medium);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+        .btn-wa:hover {
+            background-color: var(--wa-dark);
+            color: white;
+        }
+
+        /* Fullscreen Success Overlay */
+        #success-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .success-icon {
+            color: var(--wa-light);
+            font-size: 5rem;
+            animation: scaleUp 0.5s ease-out;
+        }
+
+        @keyframes scaleUp {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        /* --- Footer --- */
+        footer {
+            background-color: white;
+            border-top: 3px solid var(--wa-medium);
+            padding: 20px 0;
+            margin-top: auto;
+        }
+
+        .footer-text {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .footer-contact i {
+            color: var(--wa-medium);
+            margin-right: 5px;
+        }
+
+        .concepteur-name {
+            font-weight: 600;
+            color: var(--wa-dark);
+        }
+
+        /* Style Spécifique pour le Bouton d'Installation Intélligent */
+        #pwaInstallBtn {
+            position: fixed;
+            bottom: 85px;
+            right: 20px;
+            z-index: 1050;
+            display: none; /* Masqué par défaut, géré par le script */
+            background-color: var(--wa-dark);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50px;
+            padding: 10px 20px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        #pwaInstallBtn:hover {
+            background-color: var(--wa-medium);
+            transform: scale(1.05);
+        }
+
+        /* Indicateur de statut Firebase Cloud */
+        #cloud-status-indicator {
+            position: fixed;
+            top: 75px;
+            right: 20px;
+            z-index: 1060;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .status-online {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-offline {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="pwaInstallBtn">
+        <i class="fa-solid fa-download me-2"></i> Installer l'App
+    </button>
+
+    <div id="cloud-status-indicator" class="status-offline">
+        <i class="fa-solid fa-circle me-1 small"></i> Hors ligne
+    </div>
+
+    <header>
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">
+                    <img src="logoarams.png" alt="Logo" class="navbar-logo">
+                    <div>
+                        <i class="fa-solid fa-building-columns me-2"></i>AFRI-LINK LEDGER
+                        <span class="sub-brand">Architecture de Finance Bilatérale</span>
+                        <span id="headerCompanyName" class="company-display-header"></span>
+                        <div id="headerUserSession" style="font-size: 0.75rem; color: #FFF; font-weight: 300; text-transform: none; margin-top: 4px; line-height: 1.2; font-family: var(--font-main);"></div>
+                    </div>
+                </a>
+                
+                <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav ms-auto" id="navLinksContainer">
+                        <li class="nav-item"><a class="nav-link" href="index.html"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="approvisionnement.html" style="color: var(--wa-light) !important;"><i class="fa-solid fa-wallet me-1"></i> Approvisionnement</a></li>
+                        <li class="nav-item"><a class="nav-link" href="transfert-envoi.html"><i class="fa-solid fa-paper-plane me-1"></i> Envoi</a></li>
+                        <li class="nav-item"><a class="nav-link" href="transfert-reception.html"><i class="fa-solid fa-hand-holding-dollar me-1"></i> Retrait</a></li>
+                        <li class="nav-item"><a class="nav-link" href="report-codes.html"><i class="fa-solid fa-clock-rotate-left me-1"></i> Comptabilité et Grand Livre</a></li>
+                        <li class="nav-item"><a class="nav-link" href="configuration.html"><i class="fa-solid fa-gears me-1"></i> Configuration</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="floating-total-box" id="floatingPlaquette">
+        <i class="fa-solid fa-scale-balanced main-icon"></i>
+        <div class="total-content-wrapper" id="totalWrapper">
+            <div class="total-item mb-1 mb-md-0 me-md-3">
+                <span class="total-label">Flux :</span>
+                <p class="total-value">
+                    <span id="appTotalPart" class="text-blue-bold">0</span> 
+                    <span class="text-muted fw-bold"> / </span> 
+                    <span id="envTotalPart" class="text-red-bold">0</span>
+                </p>
+            </div>
+            <div class="total-item">
+                <span class="total-label">Solde :</span>
+                <p class="total-value">
+                    <span id="soldeTotalPart" class="text-blue-bold">0</span>
+                </p>
+            </div>
+        </div>
+        <button class="toggle-minimize" onclick="togglePlaquette()" title="Réduire/Agrandir">
+            <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
+        </button>
+    </div>
+
+    <main class="container content-wrapper">
+        <div class="page-header mb-4">
+            <h1>Gestion des Approvisionnements</h1>
+            <p class="text-muted">Enregistrez les flux entrants et gérez les recharges de caisses.</p>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-6">
+                <div class="card card-stats shadow-sm caisse-liquide">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted small text-uppercase fw-bold">Total Liquide (Cash)</h6>
+                                <h2 class="mb-0 fw-bold" id="totalLiquide">0 FCFA</h2>
+                            </div>
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-warning">
+                                <i class="fa-solid fa-money-bill-wave fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card card-stats shadow-sm caisse-virtuelle">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted small text-uppercase fw-bold">Total Virtuel (Unités)</h6>
+                                <h2 class="mb-0 fw-bold" id="totalVirtuel">0 FCFA</h2>
+                            </div>
+                            <div class="bg-info bg-opacity-10 p-3 rounded-circle text-info">
+                                <i class="fa-solid fa-cloud fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm" style="border-radius: 15px;">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="mb-0 fw-bold"><i class="fa-solid fa-plus-circle me-2 text-success"></i>Nouvelle Recharge</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="approvForm">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Guichet à approvisionner</label>
+                                <select id="targetDesk" class="form-select" required>
+                                    <option value="">Chargement des guichets...</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Type de fonds</label>
+                                <select id="fundType" class="form-select" required>
+                                    <option value="liquide">Argent Liquide (Dépôt en caisses)</option>
+                                    <option value="virtuel">Argent Virtuel (Dépôt en caisses)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold d-flex justify-content-between">
+                                    Origine des fonds
+                                    <a href="#" class="text-primary text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalSources">
+                                        <i class="fa-solid fa-cog me-1"></i>Gérer
+                                    </a>
+                                </label>
+                                <select id="fundSource" class="form-select" required></select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label small fw-bold">Montant (FCFA)</label>
+                                <input type="number" id="approvAmount" class="form-control form-control-lg fw-bold" placeholder="0" required>
+                            </div>
+                            <button type="submit" class="btn btn-wa w-100 py-3">
+                                <i class="fa-solid fa-paper-plane me-2"></i>Soumettre pour accord
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm" style="border-radius: 15px;">
+                    <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="mb-0 fw-bold"><i class="fa-solid fa-history me-2 text-primary"></i>Suivi des demandes</h5>
+                            <button class="btn btn-sm btn-outline-secondary px-3 py-1" type="button" onclick="toggleTableVisibility()" id="btnToggleTable">
+                                <i class="fa-solid fa-eye me-1"></i>Afficher
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary px-3 py-1" type="button" onclick="openTransfersModal()">
+                                <i class="fa-solid fa-paper-plane me-1"></i>Voir les Envois
+                            </button>
+                        </div>
+                        <span class="badge bg-light text-dark border">Accord du Patron requis</span>
+                    </div>
+                    <div class="card-body p-0" id="tableContainer" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Guichet</th>
+                                        <th>Type</th>
+                                        <th>Origine</th>
+                                        <th>Montant</th>
+                                        <th>Statut</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="approvTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal fade" id="modalSources" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow" style="border-radius: 15px;">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">Gérer les origines des fonds</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <input type="text" id="newSourceName" class="form-control" placeholder="Nom de la source">
+                        <button class="btn btn-success" type="button" id="btnAddSourceDirect">Ajouter</button>
+                    </div>
+                    <ul class="list-group list-group-flush" id="listSources"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTransfers" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow" style="border-radius: 15px;">
+                <div class="modal-header bg-light border-0 py-3">
+                    <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-list-check me-2 text-primary"></i>Registre Global des Envois</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Expéditeur</th>
+                                    <th>Bénéficiaire</th>
+                                    <th>Montant</th>
+                                    <th>Code</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transfersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTransferDetail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow" style="border-radius: 15px;">
+                <div class="modal-header bg-dark text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-circle-info me-2 text-warning"></i>Détails de la Transaction</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="transferDetailContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="success-overlay">
+        <i class="fa-solid fa-circle-check success-icon"></i>
+        <h4 class="mt-3 fw-bold" id="success-message">Opération réussie</h4>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <div class="footer-text mb-2">&copy; 2026 <span class="concepteur-name">AFRI-LINK LEDGER</span>. Tous droits réservés.</div>
+            <div class="footer-contact d-flex justify-content-center flex-wrap gap-3">
+                <span><i class="fa-solid fa-user"></i> Concepteur : <strong>Atizoun Plateny AMOUSSOU</strong></span>
+                <span><i class="fa-solid fa-envelope"></i> atizoun@gmail.com</span>
+                <span><i class="fa-solid fa-phone"></i> 01 97 74 40 35</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getDatabase, ref, onValue, push, set, remove, child } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZQ51o3eor8aeowH5-SoC9fJE_Z71hMwU",
+            authDomain: "afri-link-ledger.firebaseapp.com",
+            projectId: "afri-link-ledger",
+            storageBucket: "afri-link-ledger.firebasestorage.app",
+            messagingSenderId: "120519932316",
+            appId: "1:120519932316:web:e555d0cd42bce8ef923059",
+            databaseURL: "https://afri-link-ledger-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+
+        // Initialisation de l'application Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Références globales pour les fonctions exposées sur l'objet window
+        window.fbDatabase = db;
+        window.fbRef = ref;
+        window.fbPush = push;
+        window.fbSet = set;
+        window.fbRemove = remove;
+
+        // Gestionnaire de statut de connexion internet/cloud
+        const connectedRef = ref(db, ".info/connected");
+        const statusIndicator = document.getElementById("cloud-status-indicator");
+
+        onValue(connectedRef, (snap) => {
+            if (snap.val() === true) {
+                statusIndicator.className = "status-online";
+                statusIndicator.innerHTML = '<i class="fa-solid fa-circle me-1 small text-success"></i> En ligne';
+            } else {
+                statusIndicator.className = "status-offline";
+                statusIndicator.innerHTML = '<i class="fa-solid fa-circle me-1 small text-danger"></i> Hors ligne';
+            }
+        });
+
+        // Écoute en temps réel de la configuration globale (ledger_config) pour extraire dynamiquement les guichets
+        const configRef = ref(db, "ledger_config");
+        onValue(configRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                window.ledgerConfig = data;
+                window.desks = data.desks || [];
+                
+                // Rafraîchissement des modules dépendants
+                window.loadHeaderBrand();
+                window.loadDynamicDollarRate();
+                window.populateDesks();
+            }
+        });
+
+        // Écoute en temps réel du registre des approvisionnements (ledger_supply)
+        const supplyRef = ref(db, "ledger_supply");
+        onValue(supplyRef, (snapshot) => {
+            const data = snapshot.val();
+            window.approvisionnements = [];
+            if (data) {
+                // Conversion de l'objet Firebase en tableau exploitable trié par ID décroissant
+                Object.keys(data).forEach(key => {
+                    window.approvisionnements.push({
+                        fbKey: key,
+                        ...data[key]
+                    });
+                });
+                window.approvisionnements.sort((a, b) => b.id - a.id);
+            }
+            window.renderTable();
+            window.updateDashboard();
+        });
+
+        // Écoute en temps réel du registre des sources de fonds (ledger_sources)
+        const sourcesRef = ref(db, "ledger_sources");
+        onValue(sourcesRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data && Array.isArray(data)) {
+                window.sources = data;
+            } else if (data && typeof data === 'object') {
+                window.sources = Object.values(data);
+            } else {
+                window.sources = ["Poche Personnel", "Compte Bancaire", "Transfert Inter-Agence"];
+            }
+            window.renderSources();
+        });
+
+        // Écoute en temps réel des transactions de transfert (ledger_transfers)
+        const transfersRef = ref(db, "ledger_transfers");
+        onValue(transfersRef, (snapshot) => {
+            const data = snapshot.val();
+            window.transfers = [];
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    window.transfers.push({
+                        fbKey: key,
+                        ...data[key]
+                    });
+                });
+                window.transfers.sort((a, b) => b.id - a.id);
+            }
+            window.updateDashboard();
+        });
+
+        // Liaison de l'action d'ajout de source depuis le module
+        document.getElementById('btnAddSourceDirect').onclick = function() {
+            window.addSource();
+        };
+    </script>
+
+    <script>
+        // --- CONTRÔLE D'ACCÈS INTÉGRÉ ET CORRIGÉ ---
+        const currentUser = JSON.parse(localStorage.getItem('current_user'));
+        
+        (function checkAccess() {
+            // Validation de la session et du rôle (Gestionnaire)
+            if (!currentUser || currentUser.role !== 'Gestionnaire') {
+                window.location.replace('index.html');
+            }
+        })();
+
+        // --- APPLICATION DYNAMIQUE DES DROITS ET FILTRES DE SESSIONS ---
+        function applyRoleAccessControl() {
+            // 1. Affichage unifié de la session dans le Header (sur deux lignes sous le nom de l'entreprise)
+            const sessionBox = document.getElementById('headerUserSession');
+            if (sessionBox && currentUser) {
+                sessionBox.innerHTML = `
+                    <i class="fa-solid fa-user-circle me-1"></i> ${currentUser.name} (${currentUser.role})<br>
+                    <i class="fa-solid fa-map-marker-alt me-1"></i> ${currentUser.desk}
+                `;
+            }
+
+            // 2. Injection du bouton de Déconnexion harmonisé dans la barre de navigation
+            const navContainer = document.getElementById('navLinksContainer');
+            if (navContainer) {
+                const logoutLi = document.createElement('li');
+                logoutLi.className = 'nav-item ms-lg-2';
+                logoutLi.innerHTML = `
+                    <a class="nav-link btn btn-danger btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle" href="#" onclick="handleLogout(event)" style="background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important;">
+                        <i class="fa-solid fa-power-off me-1"></i> Déconnexion
+                    </a>
+                `;
+                navContainer.appendChild(logoutLi);
+            }
+        }
+
+        function handleLogout(e) {
+            if (e) e.preventDefault();
+            // Nettoyage de la clé de session correcte lors de la déconnexion
+            localStorage.removeItem('current_user');
+            window.location.replace('index.html');
+        }
+        // ---------------------------------
+
+        // Initialisation de fallback pour la configuration unifiée (mise à jour par Firebase)
+        window.ledgerConfig = JSON.parse(localStorage.getItem('ledger_config')) || {};
+        window.desks = window.ledgerConfig.desks || [];
+        
+        // Initialisation de tableaux vides en attente de la synchronisation Firebase
+        window.approvisionnements = [];
+        window.sources = ["Poche Personnel", "Compte Bancaire", "Transfert Inter-Agence"];
+        window.transfers = [];
+        
+        // Taux de change dynamique avec valeur fallback par défaut : 600
+        let USD_RATE = 600;
+
+        // Fonction pour afficher/masquer la table de suivi
+        function toggleTableVisibility() {
+            const container = document.getElementById('tableContainer');
+            const btn = document.getElementById('btnToggleTable');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                btn.innerHTML = '<i class="fa-solid fa-eye-slash me-1"></i>Masquer';
+            } else {
+                container.style.display = 'none';
+                btn.innerHTML = '<i class="fa-solid fa-eye me-1"></i>Afficher';
+            }
+        }
+
+        // Fonction pour réduire/agrandir la plaquette
+        function togglePlaquette() {
+            const plaquette = document.getElementById('floatingPlaquette');
+            const icon = document.getElementById('toggleIcon');
+            const wrapper = document.getElementById('totalWrapper');
+            
+            if (plaquette.classList.contains('minimized')) {
+                plaquette.classList.remove('minimized');
+                wrapper.style.display = 'flex';
+                setTimeout(() => { wrapper.style.opacity = '1'; }, 10);
+                icon.classList.replace('fa-chevron-right', 'fa-chevron-left');
+            } else {
+                plaquette.classList.add('minimized');
+                wrapper.style.opacity = '0';
+                setTimeout(() => { wrapper.style.display = 'none'; }, 300);
+                icon.classList.replace('fa-chevron-left', 'fa-chevron-right');
+            }
+        }
+
+        // Affichage du message de confirmation visuel standardisé
+        function showSuccess(msg) {
+            const overlay = document.getElementById('success-overlay');
+            const text = document.getElementById('success-message');
+            if (overlay && text) {
+                text.innerText = msg;
+                overlay.style.display = 'flex';
+                setTimeout(() => { overlay.style.display = 'none'; }, 2000);
+            }
+        }
+
+        // Fonction d'affichage et d'unification dynamique du nom de l'entreprise
+        function loadHeaderBrand() {
+            const headerName = document.getElementById('headerCompanyName');
+            if (window.ledgerConfig && window.ledgerConfig.company && window.ledgerConfig.company.isLocked && headerName) {
+                headerName.innerText = window.ledgerConfig.company.name;
+            } else if (headerName) {
+                headerName.innerText = "";
+            }
+        }
+
+        // Récupération et affichage dynamique du taux Dollar / FCFA configuré depuis ledger_config.dollarRate
+        function loadDynamicDollarRate() {
+            if (window.ledgerConfig && window.ledgerConfig.dollarRate) {
+                const computedRate = parseFloat(window.ledgerConfig.dollarRate);
+                if (!isNaN(computedRate) && computedRate > 0) {
+                    USD_RATE = computedRate;
+                }
+            }
+        }
+
+        // Chargement des guichets directement depuis la clé cloud synchronisée window.desks
+        function populateDesks() {
+            const select = document.getElementById('targetDesk');
+            if (!select) return;
+            if (window.desks.length === 0) {
+                select.innerHTML = '<option value="">Aucun guichet disponible</option>';
+                return;
+            }
+            select.innerHTML = '<option value="">Choisir l\'agence...</option>' + 
+                window.desks.map(d => `<option value="${d.id}">${d.name} (${d.country || ''})</option>`).join('');
+        }
+
+        function renderSources() {
+            const select = document.getElementById('fundSource');
+            const list = document.getElementById('listSources');
+            if (!select || !list) return;
+            select.innerHTML = window.sources.map(s => `<option value="${s}">${s}</option>`).join('');
+            list.innerHTML = window.sources.map((s, index) => `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${s}
+                    <button class="btn btn-sm btn-outline-danger border-0" onclick="removeSource(${index})">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </li>
+            `).join('');
+        }
+
+        function addSource() {
+            const input = document.getElementById('newSourceName');
+            const val = input.value.trim();
+            if(val && !window.sources.includes(val)) {
+                window.sources.push(val);
+                if (window.fbDatabase) {
+                    const sRef = window.fbRef(window.fbDatabase, 'ledger_sources');
+                    window.fbSet(sRef, window.sources);
+                }
+                input.value = '';
+            }
+        }
+
+        function removeSource(index) {
+            if(confirm("Supprimer cette source ?")) {
+                window.sources.splice(index, 1);
+                if (window.fbDatabase) {
+                    const sRef = window.fbRef(window.fbDatabase, 'ledger_sources');
+                    window.fbSet(sRef, window.sources);
+                }
+            }
+        }
+
+        function updateDashboard() {
+            const valid = window.approvisionnements.filter(a => a.status === 'Validé');
+            const liq = valid.filter(a => a.type === 'liquide').reduce((sum, a) => sum + parseFloat(a.amount), 0);
+            const virt = valid.filter(a => a.type === 'virtuel').reduce((sum, a) => sum + parseFloat(a.amount), 0);
+            
+            // Calcul global des approvisionnements validés (Liquide + Virtuel)
+            const totalApprov = liq + virt;
+            // Récupération et calcul de la somme totale brute de tous les envois effectués
+            const totalEnvois = window.transfers.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+            
+            // Calcul du Solde du Flux
+            const soldeFlux = totalApprov - totalEnvois;
+            
+            document.getElementById('totalLiquide').innerText = liq.toLocaleString() + ' FCFA';
+            document.getElementById('totalVirtuel').innerText = virt.toLocaleString() + ' FCFA';
+            
+            // Assignation des valeurs bicolores dans la plaquette
+            document.getElementById('appTotalPart').innerText = totalApprov.toLocaleString() + ' FCFA';
+            document.getElementById('envTotalPart').innerText = totalEnvois.toLocaleString() + ' FCFA';
+            
+            // Rendu et coloration dynamique du Solde du Flux (Rouge si négatif, Bleu si positif ou nul)
+            const soldeElement = document.getElementById('soldeTotalPart');
+            soldeElement.innerText = soldeFlux.toLocaleString() + ' FCFA';
+            if (soldeFlux < 0) {
+                soldeElement.className = 'text-red-bold';
+            } else {
+                soldeElement.className = 'text-blue-bold';
+            }
+        }
+
+        document.getElementById('approvForm').onsubmit = function(e) {
+            e.preventDefault();
+            const newApprov = {
+                id: Date.now(),
+                date: new Date().toLocaleString('fr-FR'),
+                deskId: document.getElementById('targetDesk').value,
+                deskName: document.getElementById('targetDesk').options[document.getElementById('targetDesk').selectedIndex].text,
+                type: document.getElementById('fundType').value,
+                source: document.getElementById('fundSource').value,
+                amount: document.getElementById('approvAmount').value,
+                status: 'En attente'
+            };
+
+            if (window.fbDatabase) {
+                const sListRef = window.fbRef(window.fbDatabase, 'ledger_supply');
+                const newRecordRef = window.fbPush(sListRef);
+                window.fbSet(newRecordRef, newApprov).then(() => {
+                    showSuccess("Demande envoyée au patron");
+                });
+            }
+            this.reset();
+        };
+
+        function renderTable() {
+            const tbody = document.getElementById('approvTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = window.approvisionnements.map(a => `
+                <tr>
+                    <td class="small">${a.date}</td>
+                    <td class="fw-bold">${a.deskName}</td>
+                    <td><span class="badge ${a.type === 'liquide' ? 'bg-warning text-dark' : 'bg-info'}">${a.type}</span></td>
+                    <td class="small">${a.source}</td>
+                    <td class="fw-bold text-success">${parseFloat(a.amount).toLocaleString()}</td>
+                    <td><span class="status-badge ${a.status === 'Validé' ? 'bg-success text-white' : 'bg-secondary text-white'}">${a.status}</span></td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            ${a.status === 'En attente' ? `
+                                <button onclick="validateApprov('${a.fbKey}')" class="btn btn-sm btn-success" title="Valider"><i class="fa-solid fa-check"></i></button>
+                            ` : '<span class="p-1"><i class="fa-solid fa-lock text-muted small"></i></span>'}
+                            <button onclick="deleteApprov('${a.fbKey}')" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function validateApprov(fbKey) {
+            if(!fbKey || fbKey === 'undefined') return;
+            if(confirm("Confirmer la réception réelle ?")) {
+                if (window.fbDatabase) {
+                    const statusRef = window.fbRef(window.fbDatabase, `ledger_supply/${fbKey}/status`);
+                    window.fbSet(statusRef, 'Validé').then(() => {
+                        showSuccess("Approvisionnement validé !");
+                    });
+                }
+            }
+        }
+
+        function deleteApprov(fbKey) {
+            if(!fbKey || fbKey === 'undefined') return;
+            if(confirm("Confirmer la suppression définitive de cet enregistrement ?")) {
+                if (window.fbDatabase) {
+                    const recordRef = window.fbRef(window.fbDatabase, `ledger_supply/${fbKey}`);
+                    window.fbRemove(recordRef).then(() => {
+                        showSuccess("Enregistrement supprimé");
+                    });
+                }
+            }
+        }
+
+        /* --- Logique pour l'affichage des Envois --- */
+        function openTransfersModal() {
+            const tbody = document.getElementById('transfersTableBody');
+            if (window.transfers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">Aucun envoi disponible.</td></tr>`;
+            } else {
+                tbody.innerHTML = window.transfers.map(t => `
+                    <tr style="cursor: pointer;" onclick="viewTransferDetail('${t.fbKey}')">
+                        <td class="small">${t.date || 'N/A'}</td>
+                        <td class="fw-bold">${t.senderName || 'N/A'}</td>
+                        <td>${t.recipientName || 'N/A'}</td>
+                        <td class="fw-bold text-danger">${parseFloat(t.amount).toLocaleString()} FCFA</td>
+                        <td><span class="badge bg-dark text-warning font-monospace">${t.secretCode || 'N/A'}</span></td>
+                    </tr>
+                `).join('');
+            }
+            const modal = new bootstrap.Modal(document.getElementById('modalTransfers'));
+            modal.show();
+        }
+
+        function viewTransferDetail(fbKey) {
+            const t = window.transfers.find(item => item.fbKey === fbKey);
+            if (!t) return;
+
+            // Détermination précise du guichet de destination / Pays
+            const targetDeskName = t.targetDeskName || t.deskName || 'Non spécifié';
+            const targetCountry = t.targetCountry || 'Non spécifié';
+            
+            // Calcul du montant à verser au destinataire (Si montant déjà stocké ou calculé selon devise)
+            const amountToPay = t.amountToPay || t.amount; 
+            const finalCurrency = t.currency || 'FCFA';
+
+            const content = document.getElementById('transferDetailContent');
+            content.innerHTML = `
+                <div class="row g-3" id="transferDetailRawText">
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase">Date & Heure</label>
+                        <p class="fw-bold border-bottom pb-1" data-label="Date">${t.date || 'N/A'}</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase">Montant Envoyé</label>
+                        <p class="fw-bold text-danger border-bottom pb-1" data-label="Montant Envoyé">${parseFloat(t.amount).toLocaleString()} FCFA</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase">Expéditeur</label>
+                        <p class="fw-bold border-bottom pb-1" data-label="Expéditeur">${t.senderName || 'N/A'}</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase">Téléphone Exp.</label>
+                        <p class="fw-bold border-bottom pb-1" data-label="Téléphone Exp.">${t.senderPhone || 'N/A'}</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase">Bénéficiaire</label>
+                        <p class="fw-bold border-bottom pb-1" data-label="Bénéficiaire">${t.recipientName || 'N/A'}</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase">Téléphone Bénéf.</label>
+                        <p class="fw-bold border-bottom pb-1" data-label="Téléphone Bénéf.">${t.recipientPhone || 'N/A'}</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase">Guichet Concerné</label>
+                        <p class="fw-bold border-bottom pb-1" data-label="Guichet Destination">${targetDeskName}</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase">Pays de Destination</label>
+                        <p class="fw-bold border-bottom pb-1" data-label="Pays Destination">${targetCountry}</p>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted small text-uppercase">Montant Net à Verser au Destinataire</label>
+                        <p class="fw-bold fs-5 text-success border-bottom pb-1" data-label="Montant Net à Verser">${parseFloat(amountToPay).toLocaleString()} ${finalCurrency}</p>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <div class="p-3 bg-light rounded border text-center">
+                            <label class="text-muted small text-uppercase d-block mb-1">Code Secret de Retrait</label>
+                            <span class="fs-4 fw-bold text-dark font-monospace tracking-wide me-2" id="secretCodeValue" data-label="Code Secret">${t.secretCode || 'N/A'}</span>
+                            <button class="btn btn-sm btn-outline-dark border-0" onclick="copySecretCode('${t.secretCode}')" title="Copier le code">
+                                <i class="fa-solid fa-copy"></i> Copier Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-2 mt-3">
+                    <div class="col-12">
+                        <button class="btn btn-primary w-100 py-2 btn-sm" onclick="copyAllTransferDetails('${t.fbKey}')">
+                            <i class="fa-solid fa-clipboard-list me-2"></i>Copier toutes les informations
+                        </button>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-danger w-100 py-2 btn-sm" onclick="cancelTransferAction('${t.fbKey}')">
+                            <i class="fa-solid fa-ban me-2"></i>Annuler cet envoi (Supprimer)
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Fermer proprement la modale de liste d'abord
+            const modalTransfers = bootstrap.Modal.getInstance(document.getElementById('modalTransfers'));
+            if (modalTransfers) modalTransfers.hide();
+
+            // Ouvrir la modale de détail
+            const modalDetail = new bootstrap.Modal(document.getElementById('modalTransferDetail'));
+            modalDetail.show();
+        }
+
+        function copySecretCode(code) {
+            if (!code || code === 'N/A') return;
+            navigator.clipboard.writeText(code).then(() => {
+                showSuccess("Code secret copié !");
+            }).catch(err => {
+                console.error("Erreur lors de la copie : ", err);
+            });
+        }
+
+        // Fonction intelligente pour copier toutes les informations structurées de l'envoi
+        function copyAllTransferDetails(fbKey) {
+            const t = window.transfers.find(item => item.fbKey === fbKey);
+            if (!t) return;
+            
+            const targetDeskName = t.targetDeskName || t.deskName || 'Non spécifié';
+            const targetCountry = t.targetCountry || 'Non spécifié';
+            const amountToPay = t.amountToPay || t.amount;
+            const finalCurrency = t.currency || 'FCFA';
+
+            const textToCopy = `--- AFRI-LINK LEDGER : DETAIL TRANSACTION ---
+Date/Heure : ${t.date || 'N/A'}
+Expéditeur : ${t.senderName || 'N/A'} (${t.senderPhone || 'N/A'})
+Bénéficiaire : ${t.recipientName || 'N/A'} (${t.recipientPhone || 'N/A'})
+Montant Brut Envoyé : ${parseFloat(t.amount).toLocaleString()} FCFA
+Guichet Concerné : ${targetDeskName}
+Pays de Destination : ${targetCountry}
+Montant Net à Verser : ${parseFloat(amountToPay).toLocaleString()} ${finalCurrency}
+CODE SECRET : ${t.secretCode || 'N/A'}
+---------------------------------------------`;
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showSuccess("Toutes les informations ont été copiées !");
+            }).catch(err => {
+                console.error("Erreur d'écriture presse-papiers :", err);
+            });
+        }
+
+        // Fonction sécurisée avec code de confirmation 1233 par défaut pour supprimer/annuler l'envoi
+        function cancelTransferAction(fbKey) {
+            if(!fbKey || fbKey === 'undefined') return;
+            const codeInput = prompt("Veuillez saisir le code de confirmation requis pour annuler et supprimer cet envoi :");
+            if (codeInput === null) return; // Action annulée par l'utilisateur
+            
+            if (codeInput === "1233") {
+                if (window.fbDatabase) {
+                    const tRef = window.fbRef(window.fbDatabase, `ledger_transfers/${fbKey}`);
+                    window.fbRemove(tRef).then(() => {
+                        // Fermeture de la modale de détail
+                        const modalDetail = bootstrap.Modal.getInstance(document.getElementById('modalTransferDetail'));
+                        if (modalDetail) modalDetail.hide();
+                        showSuccess("Envoi annulé et supprimé avec succès");
+                    });
+                }
+            } else {
+                alert("Code de confirmation incorrect. Action refusée.");
+            }
+        }
+
+        // --- ENREGISTREMENT ET LOGIQUE DU BOUTON INSTALLER PWA ---
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwaInstallBtn');
+
+        // Écoute de l'événement système avant l'affichage du prompt d'installation natif
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Empêche la barre native mini-infobar de s'afficher sur mobile
+            e.preventDefault();
+            // Conserve l'événement pour l'utiliser plus tard
+            deferredPrompt = e;
+            // Affiche le bouton personnalisé intelligent uniquement si l'app n'est pas installée
+            installBtn.style.display = 'block';
+        });
+
+        // Détection de clic sur le bouton d'installation personnalisé
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            // Affiche l'invite d'installation native
+            deferredPrompt.prompt();
+            // Attend le choix de l'utilisateur
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('L\'utilisateur a accepté l\'installation de AFRI-LINK LEDGER');
+            }
+            // Réinitialise l'événement, le bouton disparaît
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        });
+
+        // Gestion de la disparition si l'application est déjà ou vient d'être installée
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('AFRI-LINK LEDGER a été installée avec succès !');
+            installBtn.style.display = 'none';
+        });
+
+        // Enregistrement du Service Worker pour l'activation PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker Enregistré avec succès ! Scope:', reg.scope))
+                .catch(err => console.error('Échec de l\'enregistrement du Service Worker:', err));
+            });
+        }
+
+        window.onload = function() { 
+            applyRoleAccessControl();
+            loadHeaderBrand();
+            loadDynamicDollarRate();
+            populateDesks();
+            renderSources();
+            renderTable();
+            updateDashboard();
+        };
+    </script>
+</body>
+</html>

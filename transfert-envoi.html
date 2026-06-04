@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfert Envoi | AFRI-LINK LEDGER</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075E54">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --wa-dark: #075E54;
+            --wa-medium: #128C7E;
+            --wa-light: #25D366;
+            --wa-bg: #F0F2F5;
+            --font-main: 'Poppins', sans-serif;
+            --font-title: 'Playfair Display', serif;
+            --font-brand: 'Montserrat', sans-serif;
+            --font-company: 'Orbitron', sans-serif;
+        }
+
+        body {
+            background-color: var(--wa-bg);
+            font-family: var(--font-main);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Header & Navigation --- */
+        header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-brand);
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: white !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-logo {
+            height: 45px;
+            width: auto;
+            object-fit: contain;
+            margin-right: 12px;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .sub-brand {
+            font-family: var(--font-title);
+            font-size: 0.9rem;
+            color: var(--wa-light);
+            font-style: italic;
+            display: block;
+        }
+
+        .company-display-header {
+            font-family: var(--font-company);
+            color: #FFD700;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 2px;
+            display: block;
+        }
+
+        /* Animation pour le taux de change en bleu scintillant */
+        @keyframes scintillementBleu {
+            0% {
+                color: #00d2ff;
+                text-shadow: 0 0 4px rgba(0, 210, 255, 0.5), 0 0 10px rgba(0, 210, 255, 0.3);
+            }
+            50% {
+                color: #0072ff;
+                text-shadow: 0 0 10px rgba(0, 114, 255, 0.8), 0 0 20px rgba(0, 114, 255, 0.5);
+            }
+            100% {
+                color: #00d2ff;
+                text-shadow: 0 0 4px rgba(0, 210, 255, 0.5), 0 0 10px rgba(0, 210, 255, 0.3);
+            }
+        }
+
+        .taux-bleu-scintillant {
+            font-weight: bold;
+            margin-right: 5px;
+            animation: scintillementBleu 2s infinite ease-in-out;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .nav-link:hover {
+            color: var(--wa-light) !important;
+            transform: translateY(-2px);
+        }
+
+        .navbar-toggler {
+            border: none;
+            color: white;
+        }
+
+        /* Badge Taux de Change Dynamique */
+        .rate-badge-header {
+            background-color: rgba(255, 255, 255, 0.15);
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            color: #FFD700;
+            font-family: var(--font-company);
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* --- Main Content Area --- */
+        main {
+            flex: 1;
+            padding: 40px 0;
+        }
+
+        .page-header {
+            border-left: 5px solid var(--wa-medium);
+            padding-left: 15px;
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-family: var(--font-title);
+            color: var(--wa-dark);
+            font-weight: 700;
+        }
+
+        /* --- Form Styles --- */
+        .card-form {
+            border-radius: 20px;
+            border: none;
+            transition: transform 0.3s ease;
+        }
+
+        .form-section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--wa-dark);
+            border-left: 4px solid var(--wa-medium);
+            padding-left: 12px;
+            margin-bottom: 20px;
+        }
+
+        .btn-wa {
+            background-color: var(--wa-medium);
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-wa:hover {
+            background-color: var(--wa-dark);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* --- Modal Élegante --- */
+        .elegant-modal .modal-content {
+            border-radius: 25px;
+            border: none;
+            overflow: hidden;
+        }
+
+        .elegant-modal-header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .code-display {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .code-number {
+            font-family: 'Courier New', monospace;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: 8px;
+            color: var(--wa-dark);
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px dashed var(--wa-medium);
+            display: inline-block;
+        }
+
+        .info-recap {
+            background: #e8f5e9;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .btn-copy {
+            background-color: var(--wa-medium);
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+        }
+
+        .btn-close-modal {
+            background-color: #6c757d;
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+        }
+
+        .btn-print {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .btn-print:hover {
+            background-color: #0b5ed7;
+            transform: translateY(-2px);
+        }
+
+        .total-info {
+            background: #f0f2f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        /* Style pour l'indicatif téléphone */
+        .phone-input-group {
+            display: flex;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            background: white;
+        }
+        
+        .phone-prefix {
+            background-color: #f8f9fa;
+            border: none;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid #dee2e6;
+            border-radius: 0.375rem 0 0 0.375rem;
+            white-space: nowrap;
+        }
+        
+        .phone-prefix select {
+            border: none;
+            background: transparent;
+            font-weight: 500;
+            color: var(--wa-dark);
+            cursor: pointer;
+            padding: 0;
+            margin-left: 5px;
+        }
+        
+        .phone-prefix select:focus {
+            outline: none;
+        }
+        
+        .phone-number-input {
+            border: none !important;
+            border-radius: 0 0.375rem 0.375rem 0 !important;
+            flex: 1;
+        }
+        
+        .phone-number-input:focus {
+            box-shadow: none !important;
+            border-color: none !important;
+        }
+
+        /* --- Footer --- */
+        footer {
+            background-color: white;
+            border-top: 3px solid var(--wa-medium);
+            padding: 20px 0;
+            margin-top: auto;
+        }
+
+        .footer-text {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .footer-contact d-flex {
+            gap: 15px;
+        }
+
+        .footer-contact i {
+            color: var(--wa-medium);
+            margin-right: 5px;
+        }
+
+        .concepteur-name {
+            font-weight: 600;
+            color: var(--wa-dark);
+        }
+
+        /* --- Indicateur de Connexion Firebase Éléphant et Discret --- */
+        .fb-status-indicator {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 1050;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .fb-status-online {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fb-status-offline {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .fb-status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+        .fb-status-online .fb-status-dot {
+            background-color: #28a745;
+            box-shadow: 0 0 6px #28a745;
+        }
+        .fb-status-offline .fb-status-dot {
+            background-color: #dc3545;
+            box-shadow: 0 0 6px #dc3545;
+        }
+
+        /* --- Styles de zone d'impression masquée à l'écran --- */
+        #printHistorySection {
+            display: none;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printHistorySection, #printHistorySection * {
+                visibility: visible;
+            }
+            #printHistorySection {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 30px;
+                font-family: 'Poppins', sans-serif;
+                background-color: white;
+                color: black;
+            }
+            .table th {
+                background-color: #f8f9fa !important;
+                color: black !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+    
+    <script>
+        (function() {
+            const currentUser = JSON.parse(localStorage.getItem('current_user'));
+            if (!currentUser || (currentUser.role !== 'Gestionnaire' && currentUser.role !== 'Agent')) {
+                window.location.replace('index.html');
+            }
+        })();
+    </script>
+</head>
+<body>
+
+    <div id="fbConnectionIndicator" class="fb-status-indicator fb-status-offline">
+        <div class="fb-status-dot"></div>
+        <span id="fbStatusText">Hors ligne</span>
+    </div>
+
+    <header>
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">
+                    <img src="logoarams.png" alt="Logo" class="navbar-logo">
+                    <div>
+                        <i class="fa-solid fa-building-columns me-2"></i>AFRI-LINK LEDGER
+                        <span class="sub-brand">Architecture de Finance Bilatérale</span>
+                        <span class="company-display-header">
+                            <span class="taux-bleu-scintillant">1 USD = <span id="headerExchangeRateBrand">600</span> FCFA</span>
+                            <span id="headerCompanyName"></span>
+                        </span>
+                        <div id="headerUserSession" style="font-size: 0.75rem; color: #FFF; font-weight: 300; text-transform: none; margin-top: 4px; line-height: 1.2; font-family: var(--font-main);"></div>
+                    </div>
+                </a>
+
+                <div class="d-none d-lg-flex ms-3 align-items-center">
+                    <div class="rate-badge-header">
+                        <i class="fa-solid fa-dollar-sign text-warning"></i>
+                        <span>1 USD = <span id="headerExchangeRate">600</span> FCFA</span>
+                    </div>
+                </div>
+                
+                <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav ms-auto align-items-center" id="navLinksContainer">
+                        <li class="nav-item"><a class="nav-link" href="index.html"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link" href="approvisionnement.html"><i class="fa-solid fa-wallet me-1"></i> Approvisionnement</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="transfert-envoi.html" style="color: var(--wa-light) !important;"><i class="fa-solid fa-paper-plane me-1"></i> Envoi</a></li>
+                        <li class="nav-item"><a class="nav-link" href="transfert-reception.html"><i class="fa-solid fa-hand-holding-dollar me-1"></i> Retrait</a></li>
+                        <li class="nav-item"><a class="nav-link" href="report-codes.html"><i class="fa-solid fa-clock-rotate-left me-1"></i> Comptabilité et Grand Livre</a></li>
+                        <li class="nav-item"><a class="nav-link" href="configuration.html"><i class="fa-solid fa-gears me-1"></i> Configuration</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="page-header mb-4">
+            <h1>Transfert d'Argent</h1>
+            <p class="text-muted">Effectuez un envoi d'argent sécurisé</p>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="card card-form shadow-sm">
+                    <div class="card-body p-4 p-lg-5">
+                        <form id="transferForm">
+                            <div class="mb-4">
+                                <h5 class="form-section-title"><i class="fa-solid fa-user me-2 text-success"></i>Informations Expéditeur</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Nom complet</label>
+                                        <input type="text" id="senderName" class="form-control" placeholder="Amousou" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Prénom</label>
+                                        <input type="text" id="senderFirstname" class="form-control" placeholder="Leprince" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Pays</label>
+                                        <select id="senderCountry" class="form-select" required></select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Agence d'envoi</label>
+                                        <select id="senderAgency" class="form-select" required></select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Téléphone</label>
+                                        <div class="phone-input-group">
+                                            <div class="phone-prefix" id="senderPhonePrefix">+229</div>
+                                            <input type="tel" id="senderPhone" class="form-control phone-number-input" placeholder="XX XX XX XX" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="form-section-title"><i class="fa-solid fa-user-check me-2 text-info"></i>Informations Bénéficiaire</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Nom complet</label>
+                                        <input type="text" id="beneficiaryName" class="form-control" placeholder="Marie Kouassi" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Prénom</label>
+                                        <input type="text" id="beneficiaryFirstname" class="form-control" placeholder="Marie" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Pays</label>
+                                        <select id="beneficiaryCountry" class="form-select" required></select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Agence de retrait</label>
+                                        <select id="beneficiaryAgency" class="form-select" required></select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Téléphone</label>
+                                        <div class="phone-input-group">
+                                            <div class="phone-prefix" id="beneficiaryPhonePrefix">+229</div>
+                                            <input type="tel" id="beneficiaryPhone" class="form-control phone-number-input" placeholder="XX XX XX XX" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="form-section-title"><i class="fa-solid fa-money-bill-wave me-2 text-warning"></i>Détails du Transfert</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Devise de saisie</label>
+                                        <select id="transferCurrency" class="form-select form-select-lg fw-bold" required>
+                                            <option value="FCFA" selected>FCFA (Franc CFA)</option>
+                                            <option value="USD">USD (Dollar US)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold" id="amountLabel">Montant à verser au destinataire (FCFA)</label>
+                                        <input type="number" id="transferAmount" class="form-control form-control-lg fw-bold" placeholder="0" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Frais d'envoi appliqués</label>
+                                        <input type="text" id="transferFees" class="form-control form-control-lg" value="0 FCFA" readonly disabled>
+                                    </div>
+                                </div>
+                                <div class="total-info mt-3">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-12 mb-3 p-3 bg-white rounded shadow-sm text-center border-start border-success border-4">
+                                            <small class="text-muted text-uppercase fw-bold tracking-wider">Montant total à encaisser par l'opérateur (FCFA)</small>
+                                            <p class="mb-0 text-success fw-black" id="totalFCFA" style="font-size: 2.25rem; font-weight: 900; letter-spacing: -0.5px;">0 FCFA</p>
+                                        </div>
+                                        <div class="col-md-4 text-center">
+                                            <small class="text-muted">Taux réel de frais calculé</small>
+                                            <p class="fw-bold mb-0" id="feePercentage">0.00%</p>
+                                        </div>
+                                        <div class="col-md-4 text-center">
+                                            <small class="text-muted">Total équivalent (DOLLAR US)</small>
+                                            <p class="fw-bold mb-0 text-primary" id="totalUSD">0 USD</p>
+                                        </div>
+                                        <div class="col-md-4 text-center">
+                                            <small class="text-muted">Montant net du transfert (FCFA)</small>
+                                            <p class="fw-bold mb-0 text-secondary" id="netTransferDisplay">0 FCFA</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-outline-primary w-100 py-2 mb-3" onclick="openHistoryFilterModal()">
+                                <i class="fa-solid fa-clock-rotate-left me-2"></i>Historique des envois d'une agence
+                            </button>
+
+                            <button type="submit" class="btn btn-wa w-100 py-3 mt-2">
+                                <i class="fa-solid fa-paper-plane me-2"></i>Effectuer le transfert
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal fade" id="historyFilterModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content elegant-modal">
+                <div class="elegant-modal-header">
+                    <i class="fa-solid fa-filter fa-2x mb-2"></i>
+                    <h4 class="mb-0">Filtre de l'Historique</h4>
+                    <p class="mb-0 mt-1 opacity-75 text-white small">Sélectionnez les paramètres d'agence et de période</p>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="historyFilterForm">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Pays de l'agence</label>
+                            <select id="historyCountry" class="form-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Agence</label>
+                            <select id="historyAgency" class="form-select" required></select>
+                        </div>
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Mois</label>
+                                <select id="historyMonth" class="form-select" required>
+                                    <option value="0">Janvier</option>
+                                    <option value="1">Février</option>
+                                    <option value="2">Mars</option>
+                                    <option value="3">Avril</option>
+                                    <option value="4">Mai</option>
+                                    <option value="5">Juin</option>
+                                    <option value="6">Juillet</option>
+                                    <option value="7">Août</option>
+                                    <option value="8">Septembre</option>
+                                    <option value="9">Octobre</option>
+                                    <option value="10">Novembre</option>
+                                    <option value="11">Décembre</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Année</label>
+                                <select id="historyYear" class="form-select" required></select>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3">
+                            <button type="button" class="btn btn-close-modal flex-grow-1" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-wa flex-grow-1">Valider</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="historyDisplayModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content elegant-modal">
+                <div class="elegant-modal-header">
+                    <i class="fa-solid fa-list-check fa-2x mb-2"></i>
+                    <h4 class="mb-0" id="historyTitle">Envois Enregistrés</h4>
+                    <p class="mb-0 mt-1 opacity-75 text-white small" id="historySubtitle">Registre des opérations de l'agence</p>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover align-middle small">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Code</th>
+                                    <th>Expéditeur</th>
+                                    <th>Bénéficiaire (Agence)</th>
+                                    <th class="text-end">Montant</th>
+                                    <th class="text-center">Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-end gap-3 mt-4">
+                        <button class="btn btn-print px-4" onclick="window.print()">
+                            <i class="fa-solid fa-print me-2"></i>Imprimer l'historique
+                        </button>
+                        <button class="btn btn-close-modal px-4" data-bs-dismiss="modal">
+                            <i class="fa-solid fa-xmark me-2"></i>Fermer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="printHistorySection">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #128C7E; padding-bottom: 10px; margin-bottom: 20px;">
+            <div>
+                <h2 style="font-family: 'Montserrat', sans-serif; font-weight: 800; color: #075E54; margin: 0;">AFRI-LINK LEDGER</h2>
+                <span style="font-size: 0.9rem; font-style: italic; color: #666;">Architecture de Finance Bilatérale</span>
+            </div>
+            <div style="text-align: right;">
+                <h5 id="printHeaderCompany" style="font-family: 'Orbitron', sans-serif; margin: 0; color: #333;"></h5>
+                <small class="text-muted">Registre Officiel d'Opérations</small>
+            </div>
+        </div>
+        
+        <h3 id="printDocTitle" style="font-family: 'Playfair Display', serif; color: #075E54; margin-top: 10px;"></h3>
+        <p id="printDocSubtitle" style="color: #555; margin-bottom: 25px; font-size: 0.95rem;"></p>
+        
+        <table class="table table-bordered table-striped align-middle small" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Date</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Code Retrait</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Expéditeur</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Bénéficiaire & Agence de Retrait</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: right;">Montant</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center;">Statut</th>
+                </tr>
+            </thead>
+            <tbody id="printHistoryTableBody">
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 50px; display: flex; justify-content: space-between; font-size: 0.85rem; color: #444; border-top: 1px dashed #ccc; padding-top: 15px;">
+            <div>Document généré le : <span id="printGenerationDate"></span></div>
+            <div style="text-align: right; font-weight: bold;">Signature de l'Agent de Contrôle / Cachet</div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="codeModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content elegant-modal">
+                <div class="elegant-modal-header">
+                    <i class="fa-solid fa-circle-check fa-3x mb-2"></i>
+                    <h3 class="mb-0">Transfert initié avec succès !</h3>
+                    <p class="mb-0 mt-2 opacity-75">Code confidentiel pour le retrait</p>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="code-display">
+                        <label class="text-muted small">CODE DE RETRAIT</label>
+                        <div class="code-number" id="secretCode">000000</div>
+                        <small class="text-muted d-block mt-2">À communiquer uniquement au bénéficiaire</small>
+                    </div>
+                    
+                    <div class="info-recap">
+                        <div class="row small">
+                            <div class="col-6">
+                                <strong>Expéditeur :</strong>
+                                <span id="modalSender">-</span>
+                            </div>
+                            <div class="col-6">
+                                <strong>Bénéficiaire :</strong>
+                                <span id="modalBeneficiary">-</span>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <strong>Montant :</strong>
+                                <span id="modalAmount">-</span>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <strong>Agence retrait :</strong>
+                                <span id="modalAgency">-</span>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <strong>Total à payer :</strong>
+                                <span id="modalTotalPaid">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 mt-4">
+                        <button class="btn btn-copy flex-grow-1" onclick="copySecretCode()">
+                            <i class="fa-regular fa-copy me-2"></i>Copier le code
+                        </button>
+                        <button class="btn btn-close-modal flex-grow-1" data-bs-dismiss="modal">
+                            <i class="fa-solid fa-check me-2"></i>Fermer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <div class="footer-text mb-2">&copy; 2026 <span class="concepteur-name">AFRI-LINK LEDGER</span>. Tous droits réservés.</div>
+            <div class="footer-contact d-flex justify-content-center flex-wrap gap-3">
+                <span><i class="fa-solid fa-user"></i> Concepteur : <strong>Atizoun Plateny AMOUSSOU</strong></span>
+                <span><i class="fa-solid fa-envelope"></i> atizoun@gmail.com</span>
+                <span><i class="fa-solid fa-phone"></i> 01 97 74 40 35</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+        // Configuration Firebase unifiée
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZQ51o3eor8aeowH5-SoC9fJE_Z71hMwU",
+            authDomain: "afri-link-ledger.firebaseapp.com",
+            projectId: "afri-link-ledger",
+            storageBucket: "afri-link-ledger.firebasestorage.app",
+            messagingSenderId: "120519932316",
+            appId: "1:120519932316:web:e555d0cd42bce8ef923059",
+            databaseURL: "https://afri-link-ledger-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+
+        // Initialisation de l'application et de la base de données
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Mémoire tampon temps réel locale alimentée par Firebase pour l'historique et les codes
+        let cacheTransfers = [];
+
+        // Taux de change dynamique récupéré du localStorage (Valeur fallback par défaut : 600)
+        let USD_RATE = 600;
+        
+        // Mapping des indicatifs téléphoniques par pays
+        const phonePrefixes = {
+            "Bénin": "+229",
+            "Côte d'Ivoire": "+225",
+            "Sénégal": "+221",
+            "Cameroun": "+237",
+            "Togo": "+228",
+            "Burkina Faso": "+226",
+            "Mali": "+223",
+            "Niger": "+227",
+            "Gabon": "+241"
+        };
+
+        // Synchronisation temps réel des statuts de connectivité
+        const connectedRef = ref(db, ".info/connected");
+        onValue(connectedRef, (snap) => {
+            const indicator = document.getElementById("fbConnectionIndicator");
+            const statusText = document.getElementById("fbStatusText");
+            if (snap.val() === true) {
+                indicator.className = "fb-status-indicator fb-status-online";
+                statusText.innerText = "En ligne";
+            } else {
+                indicator.className = "fb-status-indicator fb-status-offline";
+                statusText.innerText = "Hors ligne";
+            }
+        });
+
+        // Écoute dynamique du nœud des transferts pour rafraîchir le cache local instantanément
+        const remoteTransfersRef = ref(db, "transfers");
+        onValue(remoteTransfersRef, (snapshot) => {
+            const data = snapshot.val();
+            cacheTransfers = [];
+            if (data) {
+                if (Array.isArray(data)) {
+                    cacheTransfers = data.filter(Boolean);
+                } else {
+                    cacheTransfers = Object.keys(data).map(key => data[key]);
+                }
+                // Tri décroissant systématique par date pour correspondre au comportement natif unshift
+                cacheTransfers.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+        });
+
+        // 2. Affichage dynamique dans le Header et Gestion des Droits de Navigation (Uniformisé)
+        function applyRoleAccessControl() {
+            const currentUser = JSON.parse(localStorage.getItem('current_user'));
+            if (!currentUser) return;
+
+            // Rendu de la session utilisateur sur deux lignes (comme sur l'accueil)
+            const sessionBox = document.getElementById('headerUserSession');
+            if (sessionBox) {
+                sessionBox.innerHTML = `
+                    <i class="fa-solid fa-user-circle me-1"></i> ${currentUser.name} (${currentUser.role})<br>
+                    <i class="fa-solid fa-map-marker-alt me-1"></i> ${currentUser.desk || currentUser.guichet || 'N/A'}
+                `;
+            }
+
+            // Gestion des restrictions d'accès pour les agents
+            const navContainer = document.getElementById('navLinksContainer');
+            if (navContainer) {
+                if (currentUser.role === 'Agent') {
+                    const navLinks = navContainer.querySelectorAll('.nav-link');
+                    navLinks.forEach(link => {
+                        const href = link.getAttribute('href');
+                        if (href !== 'transfert-envoi.html' && href !== 'transfert-reception.html') {
+                            link.parentElement.remove();
+                        }
+                    });
+                }
+
+                // Ajout harmonisé du bouton PWA d'installation (masqué par défaut)
+                const installLi = document.createElement('li');
+                installLi.className = 'nav-item ms-lg-2';
+                installLi.id = 'pwaInstallContainer';
+                installLi.style.display = 'none';
+                installLi.innerHTML = `
+                    <button id="btnPWAInstall" class="btn btn-warning btn-sm text-dark px-3 py-1 mt-1 mt-lg-0 align-middle fw-bold">
+                        <i class="fa-solid fa-download me-1"></i> Installer l'app
+                    </button>
+                `;
+                navContainer.appendChild(installLi);
+
+                // Ajout harmonisé du bouton Déconnexion
+                const logoutLi = document.createElement('li');
+                logoutLi.className = 'nav-item ms-lg-2';
+                logoutLi.innerHTML = `
+                    <a class="nav-link btn btn-danger btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle" href="#" onclick="handleLogout(event)" style="background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important;">
+                        <i class="fa-solid fa-power-off me-1"></i> Déconnexion
+                    </a>
+                `;
+                navContainer.appendChild(logoutLi);
+            }
+            
+            // Initialisation de la logique du bouton d'installation intelligente PWA
+            initPWAInstallationLogic();
+        }
+
+        // Fonction de gestion de la déconnexion
+        function handleLogout(event) {
+            event.preventDefault();
+            localStorage.removeItem('current_user');
+            window.location.replace('index.html');
+        }
+
+        function loadHeaderBrand() {
+            const config = JSON.parse(localStorage.getItem('ledger_config'));
+            const headerName = document.getElementById('headerCompanyName');
+            const printCompName = document.getElementById('printHeaderCompany');
+            
+            if (config) {
+                let nameToDisplay = "";
+                if (config.company && config.company.isLocked && config.company.name) {
+                    nameToDisplay = config.company.name;
+                } else if (config.companyName) {
+                    nameToDisplay = config.companyName;
+                }
+                
+                if (nameToDisplay) {
+                    if (headerName) headerName.innerText = nameToDisplay;
+                    if (printCompName) printCompName.innerText = nameToDisplay;
+                }
+            }
+        }
+
+        // Récupération et affichage dynamique du taux Dollar / FCFA configuré depuis la clé globale unifiée ledger_config
+        function loadDynamicDollarRate() {
+            const config = JSON.parse(localStorage.getItem('ledger_config'));
+            if (config && config.dollarRate) {
+                const computedRate = parseFloat(config.dollarRate);
+                if (!isNaN(computedRate) && computedRate > 0) {
+                    USD_RATE = computedRate;
+                }
+            }
+            const rateDisplayElement = document.getElementById('headerExchangeRate');
+            const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
+            if (rateDisplayElement) {
+                rateDisplayElement.innerText = USD_RATE;
+            }
+            if (rateDisplayBrandElement) {
+                rateDisplayBrandElement.innerText = USD_RATE;
+            }
+        }
+        
+        // Fonction pour mettre à jour l'indicatif téléphone en fonction du pays
+        function updatePhonePrefix(countryElementId, prefixElementId) {
+            const country = document.getElementById(countryElementId).value;
+            const prefixSpan = document.getElementById(prefixElementId);
+            
+            if (country && phonePrefixes[country]) {
+                prefixSpan.innerHTML = phonePrefixes[country];
+            } else if (country) {
+                const match = country.match(/\+(\d+)/);
+                if (match) {
+                    prefixSpan.innerHTML = `+${match[1]}`;
+                } else {
+                    prefixSpan.innerHTML = "+229";
+                }
+            } else {
+                prefixSpan.innerHTML = "+229";
+            }
+        }
+
+        function populateCountries() {
+            const config = JSON.parse(localStorage.getItem('ledger_config'));
+            let countries = [];
+            if (config && config.countries) {
+                countries = config.countries.map(c => typeof c === 'object' ? c.name : c);
+            }
+            
+            if (countries.length === 0) {
+                countries = ["Bénin", "Côte d'Ivoire", "Sénégal", "Cameroun", "Togo", "Burkina Faso", "Mali", "Niger", "Gabon"];
+            }
+            
+            const options = '<option value="">Sélectionner le pays...</option>' + 
+                countries.map(c => `<option value="${c}">${c}</option>`).join('');
+            
+            document.getElementById('senderCountry').innerHTML = options;
+            document.getElementById('beneficiaryCountry').innerHTML = options;
+            
+            if (document.getElementById('historyCountry')) {
+                document.getElementById('historyCountry').innerHTML = options;
+            }
+        }
+
+        function populateAgencies() {
+            const config = JSON.parse(localStorage.getItem('ledger_config'));
+            let desks = [];
+            if (config && config.desks) {
+                desks = config.desks;
+            }
+            
+            const selectSender = document.getElementById('senderAgency');
+            const selectBeneficiary = document.getElementById('beneficiaryAgency');
+            
+            const options = '<option value="">Choisir l\'agence...</option>' + 
+                desks.map(d => `<option value="${d.id}">${d.name} (${d.country})</option>`).join('');
+            
+            selectSender.innerHTML = options;
+            selectBeneficiary.innerHTML = options;
+            
+            filterAgenciesByCountry();
+        }
+        
+        function filterAgenciesByCountry() {
+            const config = JSON.parse(localStorage.getItem('ledger_config'));
+            let desks = [];
+            if (config && config.desks) {
+                desks = config.desks;
+            }
+            
+            const senderCountry = document.getElementById('senderCountry').value;
+            const beneficiaryCountry = document.getElementById('beneficiaryCountry').value;
+            
+            const selectSender = document.getElementById('senderAgency');
+            const selectBeneficiary = document.getElementById('beneficiaryAgency');
+            
+            let senderOptions = '<option value="">Choisir l\'agence...</option>';
+            let beneficiaryOptions = '<option value="">Choisir l\'agence...</option>';
+            
+            desks.forEach(desk => {
+                if (!senderCountry || desk.country === senderCountry) {
+                    senderOptions += `<option value="${desk.id}">${desk.name} (${desk.country})</option>`;
+                }
+                if (!beneficiaryCountry || desk.country === beneficiaryCountry) {
+                    beneficiaryOptions += `<option value="${desk.id}">${desk.name} (${desk.country})</option>`;
+                }
+            });
+            
+            selectSender.innerHTML = senderOptions;
+            selectBeneficiary.innerHTML = beneficiaryOptions;
+        }
+
+        // Fonction pour calculer les frais fixes en USD en fonction de la nouvelle grille
+        function getFeeInUSD(amountInUSD) {
+            if (amountInUSD >= 0.00 && amountInUSD <= 20.00) return 1.00;
+            if (amountInUSD > 20.00 && amountInUSD <= 40.00) return 2.00;
+            if (amountInUSD > 40.00 && amountInUSD <= 60.00) return 3.00;
+            if (amountInUSD > 60.00 && amountInUSD <= 80.00) return 4.00;
+            if (amountInUSD > 80.00 && amountInUSD <= 105.00) return 5.00;
+            if (amountInUSD > 105.00 && amountInUSD <= 120.00) return 6.00;
+            if (amountInUSD > 120.00 && amountInUSD <= 140.00) return 7.00;
+            if (amountInUSD > 140.00 && amountInUSD <= 160.00) return 8.00;
+            if (amountInUSD > 160.00 && amountInUSD <= 180.00) return 9.00;
+            if (amountInUSD > 180.00 && amountInUSD <= 210.00) return 10.00;
+            if (amountInUSD > 210.00 && amountInUSD <= 315.00) return 15.00;
+            if (amountInUSD > 315.00 && amountInUSD <= 420.00) return 20.00;
+            if (amountInUSD > 420.00 && amountInUSD <= 525.00) return 25.00;
+            if (amountInUSD > 525.00 && amountInUSD <= 630.00) return 30.00;
+            if (amountInUSD > 630.00 && amountInUSD <= 735.00) return 35.00;
+            if (amountInUSD > 735.00 && amountInUSD <= 840.00) return 40.00;
+            if (amountInUSD > 840.00 && amountInUSD <= 945.00) return 45.00;
+            if (amountInUSD > 945.00 && amountInUSD <= 1050.00) return 50.00;
+            if (amountInUSD > 1050.00 && amountInUSD <= 1100.00) return 55.00;
+            if (amountInUSD > 1100.00 && amountInUSD <= 1200.00) return 60.00;
+            if (amountInUSD > 1200.00 && amountInUSD <= 1300.00) return 65.00;
+            if (amountInUSD > 1300.00 && amountInUSD <= 1400.00) return 70.00;
+            if (amountInUSD > 1400.00 && amountInUSD <= 1500.00) return 75.00;
+            if (amountInUSD > 1500.00 && amountInUSD <= 1600.00) return 80.00;
+            if (amountInUSD > 1600.00 && amountInUSD <= 1700.00) return 85.00;
+            if (amountInUSD > 1700.00 && amountInUSD <= 1800.00) return 90.00;
+            if (amountInUSD > 1800.00 && amountInUSD <= 1900.00) return 95.00;
+            if (amountInUSD > 1900.00 && amountInUSD <= 2000.00) return 100.00;
+            if (amountInUSD > 2000.00 && amountInUSD <= 2100.00) return 105.00;
+            if (amountInUSD > 2100.00 && amountInUSD <= 2200.00) return 110.00;
+            if (amountInUSD > 2200.00 && amountInUSD <= 2300.00) return 115.00;
+            if (amountInUSD > 2300.00 && amountInUSD <= 2400.00) return 120.00;
+            if (amountInUSD > 2400.00 && amountInUSD <= 2500.00) return 125.00;
+            if (amountInUSD > 2500.00 && amountInUSD <= 2600.00) return 130.00;
+            if (amountInUSD > 2600.00 && amountInUSD <= 2700.00) return 135.00;
+            if (amountInUSD > 2700.00 && amountInUSD <= 2800.00) return 140.00;
+            if (amountInUSD > 2800.00 && amountInUSD <= 2900.00) return 145.00;
+            if (amountInUSD > 2900.00 && amountInUSD <= 3000.00) return 150.00;
+            
+            return 0.00;
+        }
+
+        function handleCurrencyChange() {
+            const currency = document.getElementById('transferCurrency').value;
+            const amountLabel = document.getElementById('amountLabel');
+            amountLabel.innerText = `Montant à verser au destinataire (${currency})`;
+            updateFees();
+        }
+
+        function updateFees() {
+            const inputAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
+            const currency = document.getElementById('transferCurrency').value;
+            
+            if (inputAmount <= 0) {
+                document.getElementById('transferFees').value = '0 FCFA (0.00 USD)';
+                document.getElementById('feePercentage').innerHTML = '0.00%';
+                document.getElementById('totalFCFA').innerHTML = '0 FCFA';
+                document.getElementById('totalUSD').innerHTML = '0.00 USD';
+                document.getElementById('netTransferDisplay').innerHTML = '0 FCFA';
+                return { fees: 0, totalFCFA: 0, totalUSD: 0, feePercent: 0, initialAmountFCFA: 0 };
+            }
+
+            let amountUSD = 0;
+            let amountFCFA = 0;
+
+            if (currency === 'FCFA') {
+                amountFCFA = inputAmount;
+                amountUSD = amountFCFA / USD_RATE;
+            } else {
+                amountUSD = inputAmount;
+                amountFCFA = amountUSD * USD_RATE;
+            }
+            
+            const feesUSD = getFeeInUSD(amountUSD);
+            const feesFCFA = feesUSD * USD_RATE;
+            
+            const totalFCFA = amountFCFA + feesFCFA;
+            const totalUSD = totalFCFA / USD_RATE;
+            
+            const computedFeePercent = (feesFCFA / amountFCFA) * 100;
+            
+            document.getElementById('transferFees').value = Math.round(feesFCFA).toLocaleString() + ' FCFA (' + feesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD)';
+            document.getElementById('feePercentage').innerHTML = computedFeePercent.toFixed(2) + '%';
+            document.getElementById('totalFCFA').innerHTML = Math.round(totalFCFA).toLocaleString() + ' FCFA';
+            document.getElementById('totalUSD').innerHTML = totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+            document.getElementById('netTransferDisplay').innerHTML = Math.round(amountFCFA).toLocaleString() + ' FCFA';
+            
+            return { 
+                fees: feesFCFA, 
+                totalFCFA: totalFCFA, 
+                totalUSD: totalUSD, 
+                feePercent: computedFeePercent,
+                initialAmountFCFA: amountFCFA,
+                initialAmountUSD: amountUSD,
+                feesUSD: feesUSD
+            };
+        }
+
+        document.getElementById('senderCountry').addEventListener('change', function() {
+            filterAgenciesByCountry();
+            updatePhonePrefix('senderCountry', 'senderPhonePrefix');
+        });
+        document.getElementById('beneficiaryCountry').addEventListener('change', function() {
+            filterAgenciesByCountry();
+            updatePhonePrefix('beneficiaryCountry', 'beneficiaryPhonePrefix');
+        });
+        document.getElementById('transferAmount').addEventListener('input', updateFees);
+        document.getElementById('transferCurrency').addEventListener('change', handleCurrencyChange);
+
+        function generateSecretCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            const transfers = cacheTransfers;
+            
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            const monthlyCodes = transfers
+                .filter(t => {
+                    if (!t.date) return false;
+                    const tDate = new Date(t.date);
+                    return !isNaN(tDate.getTime()) && tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
+                })
+                .map(t => t.secretCode ? t.secretCode.replace(/\s/g, '').toUpperCase() : '');
+
+            let code;
+            let isDuplicate;
+            
+            do {
+                code = '';
+                for (let i = 0; i < 6; i++) {
+                    code += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                isDuplicate = monthlyCodes.includes(code);
+            } while (isDuplicate);
+
+            return code;
+        }
+
+        function copySecretCode() {
+            const code = document.getElementById('secretCode').innerText;
+            navigator.clipboard.writeText(code.replace(/\s/g, ''));
+            
+            const btn = window.event.target.closest('.btn-copy');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check me-2"></i>Copié !';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+            }, 2000);
+        }
+
+        function openHistoryFilterModal() {
+            const config = JSON.parse(localStorage.getItem('ledger_config'));
+            let desks = [];
+            if (config && config.desks) {
+                desks = config.desks;
+            }
+
+            const yearSelect = document.getElementById('historyYear');
+            const currentYear = new Date().getFullYear();
+            let yearOptions = '';
+            for (let y = currentYear - 2; y <= currentYear + 2; y++) {
+                yearOptions += `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>`;
+            }
+            yearSelect.innerHTML = yearOptions;
+
+            document.getElementById('historyMonth').value = new Date().getMonth();
+
+            const histCountry = document.getElementById('historyCountry');
+            const histAgency = document.getElementById('historyAgency');
+            
+            const updateHistAgencies = () => {
+                let options = '<option value="">Choisir l\'agence...</option>';
+                desks.forEach(d => {
+                    if (!histCountry.value || d.country === histCountry.value) {
+                        options += `<option value="${d.name}">${d.name}</option>`;
+                    }
+                });
+                histAgency.innerHTML = options;
+            };
+
+            histCountry.onchange = updateHistAgencies;
+            updateHistAgencies();
+
+            const filterModal = new bootstrap.Modal(document.getElementById('historyFilterModal'));
+            filterModal.show();
+        }
+
+        document.getElementById('historyFilterForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const targetAgency = document.getElementById('historyAgency').value;
+            const targetMonth = parseInt(document.getElementById('historyMonth').value, 10);
+            const targetYear = parseInt(document.getElementById('historyYear').value, 10);
+            
+            const transfers = cacheTransfers;
+            
+            const filteredTransfers = transfers.filter(t => {
+                const agencyMatch = t.sender && t.sender.agency && t.sender.agency.toLowerCase().includes(targetAgency.toLowerCase());
+                if (!agencyMatch) return false;
+                
+                if (!t.date) return false;
+                const tDate = new Date(t.date);
+                if (isNaN(tDate.getTime())) return false;
+                return tDate.getMonth() === targetMonth && tDate.getFullYear() === targetYear;
+            });
+
+            bootstrap.Modal.getInstance(document.getElementById('historyFilterModal')).hide();
+
+            const tbody = document.getElementById('historyTableBody');
+            const printTbody = document.getElementById('printHistoryTableBody');
+            
+            const monthLabel = document.getElementById('historyMonth').options[targetMonth].text;
+            const computedTitle = `Envois : ${targetAgency}`;
+            const computedSubtitle = `Période : ${monthLabel} ${targetYear} — ${filteredTransfers.length} opération(s) trouvée(s)`;
+
+            document.getElementById('historyTitle').innerText = computedTitle;
+            document.getElementById('historySubtitle').innerText = computedSubtitle;
+            
+            document.getElementById('printDocTitle').innerText = computedTitle;
+            document.getElementById('printDocSubtitle').innerText = computedSubtitle;
+            document.getElementById('printGenerationDate').innerText = new Date().toLocaleString('fr-FR');
+
+            if (filteredTransfers.length === 0) {
+                const emptyRow = `<tr><td colspan="6" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun envoi trouvé pour cette période.</td></tr>`;
+                tbody.innerHTML = emptyRow;
+                printTbody.innerHTML = emptyRow;
+            } else {
+                const dynamicRows = filteredTransfers.map(t => {
+                    const statusBadge = t.status === 'En attente' 
+                        ? `<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>En attente</span>`
+                        : `<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span>`;
+                    
+                    const displayDate = t.date ? new Date(t.date).toLocaleDateString('fr-FR') : '--/--/----';
+                    
+                    return `
+                        <tr>
+                            <td>${displayDate}</td>
+                            <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
+                            <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-muted">${t.sender.phone || ''}</small></td>
+                            <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-success fw-bold">📍 ${t.beneficiary.agency}</small></td>
+                            <td class="text-end fw-bold">${parseFloat(t.amountFCFA).toLocaleString()} FCFA</td>
+                            <td class="text-center">${statusBadge}</td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                tbody.innerHTML = dynamicRows;
+                printTbody.innerHTML = dynamicRows;
+            }
+
+            setTimeout(() => {
+                const displayModal = new bootstrap.Modal(document.getElementById('historyDisplayModal'));
+                displayModal.show();
+            }, 400);
+        };
+
+        document.getElementById('transferForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const rawAmount = parseFloat(document.getElementById('transferAmount').value);
+            if (!rawAmount || rawAmount <= 0) {
+                alert("Veuillez saisir un montant valide");
+                return;
+            }
+            
+            const feeCalculations = updateFees();
+            const secretCode = generateSecretCode();
+            
+            const beneficiaryAgencySelect = document.getElementById('beneficiaryAgency');
+            const beneficiaryAgencyName = beneficiaryAgencySelect.options[beneficiaryAgencySelect.selectedIndex]?.text || '';
+            
+            const senderFullPhone = document.getElementById('senderPhonePrefix').innerText + document.getElementById('senderPhone').value;
+            const beneficiaryFullPhone = document.getElementById('beneficiaryPhonePrefix').innerText + document.getElementById('beneficiaryPhone').value;
+            
+            const currencyChoice = document.getElementById('transferCurrency').value;
+            
+            const transferData = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                secretCode: secretCode,
+                amount: rawAmount,
+                currency: currencyChoice,
+                rate: USD_RATE,
+                amountFCFA: feeCalculations.initialAmountFCFA,
+                amountUSD: feeCalculations.initialAmountUSD,
+                feesFCFA: feeCalculations.fees,
+                feesUSD: feeCalculations.feesUSD,
+                feePercentage: feeCalculations.feePercent,
+                totalFCFA: feeCalculations.totalFCFA,
+                totalUSD: feeCalculations.totalUSD,
+                status: 'En attente',
+                sender: {
+                    name: document.getElementById('senderName').value,
+                    firstname: document.getElementById('senderFirstname').value,
+                    country: document.getElementById('senderCountry').value,
+                    agency: document.getElementById('senderAgency').options[document.getElementById('senderAgency').selectedIndex]?.text || '',
+                    phone: senderFullPhone
+                },
+                beneficiary: {
+                    name: document.getElementById('beneficiaryName').value,
+                    firstname: document.getElementById('beneficiaryFirstname').value,
+                    country: document.getElementById('beneficiaryCountry').value,
+                    agency: beneficiaryAgencyName,
+                    agencyId: document.getElementById('beneficiaryAgency').value,
+                    phone: beneficiaryFullPhone
+                }
+            };
+            
+            // Insertion chirurgicale et directe synchronisée sur Firebase Cloud Realtime Database
+            const newTransferRef = push(ref(db, "transfers"));
+            set(newTransferRef, transferData)
+            .then(() => {
+                document.getElementById('secretCode').innerText = secretCode;
+                document.getElementById('modalSender').innerHTML = `${transferData.sender.firstname} ${transferData.sender.name}`;
+                document.getElementById('modalBeneficiary').innerHTML = `${transferData.beneficiary.firstname} ${transferData.beneficiary.name}`;
+                document.getElementById('modalAmount').innerHTML = `${Math.round(transferData.amountFCFA).toLocaleString()} FCFA (frais : ${Math.round(transferData.feesFCFA).toLocaleString()} FCFA - ${transferData.feePercentage.toFixed(2)}%)`;
+                document.getElementById('modalAgency').innerHTML = beneficiaryAgencyName;
+                document.getElementById('modalTotalPaid').innerHTML = `${Math.round(transferData.totalFCFA).toLocaleString()} FCFA (${transferData.totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD)`;
+                
+                const modal = new bootstrap.Modal(document.getElementById('codeModal'));
+                modal.show();
+            })
+            .catch((err) => {
+                alert("Erreur de synchronisation cloud : " + err.message);
+            });
+            
+            this.reset();
+            document.getElementById('transferFees').value = '0 FCFA (0.00 USD)';
+            document.getElementById('feePercentage').innerHTML = '0.00%';
+            document.getElementById('totalFCFA').innerHTML = '0 FCFA';
+            document.getElementById('totalUSD').innerHTML = '0 USD';
+            document.getElementById('netTransferDisplay').innerHTML = '0 FCFA';
+            document.getElementById('transferCurrency').value = "FCFA";
+            document.getElementById('amountLabel').innerText = "Montant à verser au destinataire (FCFA)";
+            updatePhonePrefix('senderCountry', 'senderPhonePrefix');
+            updatePhonePrefix('beneficiaryCountry', 'beneficiaryPhonePrefix');
+        };
+
+        // Enregistrement du Service Worker et gestion de l'installation intelligente
+        function initPWAInstallationLogic() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('Service Worker enregistré avec succès.'))
+                .catch(err => console.error('Échec enregistrement du Service Worker:', err));
+            }
+
+            let deferredPrompt;
+            const installContainer = document.getElementById('pwaInstallContainer');
+            const btnInstall = document.getElementById('btnPWAInstall');
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                if (installContainer) {
+                    installContainer.style.display = 'block';
+                }
+            });
+
+            if (btnInstall) {
+                btnInstall.addEventListener('click', async () => {
+                    if (!deferredPrompt) return;
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`Réponse utilisateur à l'installation : ${outcome}`);
+                    deferredPrompt = null;
+                    if (installContainer) {
+                        installContainer.style.display = 'none';
+                    }
+                });
+            }
+
+            window.addEventListener('appinstalled', () => {
+                console.log('Application installée avec succès !');
+                deferredPrompt = null;
+                if (installContainer) {
+                    installContainer.style.display = 'none';
+                }
+            });
+
+            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+                if (installContainer) {
+                    installContainer.style.display = 'none';
+                }
+            }
+        }
+
+        // Liaison globale des fonctions appelées en inline depuis le DOM HTML
+        window.openHistoryFilterModal = openHistoryFilterModal;
+        window.copySecretCode = copySecretCode;
+        window.handleLogout = handleLogout;
+
+        window.onload = function() { 
+            applyRoleAccessControl();
+            loadHeaderBrand();
+            loadDynamicDollarRate();
+            populateCountries();
+            populateAgencies();
+            
+            updatePhonePrefix('senderCountry', 'senderPhonePrefix');
+            updatePhonePrefix('beneficiaryCountry', 'beneficiaryPhonePrefix');
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion | AFRI-LINK LEDGER</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075E54">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="AfriLink">
+    <link rel="apple-touch-icon" href="logo.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root { --wa-dark: #075E54; --wa-medium: #128C7E; --wa-light: #25D366; --wa-bg: #F0F2F5; --font-main: 'Poppins', sans-serif; --font-title: 'Playfair Display', serif; }
+        body { background-color: var(--wa-bg); font-family: var(--font-main); color: #333; display: flex; flex-direction: column; min-height: 100vh; justify-content: center; align-items: center; }
+        .login-card { width: 100%; max-width: 450px; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        .login-logo { height: 80px; margin-bottom: 20px; }
+        .btn-wa { background-color: var(--wa-medium); color: white; border: none; width: 100%; font-weight: 600; padding: 10px; }
+        .btn-wa:hover { background-color: var(--wa-dark); color: white; }
+        .app-description { font-size: 0.85rem; color: #666; margin-bottom: 20px; }
+        .btn-link-sm { font-size: 0.8rem; color: var(--wa-dark); text-decoration: none; margin-top: 15px; display: inline-block; cursor: pointer; }
+        #success-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; justify-content: center; align-items: center; flex-direction: column; transition: all 0.3s ease; backdrop-filter: blur(5px); }
+        .fw-bold-select { font-weight: 700 !important; color: var(--wa-dark); }
+        
+        /* Style du Bouton d'installation intelligent PWA */
+        #pwaInstallBtn {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000;
+            background-color: var(--wa-light);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 24px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        #pwaInstallBtn:hover {
+            background-color: #20bc57;
+            transform: scale(1.05);
+        }
+
+        /* Indicateur de statut Firebase */
+        #network-status-indicator {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 3000;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .status-online { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .status-offline { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-online .status-dot { background-color: #198754; animation: pulse 2s infinite; }
+        .status-offline .status-dot { background-color: #dc3545; }
+        @keyframes pulse { 0% { transform: scale(0.95); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } 100% { transform: scale(0.95); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="network-status-indicator" class="status-offline">
+        <span class="status-dot"></span>
+        <span id="network-status-text">Synchronisation...</span>
+    </div>
+
+    <div id="success-overlay">
+        <i class="fa-solid fa-circle-check" style="font-size: 5rem;"></i>
+        <h4 class="mt-3 fw-bold" id="overlay-text">Accès autorisé</h4>
+    </div>
+
+    <button id="pwaInstallBtn"><i class="fa-solid fa-download me-2"></i>Installer l'application</button>
+
+    <div class="login-card">
+        <img src="logoarams.png" alt="Logo" class="login-logo">
+        <h4 class="mb-2" style="color: var(--wa-dark); font-family: var(--font-title);">Connexion</h4>
+        <p class="app-description">Afri-link Ledger : Gestion sécurisée et centralisée.</p>
+        
+        <form id="loginForm">
+            <div class="mb-3 text-start">
+                <label class="form-label small fw-bold">Utilisateur</label>
+                <select id="userSelect" class="form-select" required>
+                    <option value="">Sélectionnez votre profil...</option>
+                </select>
+            </div>
+            <div class="mb-4 text-start">
+                <label class="form-label small fw-bold">Mot de passe</label>
+                <input type="password" id="passwordInput" class="form-control" placeholder="Code secret" required>
+            </div>
+            <button type="submit" class="btn btn-wa"><i class="fa-solid fa-right-to-bracket me-2"></i>Accéder au système</button>
+        </form>
+
+        <a class="btn-link-sm" data-bs-toggle="modal" data-bs-target="#adminModal">
+            <i class="fa-solid fa-users-gear me-1"></i>Gestion des utilisateurs
+        </a>
+    </div>
+
+    <div class="modal fade" id="adminModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Administration</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body" id="modalBody">
+                    <div id="authSection">
+                        <input type="password" id="adminAuthPass" class="form-control mb-2" placeholder="Mot de passe Gestionnaire">
+                        <button class="btn btn-wa" onclick="verifyAdminAccess()">Accéder aux comptes</button>
+                    </div>
+                    <div id="userManagementSection" style="display:none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle" style="white-space: nowrap;">
+                                <thead><tr><th>Nom</th><th>Rôle</th><th>Localisation</th><th>Mot de passe</th></tr></thead>
+                                <tbody id="userTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="text-end mt-3">
+                            <button class="btn btn-wa" onclick="saveUserPasswords()"><i class="fa-solid fa-floppy-disk me-2"></i>Valider les modifications</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZQ51o3eor8aeowH5-SoC9fJE_Z71hMwU",
+            authDomain: "afri-link-ledger.firebaseapp.com",
+            projectId: "afri-link-ledger",
+            storageBucket: "afri-link-ledger.firebasestorage.app",
+            messagingSenderId: "120519932316",
+            appId: "1:120519932316:web:e555d0cd42bce8ef923059",
+            databaseURL: "https://afri-link-ledger-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+
+        // Initialisation de Firebase et Realtime Database
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const dbRef = ref(db, 'ledger_config');
+
+        let ledgerConfig = { admin: { code: '12345' }, company: { manager: 'Administrateur' }, agents: [], desks: [] };
+        const userSelect = document.getElementById('userSelect');
+        const indicator = document.getElementById('network-status-indicator');
+        const indicatorText = document.getElementById('network-status-text');
+
+        // Écouteur de statut de connexion Firebase Realtime Database
+        const connectedRef = ref(db, ".info/connected");
+        onValue(connectedRef, (snap) => {
+            if (snap.val() === true) {
+                indicator.className = "status-online";
+                indicatorText.innerText = "En ligne";
+            } else {
+                indicator.className = "status-offline";
+                indicatorText.innerText = "Hors ligne";
+            }
+        });
+
+        // Synchronisation descendante globale en temps réel (Cloud -> Interface)
+        onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                ledgerConfig = data;
+                if (!ledgerConfig.admin) ledgerConfig.admin = { code: '12345' };
+                if (!ledgerConfig.company) ledgerConfig.company = { manager: 'Administrateur' };
+                if (!ledgerConfig.agents) ledgerConfig.agents = [];
+                if (!ledgerConfig.desks) ledgerConfig.desks = [];
+            } else {
+                // Initialisation de la base cloud si elle est vierge
+                set(dbRef, ledgerConfig);
+            }
+            // Enregistrement local en cache miroir pour compatibilité hors-ligne PWA descendante
+            localStorage.setItem('ledger_config', JSON.stringify(ledgerConfig));
+            initApp();
+        });
+
+        function initApp() {
+            const currentSelectedValue = userSelect.value;
+            userSelect.innerHTML = '<option value="">Sélectionnez votre profil...</option>';
+            
+            const adminOpt = document.createElement('option');
+            adminOpt.value = 'admin';
+            adminOpt.textContent = (ledgerConfig.company.manager || 'Administrateur') + ' (Gestionnaire)';
+            userSelect.appendChild(adminOpt);
+
+            ledgerConfig.agents.forEach(agent => {
+                const desk = ledgerConfig.desks.find(d => d.id == agent.deskId);
+                const desc = `${agent.name} ${desk ? '| ' + desk.country + ' - ' + desk.name : ''}`;
+                const opt = document.createElement('option');
+                opt.value = agent.code;
+                opt.textContent = desc;
+                userSelect.appendChild(opt);
+            });
+
+            if (currentSelectedValue) {
+                userSelect.value = currentSelectedValue;
+            }
+        }
+
+        // Changement dynamique du style lors de la sélection
+        userSelect.addEventListener('change', function() {
+            if(this.value !== "") {
+                this.classList.add('fw-bold-select');
+            } else {
+                this.classList.remove('fw-bold-select');
+            }
+        });
+
+        // Gestionnaire d'affichage des overlays (Succès / Échec)
+        function showNotification(message, isSuccess, callback) {
+            const overlay = document.getElementById('success-overlay');
+            const icon = overlay.querySelector('i');
+            const text = document.getElementById('overlay-text');
+            
+            text.innerText = message;
+            text.style.color = "white";
+
+            if(isSuccess) {
+                overlay.style.background = 'rgba(37, 211, 102, 0.85)';
+                icon.className = 'fa-solid fa-circle-check';
+                icon.style.color = 'white';
+            } else {
+                overlay.style.background = 'rgba(220, 53, 69, 0.85)';
+                icon.className = 'fa-solid fa-circle-xmark';
+                icon.style.color = 'white';
+            }
+
+            overlay.style.display = 'flex';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                if(callback) callback();
+            }, 1500);
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const selectedVal = userSelect.value;
+            const pass = document.getElementById('passwordInput').value;
+            
+            let currentUserData = null;
+
+            if (selectedVal === 'admin' && pass === ledgerConfig.admin.code) {
+                currentUserData = {
+                    role: 'Gestionnaire',
+                    name: ledgerConfig.company.manager || 'Administrateur',
+                    desk: 'Direction Centrale'
+                };
+            } else {
+                const agent = ledgerConfig.agents.find(a => a.code === selectedVal && a.password === pass);
+                if (agent) {
+                    const desk = ledgerConfig.desks.find(d => d.id == agent.deskId);
+                    currentUserData = {
+                        role: 'Agent',
+                        name: agent.name,
+                        desk: desk ? `${desk.country} - ${desk.name}` : 'Guichet non défini'
+                    };
+                }
+            }
+
+            if (currentUserData) { 
+                localStorage.setItem('current_user', JSON.stringify(currentUserData));
+                showNotification("Connexion réussie", true, () => {
+                    window.location.href = 'index.html';
+                });
+            } else { 
+                showNotification("Identifiants incorrects", false);
+            }
+        });
+
+        // Liaison des fonctions à l'objet window pour conserver la compatibilité des boutons HTML onclick
+        window.verifyAdminAccess = function() {
+            if (document.getElementById('adminAuthPass').value === ledgerConfig.admin.code) {
+                showNotification("Accès autorisé", true, () => {
+                    document.getElementById('authSection').style.display = 'none';
+                    document.getElementById('userManagementSection').style.display = 'block';
+                    renderManagementTable();
+                });
+            } else { 
+                showNotification("Mot de passe incorrect", false);
+            }
+        };
+
+        function renderManagementTable() {
+            const tbody = document.getElementById('userTableBody');
+            
+            let html = `<tr>
+                <td>${ledgerConfig.company.manager || 'Admin'}</td>
+                <td><strong>Administrateur</strong></td>
+                <td>-</td>
+                <td><input type="text" id="pass-admin" class="form-control form-control-sm" value="${ledgerConfig.admin.code}"></td>
+            </tr>`;
+            
+            ledgerConfig.agents.forEach((a, index) => {
+                const d = ledgerConfig.desks.find(d => d.id == a.deskId);
+                html += `<tr>
+                    <td>${a.name}</td>
+                    <td>Agent</td>
+                    <td>${d ? d.country + ' / ' + d.name : 'N/A'}</td>
+                    <td><input type="text" id="pass-agent-${index}" class="form-control form-control-sm" value="${a.password || ''}"></td>
+                </tr>`;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        // Mutation montante temps réel vers Firebase Realtime Database
+        window.saveUserPasswords = function() {
+            ledgerConfig.admin.code = document.getElementById('pass-admin').value;
+            
+            ledgerConfig.agents.forEach((a, index) => {
+                const input = document.getElementById(`pass-agent-${index}`);
+                if(input) {
+                    a.password = input.value;
+                }
+            });
+
+            // Envoi de la structure vers Firebase (la synchronisation en retour rafraîchira l'affichage et le cache)
+            set(dbRef, ledgerConfig)
+                .then(() => {
+                    showNotification("Modifications enregistrées avec succès", true);
+                })
+                .catch((error) => {
+                    console.error("Erreur de synchronisation Firebase:", error);
+                    showNotification("Erreur de synchronisation", false);
+                });
+        };
+
+        // --- LOGIQUE INTÉGRALE DE LA PWA ET BOUTON D'INSTALLATION INTELLIGENT ---
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwaInstallBtn');
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker enregistré avec succès.', reg.scope))
+                    .catch(err => console.log('Échec de l\'enregistrement du Service Worker.', err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+        });
+
+        installBtn.addEventListener('click', (e) => {
+            if (!deferredPrompt) return;
+            installBtn.style.display = 'none';
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('L\'utilisateur a accepté l\'installation de l\'application.');
+                } else {
+                    console.log('L\'utilisateur a refusé l\'installation.');
+                    installBtn.style.display = 'block';
+                }
+                deferredPrompt = null;
+            });
+        });
+
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('L\'application AFRI-LINK LEDGER a été installée avec succès !');
+            installBtn.style.display = 'none';
+        });
+    </script>
+</body>
+</html>

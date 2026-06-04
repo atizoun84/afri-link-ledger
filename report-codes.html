@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comptabilité Globale | AFRI-LINK LEDGER</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075E54">
+    <link class="apple-touch-icon" href="logo.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght=0,700;1,700&family=Poppins:wght=300;400;600&family=Montserrat:wght=800&family=Orbitron:wght=700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --wa-dark: #075E54;
+            --wa-medium: #128C7E;
+            --wa-light: #25D366;
+            --wa-bg: #F0F2F5;
+            --font-main: 'Poppins', sans-serif;
+            --font-title: 'Playfair Display', serif;
+            --font-brand: 'Montserrat', sans-serif;
+            --font-company: 'Orbitron', sans-serif;
+        }
+
+        body {
+            background-color: var(--wa-bg);
+            font-family: var(--font-main);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Header & Navigation --- */
+        header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .navbar-brand {
+            font-family: var(--font-brand);
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: white !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-logo {
+            height: 45px;
+            width: auto;
+            object-fit: contain;
+            margin-right: 12px;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .sub-brand {
+            font-family: var(--font-title);
+            font-size: 0.9rem;
+            color: var(--wa-light);
+            font-style: italic;
+            display: block;
+        }
+
+        .company-display-header {
+            font-family: var(--font-company);
+            color: #FFD700;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 2px;
+            display: block;
+        }
+
+        /* Animation pour le taux de change en bleu scintillant */
+        @keyframes scintillementBleu {
+            0% {
+                color: #00d2ff;
+                text-shadow: 0 0 4px rgba(0, 210, 255, 0.5), 0 0 10px rgba(0, 210, 255, 0.3);
+            }
+            50% {
+                color: #0072ff;
+                text-shadow: 0 0 10px rgba(0, 114, 255, 0.8), 0 0 20px rgba(0, 114, 255, 0.5);
+            }
+            100% {
+                color: #00d2ff;
+                text-shadow: 0 0 4px rgba(0, 210, 255, 0.5), 0 0 10px rgba(0, 210, 255, 0.3);
+            }
+        }
+
+        .taux-bleu-scintillant {
+            font-weight: bold;
+            margin-right: 5px;
+            animation: scintillementBleu 2s infinite ease-in-out;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .nav-link:hover {
+            color: var(--wa-light) !important;
+            transform: translateY(-2px);
+        }
+
+        .navbar-toggler {
+            border: none;
+            color: white;
+        }
+
+        /* Badge Taux de Change Dynamique */
+        .rate-badge-header {
+            background-color: rgba(255, 255, 255, 0.15);
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            color: #FFD700;
+            font-family: var(--font-company);
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Indicateur de statut Cloud */
+        .cloud-status-indicator {
+            position: absolute;
+            top: 5px;
+            right: 15px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 50px;
+            background: rgba(0,0,0,0.2);
+            z-index: 1050;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-online { color: #25D366; }
+        .status-offline { color: #dc3545; }
+
+        /* --- Main Content Area --- */
+        main {
+            flex: 1;
+            padding: 40px 0;
+        }
+
+        .page-header {
+            border-left: 5px solid var(--wa-medium);
+            padding-left: 15px;
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-family: var(--font-title);
+            color: var(--wa-dark);
+            font-weight: 700;
+        }
+
+        /* --- Form Styles --- */
+        .card-form {
+            border-radius: 20px;
+            border: none;
+            transition: transform 0.3s ease;
+        }
+
+        .form-section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--wa-dark);
+            border-left: 4px solid var(--wa-medium);
+            padding-left: 12px;
+            margin-bottom: 20px;
+        }
+
+        .btn-wa {
+            background-color: var(--wa-medium);
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-wa:hover {
+            background-color: var(--wa-dark);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Style spécifique pour rendre les trois boutons plus petits */
+        .btn-small-custom {
+            font-size: 0.8rem !important;
+            padding: 4px 10px !important;
+            font-weight: 500 !important;
+        }
+
+        /* --- Modal Élegante --- */
+        .elegant-modal .modal-content {
+            border-radius: 25px;
+            border: none;
+            overflow: hidden;
+        }
+
+        .elegant-modal-header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .code-display {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .code-number {
+            font-family: 'Courier New', monospace;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: 8px;
+            color: var(--wa-dark);
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px dashed var(--wa-medium);
+            display: inline-block;
+        }
+
+        .info-recap {
+            background: #e8f5e9;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .btn-copy {
+            background-color: var(--wa-medium);
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+        }
+
+        .btn-close-modal {
+            background-color: #6c757d;
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+        }
+
+        .btn-print {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .btn-print:hover {
+            background-color: #0b5ed7;
+            transform: translateY(-2px);
+        }
+
+        .total-info {
+            background: #f0f2f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        /* Style pour l'indicatif téléphone */
+        .phone-input-group {
+            display: flex;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            background: white;
+        }
+        
+        .phone-prefix {
+            background-color: #f8f9fa;
+            border: none;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid #dee2e6;
+            border-radius: 0.375rem 0 0 0.375rem;
+            white-space: nowrap;
+        }
+        
+        .phone-prefix select {
+            border: none;
+            background: transparent;
+            font-weight: 500;
+            color: var(--wa-dark);
+            cursor: pointer;
+            padding: 0;
+            margin-left: 5px;
+        }
+        
+        .phone-prefix select:focus {
+            outline: none;
+        }
+        
+        .phone-number-input {
+            border: none !important;
+            border-radius: 0 0.375rem 0.375rem 0 !important;
+            flex: 1;
+        }
+        
+        .phone-number-input:focus {
+            box-shadow: none !important;
+            border-color: none !important;
+        }
+
+        /* --- Footer --- */
+        footer {
+            background-color: white;
+            border-top: 3px solid var(--wa-medium);
+            padding: 20px 0;
+            margin-top: auto;
+        }
+
+        .footer-text {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .footer-contact d-flex {
+            gap: 15px;
+        }
+
+        .footer-contact i {
+            color: var(--wa-medium);
+            margin-right: 5px;
+        }
+
+        .concepteur-name {
+            font-weight: 600;
+            color: var(--wa-dark);
+        }
+
+        /* --- Styles de zone d'impression masquée à l'écran --- */
+        #printHistorySection {
+            display: none;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printHistorySection, #printHistorySection * {
+                visibility: visible;
+            }
+            #printHistorySection {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 30px;
+                font-family: 'Poppins', sans-serif;
+                background-color: white;
+                color: black;
+            }
+            .table th {
+                background-color: #f8f9fa !important;
+                color: black !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="cloud-status-indicator" id="cloudStatusIndicator">
+            <i class="fa-solid fa-circle text-danger small" id="cloudStatusIcon"></i>
+            <span id="cloudStatusText" class="text-white">Hors ligne</span>
+        </div>
+
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">
+                    <img src="logoarams.png" alt="Logo" class="navbar-logo">
+                    <div>
+                        <i class="fa-solid fa-building-columns me-2"></i>AFRI-LINK LEDGER
+                        <span class="sub-brand">Architecture de Finance Bilatérale</span>
+                        <span id="headerCompanyName" class="company-display-header">
+                            <span class="taux-bleu-scintillant">1 USD = <span id="headerExchangeRateBrand">600</span> FCFA</span>
+                            <span id="dynamicCompanyName"></span>
+                        </span>
+                        <div id="headerUserSession" style="font-size: 0.75rem; color: #FFF; font-weight: 300; text-transform: none; margin-top: 4px; line-height: 1.2; font-family: var(--font-main);"></div>
+                    </div>
+                </a>
+
+                <div class="d-none d-lg-flex ms-3 align-items-center">
+                    <div class="rate-badge-header">
+                        <i class="fa-solid fa-dollar-sign text-warning"></i>
+                        <span>1 USD = <span id="headerExchangeRate">600</span> FCFA</span>
+                    </div>
+                </div>
+                
+                <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav ms-auto" id="navLinksContainer">
+                        <li class="nav-item"><a class="nav-link" href="index.html"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link" href="approvisionnement.html"><i class="fa-solid fa-wallet me-1"></i> Approvisionnement</a></li>
+                        <li class="nav-item"><a class="nav-link" href="transfert-envoi.html"><i class="fa-solid fa-paper-plane me-1"></i> Envoi</a></li>
+                        <li class="nav-item"><a class="nav-link" href="transfert-reception.html"><i class="fa-solid fa-hand-holding-dollar me-1"></i> Retrait</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="accounting.html" style="color: var(--wa-light) !important;"><i class="fa-solid fa-clock-rotate-left me-1"></i> Comptabilité et Grand Livre</a></li>
+                        <li class="nav-item"><a class="nav-link" href="configuration.html"><i class="fa-solid fa-gears me-1"></i> Configuration</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="page-header mb-4">
+            <h1>Comptabilité & Grand Livre</h1>
+            <p class="text-muted">Consultez l'historique complet et croisé de vos mouvements financiers (Envois, Retraits, Approvisionnements)</p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-4 justify-content-center justify-content-md-start">
+            <button class="btn btn-sm btn-wa px-3 filter-time-btn active" id="timeFilterAll" onclick="setTimeFilter('ALL')"><i class="fa-solid fa-globe me-1"></i>Tout voir</button>
+            <button class="btn btn-sm btn-outline-secondary px-3 filter-time-btn" id="timeFilterDay" onclick="setTimeFilter('DAY')"><i class="fa-solid fa-calendar-day me-1"></i>Aujourd'hui</button>
+            <button class="btn btn-sm btn-outline-secondary px-3 filter-time-btn" id="timeFilterWeek" onclick="setTimeFilter('WEEK')"><i class="fa-solid fa-calendar-week me-1"></i>Cette semaine</button>
+            <button class="btn btn-sm btn-outline-secondary px-3 filter-time-btn" id="timeFilterMonth" onclick="setTimeFilter('MONTH')"><i class="fa-solid fa-calendar-days me-1"></i>Ce mois</button>
+            <button class="btn btn-sm btn-outline-secondary px-3 filter-time-btn" id="timeFilterYear" onclick="setTimeFilter('YEAR')"><i class="fa-solid fa-calendar me-1"></i>Cette année</button>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card p-3 border-0 shadow-sm border-start border-4 border-primary bg-white h-100">
+                    <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Flux Envois Globaux</small>
+                    <div class="mt-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-secondary">Total Brut :</span>
+                            <span class="fw-bold text-dark" id="kpiTotalEnvoisBrut">0 FCFA</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-secondary">Avec Frais :</span>
+                            <span class="fw-bold text-primary" id="kpiTotalEnvois">0 FCFA</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-1 border-top dashed">
+                            <span class="small text-success fw-bold">Marge brute collectée :</span>
+                            <span class="fw-bold text-success" id="kpiBeneficeEnvois">0 FCFA</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-3 border-0 shadow-sm border-start border-4 border-danger bg-white h-100">
+                    <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-hand-holding-dollar me-1"></i>Flux Retraits & Gains</small>
+                    <div class="mt-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-secondary">Total Retraits :</span>
+                            <span class="fw-bold text-danger" id="kpiTotalRetraits">0 FCFA</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-secondary">Gains / Retrait :</span>
+                            <span class="fw-bold text-info" id="kpiGainsRetraits">0 FCFA</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-1 border-top dashed">
+                            <span class="small text-dark fw-bold">Solde Gains Dispo :</span>
+                            <span class="fw-bold text-dark" id="kpiSoldeGainsDispo">0 FCFA</span>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <button class="btn btn-warning btn-sm w-100 fw-bold py-1" onclick="openGainWithdrawalModal()">
+                            <i class="fa-solid fa-money-bill-transfer me-1"></i>Ajuster / Retirer les Gains
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-3 border-0 shadow-sm border-start border-4 border-success bg-white h-100">
+                    <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-wallet me-1"></i>Trésorerie & Solde Réel Caisse</small>
+                    <div class="mt-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-secondary">Approvisionnements :</span>
+                            <span class="fw-bold text-warning" id="kpiTotalApprov">0 FCFA</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-secondary">Retraits de Gains Effectués :</span>
+                            <span class="fw-bold text-muted" id="kpiTotalRetraitsGains">0 FCFA</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-1 border-top">
+                            <span class="small text-success fw-bold">Solde Net En Caisse :</span>
+                            <span class="fw-bold text-success" id="kpiSoldeNet">0 FCFA</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card card-form shadow-sm mb-4">
+                    <div class="card-body p-4">
+                        <h5 class="form-section-title"><i class="fa-solid fa-filter me-2 text-success"></i>Filtres d'Audit Comptable</h5>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Type de Transaction</label>
+                                <select id="filterType" class="form-select" onchange="buildAccountingTable()">
+                                    <option value="ALL">Toutes les transactions (Grand Livre)</option>
+                                    <option value="ENVOI">Envois uniquement</option>
+                                    <option value="RETRAIT">Retraits uniquement</option>
+                                    <option value="APPROV">Approvisionnements uniquement</option>
+                                    <option value="RETRAIT_GAIN">Retraits de Gains uniquement</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold">Recherche par Agence / Acteur / Code</label>
+                                <input type="text" id="filterSearch" class="form-control" placeholder="Saisir un nom, une agence ou un code secret..." oninput="buildAccountingTable()">
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-danger btn-sm w-100 fw-bold py-2" onclick="resetAllData()">
+                                    <i class="fa-solid fa-trash-can me-2"></i>Réinitialiser les données
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0 text-secondary" style="font-family: var(--font-title);"><i class="fa-solid fa-book me-2"></i>Registre Comptable Général</h4>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-dark btn-small-custom" id="btnToggleGainsHistory" onclick="toggleGainsHistoryCard()">
+                            <i class="fa-solid fa-clock-rotate-left me-2" id="toggleGainsIcon"></i><span id="toggleGainsText">Afficher Historique Retraits Gains</span>
+                        </button>
+                        <button class="btn btn-wa btn-sm btn-small-custom" id="btnToggleAccounting" onclick="toggleAccountingCard()">
+                            <i class="fa-solid fa-eye me-2" id="toggleIcon"></i><span id="toggleText">Afficher le registre</span>
+                        </button>
+                        <button class="btn btn-print btn-sm btn-small-custom" onclick="window.print()">
+                            <i class="fa-solid fa-print me-2"></i>Imprimer le livre de caisse
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-form shadow-sm mb-4" id="gainsHistoryCard" style="display: none;">
+                    <div class="card-body p-4">
+                        <h5 class="form-section-title"><i class="fa-solid fa-receipt me-2 text-warning"></i>Historique des Retraits de Gains</h5>
+                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                            <table class="table table-hover align-middle small">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Date & Heure</th>
+                                        <th>Réf. Opération</th>
+                                        <th>Bénéficiaire</th>
+                                        <th>Motif / Commentaire</th>
+                                        <th class="text-end">Montant Prélevé</th>
+                                        <th class="text-center">Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gainsHistoryTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-form shadow-sm" id="accountingCard" style="display: none;">
+                    <div class="card-body p-4">
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-hover align-middle small">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Date & Heure</th>
+                                        <th>Type</th>
+                                        <th>Code Réf.</th>
+                                        <th>Acteur / Agence Débitrice</th>
+                                        <th>Bénéficiaire / Agence Créditrice</th>
+                                        <th class="text-end">Montant Principal</th>
+                                        <th class="text-end">Frais / Com.</th>
+                                        <th class="text-center">Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accountingTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div class="modal fade elegant-modal" id="gainWithdrawalModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="elegant-modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-money-bill-transfer me-2 text-warning"></i>Retrait sur Gains d'Entreprise</h5>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info text-center small mb-3">
+                        Cette opération permet d'ajuster la comptabilité globale en effectuant un prélèvement direct sur le solde des bénéfices accumulés.
+                    </div>
+                    <div class="p-3 bg-light rounded-3 text-center mb-3">
+                        <span class="text-muted small d-block">Solde des gains disponible :</span>
+                        <strong class="fs-4 text-success" id="modalSoldeGains">0 FCFA</strong>
+                    </div>
+                    <form id="formWithdrawGains" onsubmit="executeGainWithdrawal(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Nom du Bénéficiaire</label>
+                            <input type="text" id="withdrawGainBeneficiary" class="form-control" required placeholder="Ex: Direction, Gestionnaire, Partenaire...">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Montant à retirer (FCFA)</label>
+                            <input type="number" id="withdrawGainAmount" class="form-control form-control-lg text-center fw-bold" min="1" required placeholder="0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Motif / Commentaire d'ajustement</label>
+                            <input type="text" id="withdrawGainComment" class="form-control" required placeholder="Ex: Ajustement caisse, Prélèvement profit...">
+                        </div>
+                        <div class="mb-3 p-3 bg-light rounded-3 border">
+                            <label class="form-label small fw-bold text-danger d-block text-center"><i class="fa-solid fa-lock me-1"></i>Code d'autorisation requis</label>
+                            <input type="password" id="withdrawGainAuthCode" class="form-control form-control-sm text-center font-monospace" required placeholder="Saisir le code de confirmation" style="letter-spacing: 4px;">
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end mt-4">
+                            <button type="button" class="btn btn-secondary px-4 rounded-pill small" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-wa px-4 rounded-pill small">Valider le retrait</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="printHistorySection">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #128C7E; padding-bottom: 10px; margin-bottom: 20px;">
+            <div>
+                <h2 style="font-family: 'Montserrat', sans-serif; font-weight: 800; color: #075E54; margin: 0;">AFRI-LINK LEDGER</h2>
+                <span style="font-size: 0.9rem; font-style: italic; color: #666;">Architecture de Finance Bilatérale</span>
+            </div>
+            <div style="text-align: right;">
+                <h5 id="printHeaderCompany" style="font-family: 'Orbitron', sans-serif; margin: 0; color: #333;"></h5>
+                <small class="text-muted">Rapport d'Audit Comptable Général</small>
+            </div>
+        </div>
+        
+        <h3 style="font-family: 'Playfair Display', serif; color: #075E54; margin-top: 10px;">Grand Livre des Flux Financiers</h3>
+        <p id="printDocSubtitle" style="color: #555; margin-bottom: 25px; font-size: 0.95rem;">Extrait global des flux d'envois, retraits et approvisionnements d'agences.</p>
+        
+        <table class="table table-bordered table-striped align-middle small" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 8px; border: 1px solid #dee2e6;">Date & Heure</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6;">Type</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6;">Code</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6;">Provenance / Débit</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6;">Destination / Crédit</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Montant Principal</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Frais</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6; text-align: center;">Statut</th>
+                </tr>
+            </thead>
+            <tbody id="printAccountingTableBody">
+                </tbody>
+        </table>
+        
+        <div style="margin-top: 50px; display: flex; justify-content: space-between; font-size: 0.85rem; color: #444; border-top: 1px dashed #ccc; padding-top: 15px;">
+            <div>Document comptable généré le : <span id="printGenerationDate"></span></div>
+            <div style="text-align: right; font-weight: bold;">Signature de la Direction Financière / Cachet Central</div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <div class="footer-text mb-2">&copy; 2026 <span class="concepteur-name">AFRI-LINK LEDGER</span>. Tous droits réservés.</div>
+            <div class="footer-contact d-flex justify-content-center flex-wrap gap-3">
+                <span><i class="fa-solid fa-user"></i> Concepteur : <strong>Atizoun Plateny AMOUSSOU</strong></span>
+                <span><i class="fa-solid fa-envelope"></i> atizoun@gmail.com</span>
+                <span><i class="fa-solid fa-phone"></i> 01 97 74 40 35</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZQ51o3eor8aeowH5-SoC9fJE_Z71hMwU",
+            authDomain: "afri-link-ledger.firebaseapp.com",
+            projectId: "afri-link-ledger",
+            storageBucket: "afri-link-ledger.firebasestorage.app",
+            messagingSenderId: "120519932316",
+            appId: "1:120519932316:web:e555d0cd42bce8ef923059",
+            databaseURL: "https://afri-link-ledger-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+
+        // Initialisation de l'application Firebase et de la base de données
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Variables globales accessibles par les fonctions d'affichage
+        window.transfers = [];
+        window.approvs = [];
+        window.gainsWithdrawals = [];
+        window.USD_RATE = 600;
+        window.currentTimeFilter = 'ALL'; 
+        window.cachedSoldeGainsDispo = 0;
+
+        // Écoute de l'état de connexion à Firebase
+        const connectedRef = ref(db, ".info/connected");
+        onValue(connectedRef, (snap) => {
+            const icon = document.getElementById('cloudStatusIcon');
+            const text = document.getElementById('cloudStatusText');
+            if (snap.val() === true) {
+                icon.className = "fa-solid fa-circle status-online small";
+                text.innerText = "En ligne";
+            } else {
+                icon.className = "fa-solid fa-circle status-offline small";
+                text.innerText = "Hors ligne";
+            }
+        });
+
+        // Synchronisation en temps réel des configurations de l'application
+        onValue(ref(db, 'ledger_config'), (snapshot) => {
+            const configObj = snapshot.val() || {};
+            
+            // Gestion de la marque et du nom de l'entreprise
+            const company = configObj.company;
+            const dynamicName = document.getElementById('dynamicCompanyName');
+            const printCompName = document.getElementById('printHeaderCompany');
+            
+            if (company && company.isLocked && company.name) {
+                if (dynamicName) dynamicName.innerText = company.name;
+                if (printCompName) printCompName.innerText = company.name;
+            } else if (configObj.companyName) {
+                if (dynamicName) dynamicName.innerText = configObj.companyName;
+                if (printCompName) printCompName.innerText = configObj.companyName;
+            }
+
+            // Gestion dynamique du taux de change du dollar
+            const rateDisplayElement = document.getElementById('headerExchangeRate');
+            const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
+            
+            if (configObj.dollarRate) {
+                const computedRate = parseFloat(configObj.dollarRate);
+                if (!isNaN(computedRate) && computedRate > 0) {
+                    window.USD_RATE = computedRate;
+                }
+            }
+            if (rateDisplayElement) rateDisplayElement.innerText = window.USD_RATE;
+            if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = window.USD_RATE;
+        });
+
+        // Synchronisation croisée et instantanée des 3 collections majeures du Grand Livre
+        let dataLoadedCount = 0;
+        function checkAndRefreshUI() {
+            computeFinancialKPIs();
+            buildAccountingTable();
+        }
+
+        onValue(ref(db, 'ledger_transfers'), (snapshot) => {
+            const data = snapshot.val();
+            window.transfers = data ? Object.values(data) : [];
+            checkAndRefreshUI();
+        });
+
+        onValue(ref(db, 'ledger_supply'), (snapshot) => {
+            const data = snapshot.val();
+            window.approvs = data ? Object.values(data) : [];
+            checkAndRefreshUI();
+        });
+
+        onValue(ref(db, 'ledger_profits'), (snapshot) => {
+            const data = snapshot.val();
+            window.gainsWithdrawals = data ? Object.values(data) : [];
+            checkAndRefreshUI();
+        });
+
+        // Liaison des fonctions de modification au contexte global Window pour compatibilité HTML Inline
+        window.executeGainWithdrawal = function(event) {
+            event.preventDefault();
+            const beneficiary = document.getElementById('withdrawGainBeneficiary').value.trim();
+            const amount = parseFloat(document.getElementById('withdrawGainAmount').value) || 0;
+            const comment = document.getElementById('withdrawGainComment').value.trim();
+            const authCode = document.getElementById('withdrawGainAuthCode').value.trim();
+
+            if (authCode !== '1234') {
+                alert("Action Refusée : Code d'autorisation incorrect.");
+                return;
+            }
+            if (amount <= 0) {
+                alert("Le montant doit être supérieur à 0.");
+                return;
+            }
+            if (amount > window.cachedSoldeGainsDispo) {
+                alert("Action Refusée : Le solde disponible des gains est insuffisant pour couvrir ce retrait d'ajustement.");
+                return;
+            }
+
+            const withdrawalId = 'WDG-' + Date.now();
+            const withdrawalItem = {
+                id: withdrawalId,
+                date: new Date().toLocaleString('fr-FR'),
+                type: 'RETRAIT_GAIN',
+                beneficiary: beneficiary,
+                amount: amount,
+                comment: comment,
+                status: 'Validé'
+            };
+
+            // Écriture Cloud native immédiate
+            set(ref(db, `ledger_profits/${withdrawalId}`), withdrawalItem)
+                .then(() => {
+                    const modalElement = document.getElementById('gainWithdrawalModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) modalInstance.hide();
+                    alert("Retrait sur gains enregistré avec succès pour ajustement comptable.");
+                })
+                .catch((error) => {
+                    console.error("Erreur de sauvegarde Firebase:", error);
+                    alert("Une erreur est survenue lors de la synchronisation cloud.");
+                });
+        };
+
+        window.resetAllData = function() {
+            if (confirm("Êtes-vous absolument sûr de vouloir réinitialiser TOUTES les données ? Cette action videra complètement la mémoire cloud de l'application et est irréversible.")) {
+                // Suppression atomique via remove() sur les nœuds distants Firebase
+                Promise.all([
+                    remove(ref(db, 'ledger_config')),
+                    remove(ref(db, 'ledger_transfers')),
+                    remove(ref(db, 'ledger_supply')),
+                    remove(ref(db, 'ledger_profits'))
+                ]).then(() => {
+                    sessionStorage.clear();
+                    location.reload();
+                }).catch((err) => {
+                    console.error("Erreur lors de la suppression distante : ", err);
+                    alert("Échec partiel de la réinitialisation cloud.");
+                });
+            }
+        };
+    </script>
+
+    <script>
+        const currentUser = JSON.parse(localStorage.getItem('current_user'));
+        
+        (function checkAccess() {
+            if (!currentUser || currentUser.role !== 'Gestionnaire') {
+                window.location.replace('index.html');
+            }
+        })();
+
+        function applyRoleAccessControl() {
+            const sessionBox = document.getElementById('headerUserSession');
+            if (sessionBox && currentUser) {
+                sessionBox.innerHTML = `
+                    <i class="fa-solid fa-user-circle me-1"></i> ${currentUser.name} (${currentUser.role})<br>
+                    <i class="fa-solid fa-map-marker-alt me-1"></i> ${currentUser.desk}
+                `;
+            }
+
+            const navContainer = document.getElementById('navLinksContainer');
+            if (navContainer) {
+                const installLi = document.createElement('li');
+                installLi.className = 'nav-item ms-lg-2';
+                installLi.id = 'pwaInstallContainer';
+                installLi.style.display = 'none'; 
+                installLi.innerHTML = `
+                    <a class="nav-link btn btn-success btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle me-lg-2" href="#" id="pwaInstallBtn" style="background-color: var(--wa-light) !important; border-color: var(--wa-light) !important; color: white !important;">
+                        <i class="fa-solid fa-download me-1"></i> Installer l'app
+                    </a>
+                `;
+                navContainer.appendChild(installLi);
+
+                const logoutLi = document.createElement('li');
+                logoutLi.className = 'nav-item ms-lg-2';
+                logoutLi.innerHTML = `
+                    <a class="nav-link btn btn-danger btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle" href="#" onclick="handleLogout(event)" style="background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important;">
+                        <i class="fa-solid fa-power-off me-1"></i> Déconnexion
+                    </a>
+                `;
+                navContainer.appendChild(logoutLi);
+            }
+        }
+
+        function handleLogout(e) {
+            if (e) e.preventDefault();
+            localStorage.removeItem('current_user');
+            window.location.replace('index.html');
+        }
+
+        function toggleAccountingCard() {
+            const card = document.getElementById('accountingCard');
+            const icon = document.getElementById('toggleIcon');
+            const text = document.getElementById('toggleText');
+
+            if (card.style.display === 'none') {
+                card.style.display = 'block';
+                icon.className = 'fa-solid fa-eye-slash me-2';
+                text.innerText = 'Masquer le registre';
+            } else {
+                card.style.display = 'none';
+                icon.className = 'fa-solid fa-eye me-2';
+                text.innerText = 'Afficher le registre';
+            }
+        }
+
+        function toggleGainsHistoryCard() {
+            const card = document.getElementById('gainsHistoryCard');
+            const icon = document.getElementById('toggleGainsIcon');
+            const text = document.getElementById('toggleGainsText');
+
+            if (card.style.display === 'none') {
+                card.style.display = 'block';
+                icon.className = 'fa-solid fa-eye-slash me-2';
+                text.innerText = 'Masquer Historique Retraits Gains';
+            } else {
+                card.style.display = 'none';
+                icon.className = 'fa-solid fa-clock-rotate-left me-2';
+                text.innerText = 'Afficher Historique Retraits Gains';
+            }
+        }
+
+        function setTimeFilter(filterType) {
+            window.currentTimeFilter = filterType;
+            
+            document.querySelectorAll('.filter-time-btn').forEach(btn => {
+                btn.classList.remove('btn-wa', 'active');
+                btn.classList.add('btn-outline-secondary');
+            });
+            
+            const targetId = 'timeFilter' + filterType.charAt(0) + filterType.slice(1).toLowerCase();
+            const activeBtn = document.getElementById(targetId);
+            if (activeBtn) {
+                activeBtn.classList.remove('btn-outline-secondary');
+                activeBtn.classList.add('btn-wa', 'active');
+            }
+            
+            computeFinancialKPIs();
+            buildAccountingTable();
+        }
+
+        function isDateInPeriod(dateStr, period) {
+            if (period === 'ALL' || !dateStr || dateStr === '--/--/----') return true;
+            
+            let matches = dateStr.match(/(\d{2,4})/g);
+            if (!matches || matches.length < 3) return true;
+            
+            let itemDate;
+            if (dateStr.includes('/')) {
+                let day = parseInt(matches[0], 10);
+                let month = parseInt(matches[1], 10) - 1;
+                let year = parseInt(matches[2], 10);
+                itemDate = new Date(year, month, day);
+            } else {
+                let year = parseInt(matches[0], 10);
+                let month = parseInt(matches[1], 10) - 1;
+                let day = parseInt(matches[2], 10);
+                itemDate = new Date(year, month, day);
+            }
+            
+            if (isNaN(itemDate.getTime())) return true; 
+            
+            let now = new Date();
+            let startOfDayNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            let startOfDayItem = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+            
+            if (period === 'DAY') {
+                return startOfDayItem.getTime() === startOfDayNow.getTime();
+            }
+            
+            if (period === 'WEEK') {
+                let diffInTime = startOfDayNow.getTime() - startOfDayItem.getTime();
+                let diffInDays = diffInTime / (1000 * 3600 * 24);
+                return diffInDays >= 0 && diffInDays <= 7;
+            }
+            
+            if (period === 'MONTH') {
+                return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+            }
+            
+            if (period === 'YEAR') {
+                return itemDate.getFullYear() === now.getFullYear();
+            }
+            
+            return true;
+        }
+
+        function computeFinancialKPIs() {
+            let totalEnvoisBrut = 0;
+            let totalEnvoisAvecFrais = 0;
+            let totalFeesCollectes = 0;
+            
+            let totalRetraits = 0;
+            let totalGainsRetraits = 0;
+            
+            let totalApprov = 0;
+            let totalRetraitsGains = 0;
+
+            let sommeTotalFcaEncaisses = 0;
+            let sommeAmountFcaRetires = 0;
+
+            const transfersList = window.transfers || [];
+            const approvsList = window.approvs || [];
+            const gainsWithdrawalsList = window.gainsWithdrawals || [];
+
+            transfersList.forEach(t => {
+                let amount = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
+                let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
+                let totalEncaisse = parseFloat(t.totalFCFA) || (amount + fees);
+
+                sommeTotalFcaEncaisses += totalEncaisse;
+                if (t.status === 'Retiré') {
+                    sommeAmountFcaRetires += amount;
+                }
+
+                if (isDateInPeriod(t.date, window.currentTimeFilter)) {
+                    totalEnvoisBrut += amount;
+                    totalEnvoisAvecFrais += totalEncaisse;
+                    totalFeesCollectes += fees;
+                }
+
+                if (t.status === 'Retiré') {
+                    let wDate = t.withdrawalDate || t.date;
+                    if (isDateInPeriod(wDate, window.currentTimeFilter)) {
+                        totalRetraits += amount;
+                        let gainRetraitUnitaire = t.withdrawalFees ? parseFloat(t.withdrawalFees) : (fees * 0.5); 
+                        totalGainsRetraits += gainRetraitUnitaire;
+                    }
+                }
+            });
+
+            approvsList.forEach(a => {
+                let appAmt = parseFloat(a.amount) || 0;
+                if (a.status === 'Validé') {
+                    if (isDateInPeriod(a.date, window.currentTimeFilter)) {
+                        totalApprov += appAmt;
+                    }
+                }
+            });
+
+            gainsWithdrawalsList.forEach(gw => {
+                let gwAmt = parseFloat(gw.amount) || 0;
+                if (isDateInPeriod(gw.date, window.currentTimeFilter)) {
+                    totalRetraitsGains += gwAmt;
+                }
+            });
+
+            let globalGainsEnvois = 0;
+            let globalGainsRetraits = 0;
+            let globalRetraitsGainsEffectues = 0;
+            let globalSommeApprov = 0;
+
+            transfersList.forEach(t => {
+                globalGainsEnvois += (parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0);
+                if (t.status === 'Retiré') {
+                    let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
+                    globalGainsRetraits += (t.withdrawalFees ? parseFloat(t.withdrawalFees) : (fees * 0.5));
+                }
+            });
+            gainsWithdrawalsList.forEach(gw => { globalRetraitsGainsEffectues += (parseFloat(gw.amount) || 0); });
+            approvsList.forEach(a => { if(a.status === 'Validé') globalSommeApprov += (parseFloat(a.amount) || 0); });
+            
+            window.cachedSoldeGainsDispo = (globalGainsEnvois + globalGainsRetraits) - globalRetraitsGainsEffectues;
+
+            let soldeNetCaisseGlobale = (globalSommeApprov + sommeTotalFcaEncaisses) - (sommeAmountFcaRetires + globalRetraitsGainsEffectues);
+
+            document.getElementById('kpiTotalEnvoisBrut').innerText = totalEnvoisBrut.toLocaleString() + ' FCFA';
+            document.getElementById('kpiTotalEnvois').innerText = totalEnvoisAvecFrais.toLocaleString() + ' FCFA';
+            document.getElementById('kpiBeneficeEnvois').innerText = totalFeesCollectes.toLocaleString() + ' FCFA';
+            
+            document.getElementById('kpiTotalRetraits').innerText = totalRetraits.toLocaleString() + ' FCFA';
+            document.getElementById('kpiGainsRetraits').innerText = totalGainsRetraits.toLocaleString() + ' FCFA';
+            document.getElementById('kpiSoldeGainsDispo').innerText = window.cachedSoldeGainsDispo.toLocaleString() + ' FCFA';
+            
+            document.getElementById('kpiTotalApprov').innerText = totalApprov.toLocaleString() + ' FCFA';
+            document.getElementById('kpiTotalRetraitsGains').innerText = totalRetraitsGains.toLocaleString() + ' FCFA';
+            document.getElementById('kpiSoldeNet').innerText = soldeNetCaisseGlobale.toLocaleString() + ' FCFA';
+        }
+
+        function openGainWithdrawalModal() {
+            document.getElementById('modalSoldeGains').innerText = window.cachedSoldeGainsDispo.toLocaleString() + ' FCFA';
+            document.getElementById('withdrawGainBeneficiary').value = '';
+            document.getElementById('withdrawGainAmount').value = '';
+            document.getElementById('withdrawGainComment').value = '';
+            document.getElementById('withdrawGainAuthCode').value = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('gainWithdrawalModal'));
+            modal.show();
+        }
+
+        function buildAccountingTable() {
+            const tbody = document.getElementById('accountingTableBody');
+            const printTbody = document.getElementById('printAccountingTableBody');
+            const gainsTbody = document.getElementById('gainsHistoryTableBody');
+            
+            if(!tbody || !printTbody || !gainsTbody) return;
+
+            document.getElementById('printGenerationDate').innerText = new Date().toLocaleString('fr-FR');
+
+            const filterType = document.getElementById('filterType').value;
+            const filterSearch = document.getElementById('filterSearch').value.trim().toLowerCase();
+
+            let unifiedLedger = [];
+            const transfersList = window.transfers || [];
+            const approvsList = window.approvs || [];
+            const gainsWithdrawalsList = window.gainsWithdrawals || [];
+
+            transfersList.forEach(t => {
+                if (isDateInPeriod(t.date, window.currentTimeFilter)) {
+                    const senderDisplay = t.senderName ? t.senderName : (t.sender ? `${t.sender.firstname} ${t.sender.name}` : 'N/A');
+                    const recipientDisplay = t.recipientName ? t.recipientName : (t.beneficiary ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A');
+                    const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.country : 'N/A');
+                    let amount = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
+                    let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
+
+                    unifiedLedger.push({
+                        date: t.date || '--/--/----',
+                        type: 'ENVOI',
+                        code: t.secretCode || 'N/A',
+                        debitor: `${senderDisplay}`,
+                        childCreditor: recipientDisplay,
+                        creditor: `${recipientDisplay} (🏁 ${targetLocation})`,
+                        amount: amount,
+                        fees: fees,
+                        status: t.status || 'En attente'
+                    });
+                }
+
+                if (t.status === 'Retiré') {
+                    let wDate = t.withdrawalDate || t.date || '--/--/----';
+                    if (isDateInPeriod(wDate, window.currentTimeFilter)) {
+                        const recipientDisplay = t.recipientName ? t.recipientName : (t.beneficiary ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A');
+                        const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.country : 'N/A');
+                        let amount = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
+                        let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
+                        let wGain = t.withdrawalFees ? parseFloat(t.withdrawalFees) : (fees * 0.5);
+
+                        unifiedLedger.push({
+                            date: wDate,
+                            type: 'RETRAIT',
+                            code: t.secretCode || 'N/A',
+                            debitor: `Caisse Centrale AFRI-LINK`,
+                            childCreditor: recipientDisplay,
+                            creditor: `${recipientDisplay} (📍 ${targetLocation})`,
+                            amount: amount,
+                            fees: wGain, 
+                            status: 'Validé'
+                        });
+                    }
+                }
+            });
+
+            approvsList.forEach(a => {
+                if (isDateInPeriod(a.date, window.currentTimeFilter)) {
+                    unifiedLedger.push({
+                        date: a.date || '--/--/----',
+                        type: 'APPROV',
+                        code: a.id ? `APP-${a.id}` : 'APPROV',
+                        debitor: a.source || 'Trésorerie Centrale',
+                        creditor: `Guichet : ${a.deskName || 'Générale'}`,
+                        childCreditor: '',
+                        amount: parseFloat(a.amount) || 0,
+                        fees: 0,
+                        status: a.status || 'En attente'
+                    });
+                }
+            });
+
+            gainsWithdrawalsList.forEach(gw => {
+                if (isDateInPeriod(gw.date, window.currentTimeFilter)) {
+                    unifiedLedger.push({
+                        date: gw.date,
+                        type: 'RETRAIT_GAIN',
+                        code: gw.id,
+                        debitor: 'Compte de Profits d\'Entreprise',
+                        creditor: (gw.beneficiary ? `[Bénéficiaire: ${gw.beneficiary}] ` : '') + (gw.comment || 'Ajustement comptable de caisse'),
+                        childCreditor: '',
+                        amount: parseFloat(gw.amount) || 0,
+                        fees: 0,
+                        status: gw.status
+                    });
+                }
+            });
+
+            unifiedLedger.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            let filteredLedger = unifiedLedger.filter(item => {
+                if (filterType !== 'ALL' && item.type !== filterType) return false;
+                
+                if (filterSearch !== '') {
+                    const childText = item.childCreditor ? item.childCreditor.toLowerCase() : '';
+                    const matchText = (item.code + ' ' + item.debitor + ' ' + item.creditor + ' ' + item.type + ' ' + childText).toLowerCase();
+                    if (!matchText.includes(filterSearch)) return false;
+                }
+                return true;
+            });
+
+            if (filteredLedger.length === 0) {
+                const emptyRow = `<tr><td colspan="8" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucune écriture comptable ne correspond aux critères.</td></tr>`;
+                tbody.innerHTML = emptyRow;
+                printTbody.innerHTML = emptyRow;
+            } else {
+                const rows = filteredLedger.map(item => {
+                    let typeBadge = '';
+                    let amountColor = 'text-dark';
+
+                    if (item.type === 'ENVOI') {
+                        typeBadge = '<span class="badge bg-primary"><i class="fa-solid fa-paper-plane me-1"></i>Envoi</span>';
+                        amountColor = 'text-primary';
+                    } else if (item.type === 'RETRAIT') {
+                        typeBadge = '<span class="badge bg-danger"><i class="fa-solid fa-hand-holding-dollar me-1"></i>Retrait</span>';
+                        amountColor = 'text-danger';
+                    } else if (item.type === 'APPROV') {
+                        typeBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-wallet me-1"></i>Approv</span>';
+                        amountColor = 'text-success';
+                    } else if (item.type === 'RETRAIT_GAIN') {
+                        typeBadge = '<span class="badge bg-secondary text-white"><i class="fa-solid fa-money-bill-trend-up me-1"></i>Retrait Gain</span>';
+                        amountColor = 'text-muted fw-italic';
+                    }
+
+                    let statusBadge = item.status === 'Retiré' || item.status === 'Validé' || item.status === 'Crédité' 
+                        ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> ${item.status}</span>`
+                        : `<span class="badge bg-secondary"><i class="fa-solid fa-clock"></i> ${item.status}</span>`;
+
+                    return `
+                        <tr>
+                            <td>${item.date}</td>
+                            <td>${typeBadge}</td>
+                            <td class="fw-bold font-monospace">${item.code}</td>
+                            <td><small>${item.debitor}</small></td>
+                            <td><small>${item.creditor}</small></td>
+                            <td class="text-end fw-bold ${amountColor}">${item.amount.toLocaleString()} FCFA</td>
+                            <td class="text-end text-muted">${item.fees > 0 ? item.fees.toLocaleString() + ' FCFA' : '-'}</td>
+                            <td class="text-center">${statusBadge}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                tbody.innerHTML = rows;
+                printTbody.innerHTML = rows;
+            }
+
+            if (gainsWithdrawalsList.length === 0) {
+                gainsTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Aucun prélèvement enregistré sur le compte de profits.</td></tr>`;
+            } else {
+                gainsTbody.innerHTML = gainsWithdrawalsList.map(gw => `
+                    <tr>
+                        <td>${gw.date}</td>
+                        <td class="font-monospace fw-bold">${gw.id}</td>
+                        <td><span class="badge bg-light text-dark border">${gw.beneficiary || 'Non spécifié'}</span></td>
+                        <td>${gw.comment}</td>
+                        <td class="text-end fw-bold text-danger">-${parseFloat(gw.amount).toLocaleString()} FCFA</td>
+                        <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-check-double me-1"></i>${gw.status}</span></td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        window.onload = function() { 
+            applyRoleAccessControl();
+        };
+
+        // --- LOGIQUE PWA & BOUTON D'INSTALLATION INTELLIGENT ---
+        let deferredPrompt;
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker enregistré avec succès.', reg.scope))
+                    .catch(err => console.error('Échec de l\'enregistrement du Service Worker :', err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installContainer = document.getElementById('pwaInstallContainer');
+            if (installContainer) {
+                installContainer.style.display = 'block';
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'pwaInstallBtn' || e.target.closest('#pwaInstallBtn')) {
+                if (e) e.preventDefault();
+                if (!deferredPrompt) return;
+
+                deferredPrompt.prompt();
+
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('L\'utilisateur a accepté l\'installation de AFRI-LINK LEDGER');
+                        const installContainer = document.getElementById('pwaInstallContainer');
+                        if (installContainer) installContainer.style.display = 'none';
+                    } else {
+                        console.log('L\'utilisateur a décliné l\'installation');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+            const installContainer = document.getElementById('pwaInstallContainer');
+            if (installContainer) installContainer.style.display = 'none';
+        }
+
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('AFRI-LINK LEDGER a été installée avec succès sur le système.');
+            const installContainer = document.getElementById('pwaInstallContainer');
+            if (installContainer) {
+                installContainer.style.display = 'none';
+            }
+            deferredPrompt = null;
+        });
+    </script>
+</body>
+</html>

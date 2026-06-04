@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfert Réception | AFRI-LINK LEDGER</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075E54">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#075E54">
+    <meta name="apple-mobile-web-app-title" content="AfriLink">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --wa-dark: #075E54;
+            --wa-medium: #128C7E;
+            --wa-light: #25D366;
+            --wa-bg: #F0F2F5;
+            --font-main: 'Poppins', sans-serif;
+            --font-title: 'Playfair Display', serif;
+            --font-brand: 'Montserrat', sans-serif;
+            --font-company: 'Orbitron', sans-serif;
+        }
+
+        body {
+            background-color: var(--wa-bg);
+            font-family: var(--font-main);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Indicateur Statut Connexion Firebase --- */
+        .connection-status {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 10000;
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            font-family: var(--font-main);
+        }
+        .status-online {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #a3cfbb;
+        }
+        .status-offline {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f1aeb5;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-online .status-dot {
+            background-color: #198754;
+            box-shadow: 0 0 8px #198754;
+        }
+        .status-offline .status-dot {
+            background-color: #dc3545;
+            box-shadow: 0 0 8px #dc3545;
+        }
+
+        /* --- Header & Navigation --- */
+        header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-brand);
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: white !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-logo {
+            height: 45px;
+            width: auto;
+            object-fit: contain;
+            margin-right: 12px;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .sub-brand {
+            font-family: var(--font-title);
+            font-size: 0.9rem;
+            color: var(--wa-light);
+            font-style: italic;
+            display: block;
+        }
+
+        .company-display-header {
+            font-family: var(--font-company);
+            color: #FFD700;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 2px;
+            display: block;
+        }
+
+        /* Animation pour le taux de change en bleu scintillant */
+        @keyframes scintillementBleu {
+            0% {
+                color: #00d2ff;
+                text-shadow: 0 0 4px rgba(0, 210, 255, 0.5), 0 0 10px rgba(0, 210, 255, 0.3);
+            }
+            50% {
+                color: #0072ff;
+                text-shadow: 0 0 10px rgba(0, 114, 255, 0.8), 0 0 20px rgba(0, 114, 255, 0.5);
+            }
+            100% {
+                color: #00d2ff;
+                text-shadow: 0 0 4px rgba(0, 210, 255, 0.5), 0 0 10px rgba(0, 210, 255, 0.3);
+            }
+        }
+
+        .taux-bleu-scintillant {
+            font-weight: bold;
+            margin-right: 5px;
+            animation: scintillementBleu 2s infinite ease-in-out;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .nav-link:hover {
+            color: var(--wa-light) !important;
+            transform: translateY(-2px);
+        }
+
+        .navbar-toggler {
+            border: none;
+            color: white;
+        }
+
+        /* Badge Taux de Change Dynamique */
+        .rate-badge-header {
+            background-color: rgba(255, 255, 255, 0.15);
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            color: #FFD700;
+            font-family: var(--font-company);
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* --- Main Content Area --- */
+        main {
+            flex: 1;
+            padding: 40px 0;
+        }
+
+        .page-header {
+            border-left: 5px solid var(--wa-medium);
+            padding-left: 15px;
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-family: var(--font-title);
+            color: var(--wa-dark);
+            font-weight: 700;
+        }
+
+        /* --- Form Styles --- */
+        .card-form {
+            border-radius: 20px;
+            border: none;
+            transition: transform 0.3s ease;
+        }
+
+        .form-section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--wa-dark);
+            border-left: 4px solid var(--wa-medium);
+            padding-left: 12px;
+            margin-bottom: 20px;
+        }
+
+        .btn-wa {
+            background-color: var(--wa-medium);
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-wa:hover {
+            background-color: var(--wa-dark);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* --- Modal Élégante --- */
+        .elegant-modal .modal-content {
+            border-radius: 25px;
+            border: none;
+            overflow: hidden;
+        }
+
+        .elegant-modal-header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .code-display {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .code-number {
+            font-family: 'Courier New', monospace;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: 8px;
+            color: var(--wa-dark);
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px dashed var(--wa-medium);
+            display: inline-block;
+        }
+
+        .info-recap {
+            background: #e8f5e9;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .btn-copy {
+            background-color: var(--wa-medium);
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+        }
+
+        .btn-close-modal {
+            background-color: #6c757d;
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+        }
+
+        .btn-danger {
+            background-color: #dc3545 !important;
+        }
+
+        .btn-print {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .btn-print:hover {
+            background-color: #0b5ed7;
+            transform: translateY(-2px);
+        }
+
+        .total-info {
+            background: #f0f2f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        /* Style pour l'indicatif téléphone */
+        .phone-input-group {
+            display: flex;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            background: white;
+        }
+        
+        .phone-prefix {
+            background-color: #f8f9fa;
+            border: none;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid #dee2e6;
+            border-radius: 0.375rem 0 0 0.375rem;
+            white-space: nowrap;
+        }
+        
+        .phone-prefix select {
+            border: none;
+            background: transparent;
+            font-weight: 500;
+            color: var(--wa-dark);
+            cursor: pointer;
+            padding: 0;
+            margin-left: 5px;
+        }
+        
+        .phone-prefix select:focus {
+            outline: none;
+        }
+        
+        .phone-number-input {
+            border: none !important;
+            border-radius: 0 0.375rem 0.375rem 0 !important;
+            flex: 1;
+        }
+        
+        .phone-number-input:focus {
+            box-shadow: none !important;
+            border-color: none !important;
+        }
+
+        /* --- Footer --- */
+        footer {
+            background-color: white;
+            border-top: 3px solid var(--wa-medium);
+            padding: 20px 0;
+            margin-top: auto;
+        }
+
+        .footer-text {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .footer-contact d-flex {
+            gap: 15px;
+        }
+
+        .footer-contact i {
+            color: var(--wa-medium);
+            margin-right: 5px;
+        }
+
+        .concepteur-name {
+            font-weight: 600;
+            color: var(--wa-dark);
+        }
+
+        /* --- Styles de zone d'impression masquée à l'écran --- */
+        #printHistorySection {
+            display: none;
+        }
+
+        /* --- Animation Overlay de Succès Plein Écran --- */
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(7, 94, 84, 0.95);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .success-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .success-checkmark {
+            font-size: 5rem;
+            color: var(--wa-light);
+            margin-bottom: 20px;
+            transform: scale(0.5);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .success-overlay.active .success-checkmark {
+            transform: scale(1);
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printHistorySection, #printHistorySection * {
+                visibility: visible;
+            }
+            #printHistorySection {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 30px;
+                font-family: 'Poppins', sans-serif;
+                background-color: white;
+                color: black;
+            }
+            .table th {
+                background-color: #f8f9fa !important;
+                color: black !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+    
+    <script>
+        (function() {
+            const currentUser = JSON.parse(localStorage.getItem('current_user'));
+            if (!currentUser || (currentUser.role !== 'Gestionnaire' && currentUser.role !== 'Agent')) {
+                window.location.replace('index.html');
+            }
+        })();
+    </script>
+</head>
+<body>
+
+    <div id="connectionStatusIndicator" class="connection-status status-offline">
+        <span class="status-dot"></span> Hors ligne
+    </div>
+
+    <div id="successOverlay" class="success-overlay">
+        <i class="fa-solid fa-circle-check success-checkmark"></i>
+        <h2 class="fw-bold">RETRAIT EFFECTUÉ AVEC SUCCÈS</h2>
+        <p class="lead" id="successOverlayMessage">Le décaissement a été enregistré.</p>
+    </div>
+
+    <header>
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">
+                    <img src="logoarams.png" alt="Logo" class="navbar-logo">
+                    <div>
+                        <i class="fa-solid fa-building-columns me-2"></i>AFRI-LINK LEDGER
+                        <span class="sub-brand">Architecture de Finance Bilatérale</span>
+                        <span class="company-display-header">
+                            <span class="taux-bleu-scintillant">1 USD = <span id="headerExchangeRateBrand">600</span> FCFA</span>
+                            <span id="headerCompanyName"></span>
+                        </span>
+                        <div id="headerUserSession" style="font-size: 0.75rem; color: #FFF; font-weight: 300; text-transform: none; margin-top: 4px; line-height: 1.2; font-family: var(--font-main);"></div>
+                    </div>
+                </a>
+
+                <div class="d-none d-lg-flex ms-3 align-items-center">
+                    <div class="rate-badge-header">
+                        <i class="fa-solid fa-dollar-sign text-warning"></i>
+                        <span>1 USD = <span id="headerExchangeRate">600</span> FCFA</span>
+                    </div>
+                </div>
+                
+                <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav ms-auto align-items-center" id="navLinksContainer">
+                        <li class="nav-item"><a class="nav-link" href="index.html"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link" href="approvisionnement.html"><i class="fa-solid fa-wallet me-1"></i> Approvisionnement</a></li>
+                        <li class="nav-item"><a class="nav-link" href="transfert-envoi.html"><i class="fa-solid fa-paper-plane me-1"></i> Envoi</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="transfert-reception.html" style="color: var(--wa-light) !important;"><i class="fa-solid fa-hand-holding-dollar me-1"></i> Retrait</a></li>
+                        <li class="nav-item"><a class="nav-link" href="report-codes.html"><i class="fa-solid fa-clock-rotate-left me-1"></i> Comptabilité et Grand Livre</a></li>
+                        <li class="nav-item"><a class="nav-link" href="configuration.html"><i class="fa-solid fa-gears me-1"></i> Configuration</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="page-header mb-4">
+            <h1>Retrait d'Argent</h1>
+            <p class="text-muted">Vérifiez un code secret et effectuez le versement des fonds</p>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="card card-form shadow-sm mb-4">
+                    <div class="card-body p-4 p-lg-5">
+                        <form id="verificationForm">
+                            <h5 class="form-section-title"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Authentification du Transfert</h5>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-8">
+                                    <label class="form-label small fw-bold">Code Secret Confidentiel</label>
+                                    <input type="text" id="searchSecretCode" class="form-control form-control-lg text-center font-monospace fw-bold" placeholder="EX: A1B2C3" style="letter-spacing: 4px;" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-wa w-100 py-3">
+                                        <i class="fa-solid fa-magnifying-glass me-2"></i>Vérifier le code
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card card-form shadow-sm mb-4 d-none" id="detailsCard">
+                    <div class="card-body p-4 p-lg-5">
+                        <div class="mb-4">
+                            <h5 class="form-section-title"><i class="fa-solid fa-user me-2 text-success"></i>Informations Expéditeur</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Nom complet</label>
+                                    <input type="text" id="senderName" class="form-control" readonly disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Prénom</label>
+                                    <input type="text" id="senderFirstname" class="form-control" readonly disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Pays</label>
+                                    <input type="text" id="senderCountry" class="form-control" readonly disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Agence d'envoi</label>
+                                    <input type="text" id="senderAgency" class="form-control" readonly disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Téléphone</label>
+                                    <input type="text" id="senderPhone" class="form-control" readonly disabled>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h5 class="form-section-title"><i class="fa-solid fa-user-check me-2 text-info"></i>Informations Bénéficiaire</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Nom complet</label>
+                                    <input type="text" id="beneficiaryName" class="form-control" readonly disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Prénom</label>
+                                    <input type="text" id="beneficiaryFirstname" class="form-control" readonly disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Pays</label>
+                                    <input type="text" id="beneficiaryCountry" class="form-control" readonly disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Agence de retrait</label>
+                                    <input type="text" id="beneficiaryAgency" class="form-control" readonly disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Téléphone</label>
+                                    <input type="text" id="beneficiaryPhone" class="form-control" readonly disabled>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h5 class="form-section-title"><i class="fa-solid fa-money-bill-wave me-2 text-warning"></i>Détails du Transfert</h5>
+                            <div class="total-info mt-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-12 mb-3 p-3 bg-white rounded shadow-sm text-center border-start border-danger border-4">
+                                        <small class="text-muted text-uppercase fw-bold tracking-wider">Montant Net à payer au Destinataire (FCFA)</small>
+                                        <p class="mb-0 text-danger fw-black" id="netTransferDisplay" style="font-size: 2.25rem; font-weight: 900; letter-spacing: -0.5px;">0 FCFA</p>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <small class="text-muted">Frais payés à l'envoi</small>
+                                        <p class="fw-bold mb-0" id="transferFees">0 FCFA</p>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <small class="text-muted">Équivalent total en Dollar</small>
+                                        <p class="fw-bold mb-0 text-primary" id="totalUSD">0 USD</p>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <small class="text-muted">Date de dépôt</small>
+                                        <p class="fw-bold mb-0 text-secondary" id="depositDate">--/--/----</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-danger w-100 py-3 mt-3 fw-bold fs-5" id="btnWithdraw" onclick="promptWithdrawalConfirmation()">
+                            <i class="fa-solid fa-hand-holding-dollar me-2"></i>RETIRER LES FONDS
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0 text-secondary" style="font-family: var(--font-title);"><i class="fa-solid fa-clock-rotate-left me-2"></i>Registre des Retraits</h4>
+                    <button class="btn btn-outline-secondary btn-sm px-3" id="btnToggleHistory" onclick="toggleHistoryTable()">
+                        <i class="fa-solid fa-eye me-1"></i> Afficher l'historique
+                    </button>
+                </div>
+
+                <div class="card card-form shadow-sm d-none" id="historyCard">
+                    <div class="card-body p-4">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover align-middle small">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Date Retrait</th>
+                                        <th>Code</th>
+                                        <th>Bénéficiaire</th>
+                                        <th>Provenance (Agence)</th>
+                                        <th class="text-end">Montant Reçu</th>
+                                        <th class="text-center">Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-end gap-3 mt-3">
+                            <button class="btn btn-print px-4" onclick="window.print()">
+                                <i class="fa-solid fa-print me-2"></i>Imprimer le registre
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="printHistorySection">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #128C7E; padding-bottom: 10px; margin-bottom: 20px;">
+            <div>
+                <h2 style="font-family: 'Montserrat', sans-serif; font-weight: 800; color: #075E54; margin: 0;">AFRI-LINK LEDGER</h2>
+                <span style="font-size: 0.9rem; font-style: italic; color: #666;">Architecture de Finance Bilatérale</span>
+            </div>
+            <div style="text-align: right;">
+                <h5 id="printHeaderCompany" style="font-family: 'Orbitron', sans-serif; margin: 0; color: #333;"></h5>
+                <small class="text-muted">Registre Officiel des Retraits</small>
+            </div>
+        </div>
+        
+        <h3 style="font-family: 'Playfair Display', serif; color: #075E54; margin-top: 10px;">Historique Spécifique des Décaissements</h3>
+        <p id="printDocSubtitle" style="color: #555; margin-bottom: 25px; font-size: 0.95rem;"></p>
+        
+        <table class="table table-bordered table-striped align-middle small" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Date Retrait</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Code Retrait</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Bénéficiaire</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Provenance & Agence d'Envoi</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: right;">Montant Payé</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center;">Statut</th>
+                </tr>
+            </thead>
+            <tbody id="printHistoryTableBody">
+                </tbody>
+        </table>
+        
+        <div style="margin-top: 50px; display: flex; justify-content: space-between; font-size: 0.85rem; color: #444; border-top: 1px dashed #ccc; padding-top: 15px;">
+            <div>Document généré le : <span id="printGenerationDate"></span></div>
+            <div style="text-align: right; font-weight: bold;">Signature de l'Agent de Caisse / Cachet</div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="securityModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content elegant-modal">
+                <div class="elegant-modal-header bg-danger">
+                    <i class="fa-solid fa-key fa-2x mb-2"></i>
+                    <h5 class="mb-0 text-white">Code d'Autorisation</h5>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Saisir le code secret agent</label>
+                        <input type="password" id="agentSecurityCode" class="form-control text-center form-control-lg fw-bold" placeholder="••••" maxlength="4">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-close-modal flex-grow-1" data-bs-dismiss="modal">Annuler</button>
+                        <button class="btn btn-danger fw-bold flex-grow-1" onclick="executeWithdrawal()">Valider</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="fraudModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px; overflow: hidden;">
+                <div class="bg-danger text-white text-center p-4">
+                    <i class="fa-solid fa-triangle-exclamation fa-4x mb-3 animate-pulse"></i>
+                    <h3 class="fw-bold mb-0">ALERTE SÉCURITÉ</h3>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <h4 class="text-danger fw-bold mb-3">Tentative de fraude financière</h4>
+                    <p class="text-muted mb-4">Le code confidentiel saisi est invalide, expiré ou n'existe pas dans le grand livre. L'adresse de l'opérateur et cette tentative ont été consignées.</p>
+                    <button class="btn btn-secondary px-5" data-bs-dismiss="modal" style="border-radius: 50px;">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <div class="footer-text mb-2">&copy; 2026 <span class="concepteur-name">AFRI-LINK LEDGER</span>. Tous droits réservés.</div>
+            <div class="footer-contact d-flex justify-content-center flex-wrap gap-3">
+                <span><i class="fa-solid fa-user"></i> Concepteur : <strong>Atizoun Plateny AMOUSSOU</strong></span>
+                <span><i class="fa-solid fa-envelope"></i> atizoun@gmail.com</span>
+                <span><i class="fa-solid fa-phone"></i> 01 97 74 40 35</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+        // Configuration Firebase Cloud de l'application
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZQ51o3eor8aeowH5-SoC9fJE_Z71hMwU",
+            authDomain: "afri-link-ledger.firebaseapp.com",
+            projectId: "afri-link-ledger",
+            storageBucket: "afri-link-ledger.firebasestorage.app",
+            messagingSenderId: "120519932316",
+            appId: "1:120519932316:web:e555d0cd42bce8ef923059",
+            databaseURL: "https://afri-link-ledger-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+
+        // Initialisation de l'instance Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Variables globales du module
+        let transfers = [];
+        let USD_RATE = 600;
+        let currentActiveTransfer = null; 
+
+        const phonePrefixes = {
+            "Bénin": "+229",
+            "Côte d'Ivoire": "+225",
+            "Sénégal": "+221",
+            "Cameroun": "+237",
+            "Togo": "+228",
+            "Burkina Faso": "+226",
+            "Mali": "+223",
+            "Niger": "+227",
+            "Gabon": "+241"
+        };
+
+        // Enregistrement du Service Worker pour la logique PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker enregistré avec succès !', reg.scope))
+                    .catch(err => console.log('Échec de l\'enregistrement du Service Worker :', err));
+            });
+        }
+
+        // Variable globale pour stocker l'événement d'installation PWA
+        let deferredPrompt;
+
+        // Écouteur de l'état de connexion Internet (Firebase Connection System)
+        const connectedRef = ref(db, ".info/connected");
+        onValue(connectedRef, (snap) => {
+            const statusIndicator = document.getElementById('connectionStatusIndicator');
+            if (snap.val() === true) {
+                statusIndicator.className = 'connection-status status-online';
+                statusIndicator.innerHTML = '<span class="status-dot"></span> En ligne';
+            } else {
+                statusIndicator.className = 'connection-status status-offline';
+                statusIndicator.innerHTML = '<span class="status-dot"></span> Hors ligne';
+            }
+        });
+
+        // Écouteur Firebase en temps réel sur le nœud 'transfers' (Grand livre synchronisé)
+        const transfersRef = ref(db, "transfers");
+        onValue(transfersRef, (snapshot) => {
+            const data = snapshot.val();
+            transfers = [];
+            if (data) {
+                if (Array.isArray(data)) {
+                    transfers = data.map((item, index) => {
+                        if (item) return { ...item, _fbKey: index };
+                        return null;
+                    }).filter(item => item !== null);
+                } else {
+                    transfers = Object.keys(data).map(key => {
+                        return { ...data[key], _fbKey: key };
+                    });
+                }
+            }
+            buildHistoryTable();
+            // Sauvegarde d'un miroir local de secours en arrière-plan sans écraser le Cloud
+            localStorage.setItem('ledger_transfers', JSON.stringify(transfers));
+        });
+
+        // Fonction unifiée pour le contrôle d'accès, l'affichage utilisateur et le bouton déconnexion
+        function applyRoleAccessControl() {
+            const currentUser = JSON.parse(localStorage.getItem('current_user'));
+            if (!currentUser) return;
+
+            // Rendu de la session utilisateur sur deux lignes dans le Header
+            const sessionBox = document.getElementById('headerUserSession');
+            if (sessionBox) {
+                sessionBox.innerHTML = `
+                    <i class="fa-solid fa-user-circle me-1"></i> ${currentUser.name} (${currentUser.role})<br>
+                    <i class="fa-solid fa-map-marker-alt me-1"></i> ${currentUser.desk || currentUser.guichet || 'N/A'}
+                `;
+            }
+
+            // Gestion des restrictions d'accès pour les agents
+            const navContainer = document.getElementById('navLinksContainer');
+            if (navContainer) {
+                if (currentUser.role === 'Agent') {
+                    const navLinks = navContainer.querySelectorAll('.nav-link');
+                    navLinks.forEach(link => {
+                        const href = link.getAttribute('href');
+                        if (href !== 'transfert-envoi.html' && href !== 'transfert-reception.html') {
+                            link.parentElement.remove();
+                        }
+                    });
+                }
+
+                // Ajout intelligent du bouton d'installation PWA dans le menu
+                const installLi = document.createElement('li');
+                installLi.className = 'nav-item ms-lg-2 d-none'; // Masqué par défaut
+                installLi.id = 'pwaInstallLi';
+                installLi.innerHTML = `
+                    <a id="btnPwaInstall" class="nav-link btn btn-success btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle me-lg-1" href="#" style="background-color: var(--wa-medium) !important; border-color: var(--wa-medium) !important; color: white !important;">
+                        <i class="fa-solid fa-download me-1"></i> Installer l'app
+                    </a>
+                `;
+                navContainer.appendChild(installLi);
+
+                // Écouteur PWA pour capter l'éligibilité à l'installation
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    deferredPrompt = e;
+                    const pwaLi = document.getElementById('pwaInstallLi');
+                    if (pwaLi) pwaLi.classList.remove('d-none');
+                });
+
+                document.getElementById('btnPwaInstall').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (!deferredPrompt) return;
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        console.log('L\'utilisateur a installé la PWA.');
+                        const pwaLi = document.getElementById('pwaInstallLi');
+                        if (pwaLi) pwaLi.classList.add('d-none');
+                    }
+                    deferredPrompt = null;
+                });
+
+                window.addEventListener('appinstalled', () => {
+                    console.log('PWA installée avec succès.');
+                    const pwaLi = document.getElementById('pwaInstallLi');
+                    if (pwaLi) pwaLi.classList.add('d-none');
+                    deferredPrompt = null;
+                });
+
+                // Ajout harmonisé du bouton Déconnexion
+                const logoutLi = document.createElement('li');
+                logoutLi.className = 'nav-item ms-lg-2';
+                logoutLi.innerHTML = `
+                    <a class="nav-link btn btn-danger btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle" href="#" onclick="handleLogout(event)" style="background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important;">
+                        <i class="fa-solid fa-power-off me-1"></i> Déconnexion
+                    </a>
+                `;
+                navContainer.appendChild(logoutLi);
+            }
+        }
+
+        function handleLogout(event) {
+            event.preventDefault();
+            localStorage.removeItem('current_user');
+            window.location.replace('index.html');
+        }
+
+        function loadHeaderBrand() {
+            const ledgerConfig = JSON.parse(localStorage.getItem('ledger_config'));
+            const oldCompanyKey = JSON.parse(localStorage.getItem('ledger_company'));
+            
+            let companyData = null;
+            if (ledgerConfig && ledgerConfig.company) {
+                companyData = ledgerConfig.company;
+            } else if (oldCompanyKey) {
+                companyData = oldCompanyKey;
+            }
+
+            const headerName = document.getElementById('headerCompanyName');
+            const printCompName = document.getElementById('printHeaderCompany');
+            
+            if (companyData && companyData.name) {
+                if (headerName) headerName.innerText = companyData.name;
+                if (printCompName) printCompName.innerText = companyData.name;
+            }
+        }
+
+        function loadDynamicDollarRate() {
+            const ledgerConfig = JSON.parse(localStorage.getItem('ledger_config'));
+            const oldDollarRateObj = JSON.parse(localStorage.getItem('ledger_dollar_rate'));
+            
+            let rateValue = null;
+            if (ledgerConfig && ledgerConfig.dollarRate) {
+                rateValue = parseFloat(ledgerConfig.dollarRate);
+            } else if (ledgerConfig && ledgerConfig.dollarRateConfig && ledgerConfig.dollarRateConfig.value) {
+                rateValue = parseFloat(ledgerConfig.dollarRateConfig.value);
+            } else if (oldDollarRateObj && oldDollarRateObj.value) {
+                rateValue = parseFloat(oldDollarRateObj.value);
+            }
+
+            if (rateValue && !isNaN(rateValue) && rateValue > 0) {
+                USD_RATE = rateValue;
+            }
+
+            const rateDisplayElement = document.getElementById('headerExchangeRate');
+            const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
+            if (rateDisplayElement) rateDisplayElement.innerText = USD_RATE;
+            if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = USD_RATE;
+        }
+
+        // Formulaire de vérification de code confidentiel
+        document.getElementById('verificationForm').onsubmit = function(e) {
+            e.preventDefault();
+            const inputCode = document.getElementById('searchSecretCode').value.trim().toUpperCase();
+            
+            const matchedTransfer = transfers.find(t => t.secretCode && t.secretCode.replace(/\s/g, '').toUpperCase() === inputCode.replace(/\s/g, ''));
+
+            if (!matchedTransfer) {
+                const fraudModal = new bootstrap.Modal(document.getElementById('fraudModal'));
+                fraudModal.show();
+                document.getElementById('detailsCard').classList.add('d-none');
+                currentActiveTransfer = null;
+                return;
+            }
+
+            currentActiveTransfer = matchedTransfer;
+            
+            document.getElementById('senderName').value = matchedTransfer.sender.name;
+            document.getElementById('senderFirstname').value = matchedTransfer.sender.firstname;
+            document.getElementById('senderCountry').value = matchedTransfer.sender.country;
+            document.getElementById('senderAgency').value = matchedTransfer.sender.agency;
+            document.getElementById('senderPhone').value = matchedTransfer.sender.phone;
+
+            document.getElementById('beneficiaryName').value = matchedTransfer.beneficiary.name;
+            document.getElementById('beneficiaryFirstname').value = matchedTransfer.beneficiary.firstname;
+            document.getElementById('beneficiaryCountry').value = matchedTransfer.beneficiary.country;
+            document.getElementById('beneficiaryAgency').value = matchedTransfer.beneficiary.agency;
+            document.getElementById('beneficiaryPhone').value = matchedTransfer.beneficiary.phone;
+
+            // Récupération intelligente et exacte basée sur la structure de données générée par transfert-envoi.html
+            const amountFCFA = matchedTransfer.amountFCFA || matchedTransfer.amount || 0;
+            const feesFCFA = matchedTransfer.feesFCFA !== undefined ? matchedTransfer.feesFCFA : (matchedTransfer.fees || 0);
+            const totalUSD = matchedTransfer.totalUSD || 0;
+
+            document.getElementById('netTransferDisplay').innerText = parseFloat(amountFCFA).toLocaleString() + ' FCFA';
+            document.getElementById('transferFees').innerText = parseFloat(feesFCFA).toLocaleString() + ' FCFA';
+            document.getElementById('totalUSD').innerText = parseFloat(totalUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+            document.getElementById('depositDate').innerText = matchedTransfer.date ? new Date(matchedTransfer.date).toLocaleDateString('fr-FR') : '';
+
+            const btnWithdraw = document.getElementById('btnWithdraw');
+            if (matchedTransfer.status === 'Retiré') {
+                btnWithdraw.innerText = "FONDS DÉJÀ RETIRÉS";
+                btnWithdraw.disabled = true;
+                btnWithdraw.classList.remove('btn-danger');
+                btnWithdraw.classList.add('btn-secondary');
+            } else {
+                btnWithdraw.innerText = "RETIRER LES FONDS";
+                btnWithdraw.disabled = false;
+                btnWithdraw.classList.remove('btn-secondary');
+                btnWithdraw.classList.add('btn-danger');
+            }
+
+            document.getElementById('detailsCard').classList.remove('d-none');
+        };
+
+        function promptWithdrawalConfirmation() {
+            document.getElementById('agentSecurityCode').value = '';
+            const securityModal = new bootstrap.Modal(document.getElementById('securityModal'));
+            securityModal.show();
+        }
+
+        // Validation et enregistrement atomique de la modification vers Firebase Realtime Database
+        function executeWithdrawal() {
+            const codeInput = document.getElementById('agentSecurityCode').value;
+            if (codeInput !== "1234") {
+                alert("Code d'autorisation agent incorrect !");
+                return;
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('securityModal')).hide();
+
+            if (currentActiveTransfer) {
+                let indexInArray = transfers.findIndex(t => t.secretCode === currentActiveTransfer.secretCode);
+                
+                if (indexInArray !== -1) {
+                    const matched = transfers[indexInArray];
+                    const withdrawalDate = new Date().toLocaleString('fr-FR');
+                    
+                    // Définition de la cible exacte dans la hiérarchie cloud de Firebase
+                    const itemPath = matched._fbKey !== undefined ? `transfers/${matched._fbKey}` : `transfers/${indexInArray}`;
+                    
+                    const updates = {};
+                    updates[`${itemPath}/status`] = 'Retiré';
+                    updates[`${itemPath}/withdrawalDate`] = withdrawalDate;
+                    
+                    // Envoi synchronisé en temps réel vers Firebase Cloud
+                    update(ref(db), updates).then(() => {
+                        const amountToDisplay = matched.amountFCFA || matched.amount || 0;
+                        document.getElementById('successOverlayMessage').innerText = `Le décaissement de ${parseFloat(amountToDisplay).toLocaleString()} FCFA a été validé avec succès.`;
+                        const successOverlay = document.getElementById('successOverlay');
+                        successOverlay.classList.add('active');
+                        
+                        setTimeout(function() {
+                            successOverlay.classList.remove('active');
+                            document.getElementById('verificationForm').reset();
+                            document.getElementById('detailsCard').classList.add('d-none');
+                            currentActiveTransfer = null;
+                        }, 2000);
+                    }).catch(err => {
+                        console.error("Échec de mise à jour Firebase:", err);
+                        alert("Erreur réseau: impossible d'enregistrer le retrait sur la base cloud.");
+                    });
+                }
+            }
+        }
+
+        function toggleHistoryTable() {
+            const card = document.getElementById('historyCard');
+            const btn = document.getElementById('btnToggleHistory');
+            if (card.classList.contains('d-none')) {
+                card.classList.remove('d-none');
+                btn.innerHTML = '<i class="fa-solid fa-eye-slash me-1"></i> Masquer l\'historique';
+            } else {
+                card.classList.add('d-none');
+                btn.innerHTML = '<i class="fa-solid fa-eye me-1"></i> Afficher l\'historique';
+            }
+        }
+
+        function buildHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            const printTbody = document.getElementById('printHistoryTableBody');
+            const printGenNode = document.getElementById('printGenerationDate');
+            if (printGenNode) printGenNode.innerText = new Date().toLocaleString('fr-FR');
+
+            const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
+
+            if (withdrawnTransfers.length === 0) {
+                const emptyRow = `<tr><td colspan="6" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
+                if (tbody) tbody.innerHTML = emptyRow;
+                if (printTbody) printTbody.innerHTML = emptyRow;
+            } else {
+                const rows = withdrawnTransfers.map(t => {
+                    let rawDate = t.withdrawalDate || t.date || '--';
+                    let displayDate = rawDate;
+                    if (typeof rawDate === 'string' && rawDate.includes(' ')) {
+                        displayDate = rawDate.split(' ')[0];
+                    } else if (typeof rawDate === 'string' && rawDate.includes('T')) {
+                        displayDate = rawDate.split('T')[0];
+                    }
+
+                    const finalAmount = t.amountFCFA || t.amount || 0;
+
+                    return `
+                        <tr>
+                            <td>${displayDate}</td>
+                            <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
+                            <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-muted">${t.beneficiary.phone || ''}</small></td>
+                            <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-success fw-bold">📍 ${t.sender.agency}</small></td>
+                            <td class="text-end fw-bold text-danger">${parseFloat(finalAmount).toLocaleString()} FCFA</td>
+                            <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span></td>
+                        </tr>
+                    `;
+                }).join('');
+                if (tbody) tbody.innerHTML = rows;
+                if (printTbody) printTbody.innerHTML = rows;
+            }
+        }
+
+        // Attachement chirurgical aux éléments globaux de la fenêtre (Scope global pour attributs HTML onclick)
+        window.promptWithdrawalConfirmation = promptWithdrawalConfirmation;
+        window.executeWithdrawal = executeWithdrawal;
+        window.toggleHistoryTable = toggleHistoryTable;
+        window.handleLogout = handleLogout;
+        window.buildHistoryTable = buildHistoryTable;
+
+        // Initialisation de la page au chargement du module
+        applyRoleAccessControl();
+        loadHeaderBrand();
+        loadDynamicDollarRate();
+    </script>
+</body>
+</html>

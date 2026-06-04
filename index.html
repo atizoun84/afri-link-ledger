@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil | AFRI-LINK LEDGER</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075E54">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --wa-dark: #075E54;
+            --wa-medium: #128C7E;
+            --wa-light: #25D366;
+            --wa-bg: #F0F2F5;
+            --font-main: 'Poppins', sans-serif;
+            --font-title: 'Playfair Display', serif;
+            --font-brand: 'Montserrat', sans-serif;
+            --font-company: 'Orbitron', sans-serif;
+        }
+
+        body {
+            background-color: var(--wa-bg);
+            font-family: var(--font-main);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Header & Navigation --- */
+        header {
+            background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .navbar-brand {
+            font-family: var(--font-brand);
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: white !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-logo {
+            height: 45px;
+            width: auto;
+            object-fit: contain;
+            margin-right: 12px;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .sub-brand {
+            font-family: var(--font-title);
+            font-size: 0.9rem;
+            color: var(--wa-light);
+            font-style: italic;
+            display: block;
+        }
+
+        .company-display-header {
+            font-family: var(--font-company);
+            color: #FFD700;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 2px;
+            display: block;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .nav-link:hover {
+            color: var(--wa-light) !important;
+            transform: translateY(-2px);
+        }
+
+        .navbar-toggler {
+            border: none;
+            color: white;
+        }
+
+        /* --- Main Content Area --- */
+        main {
+            flex: 1;
+            padding: 40px 0;
+        }
+
+        .page-header {
+            border-left: 5px solid var(--wa-medium);
+            padding-left: 15px;
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-family: var(--font-title);
+            color: var(--wa-dark);
+            font-weight: 700;
+        }
+
+        /* --- Custom Styles for New Features --- */
+        .card-config {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card-config.hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .btn-wa {
+            background-color: var(--wa-medium);
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-wa:hover {
+            background-color: var(--wa-dark);
+            color: white;
+        }
+
+        /* Style spécifique pour les infos verrouillées */
+        .locked-info {
+            font-weight: bold !important;
+            color: #0d6efd !important;
+            background-color: #e9ecef !important;
+        }
+
+        /* Style spécifique pour le taux Dollar verrouillé */
+        .rate-locked {
+            font-size: 1.5rem !important;
+            font-weight: 900 !important;
+            color: #dc3545 !important;
+            background-color: #f8f9fa !important;
+            text-align: center;
+        }
+
+        /* Fullscreen Success Overlay */
+        #success-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .success-icon {
+            color: var(--wa-light);
+            font-size: 5rem;
+            animation: scaleUp 0.5s ease-out;
+        }
+
+        @keyframes scaleUp {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        /* --- Hero Section & Welcome Banner --- */
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(7, 94, 84, 0.05) 0%, rgba(18, 140, 126, 0.1) 100%);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(18, 140, 126, 0.15);
+        }
+
+        .hero-title {
+            font-family: var(--font-title);
+            color: var(--wa-dark);
+            font-weight: 700;
+            font-size: 2.5rem;
+        }
+
+        .stat-icon-wrapper {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        /* --- Style du Bouton Installer PWA --- */
+        #pwa-install-container {
+            display: none;
+            background-color: #fff;
+            border-top: 2px solid var(--wa-light);
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        /* --- Footer --- */
+        footer {
+            background-color: white;
+            border-top: 3px solid var(--wa-medium);
+            padding: 20px 0;
+            margin-top: auto;
+        }
+
+        .footer-text {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .footer-contact i {
+            color: var(--wa-medium);
+            margin-right: 5px;
+        }
+
+        .concepteur-name {
+            font-weight: 600;
+            color: var(--wa-dark);
+        }
+
+        /* --- Indicateur Cloud Status --- */
+        .cloud-status-indicator {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 1050;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+        .cloud-status-indicator.online {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+        }
+        .cloud-status-indicator.offline {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <!-- Indicateur de statut de connexion en haut à droite -->
+        <div id="cloudStatus" class="cloud-status-indicator offline">
+            <i class="fa-solid fa-circle-dot"></i> <span id="cloudStatusText">Hors ligne</span>
+        </div>
+
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">
+                    <img src="logoarams.png" alt="Logo" class="navbar-logo">
+                    <div>
+                        <i class="fa-solid fa-building-columns me-2"></i>AFRI-LINK LEDGER
+                        <span class="sub-brand">Architecture de Finance Bilatérale</span>
+                        <span id="headerCompanyName" class="company-display-header"></span>
+                        <div id="headerUserSession" style="font-size: 0.75rem; color: #FFF; font-weight: 300; text-transform: none; margin-top: 4px; line-height: 1.2; font-family: var(--font-main);"></div>
+                    </div>
+                </a>
+                
+                <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav ms-auto" id="navLinksContainer">
+                        <li class="nav-item" id="menu-dashboard"><a class="nav-link active" href="index.html" style="color: var(--wa-light) !important;"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a></li>
+                        <li class="nav-item" id="menu-approvisionnement"><a class="nav-link" href="approvisionnement.html"><i class="fa-solid fa-wallet me-1"></i> Approvisionnement</a></li>
+                        <li class="nav-item" id="menu-envoi"><a class="nav-link" href="transfert-envoi.html"><i class="fa-solid fa-paper-plane me-1"></i> Envoi</a></li>
+                        <li class="nav-item" id="menu-retrait"><a class="nav-link" href="transfert-reception.html"><i class="fa-solid fa-hand-holding-dollar me-1"></i> Retrait</a></li>
+                        <li class="nav-item" id="menu-compta"><a class="nav-link" href="report-codes.html"><i class="fa-solid fa-clock-rotate-left me-1"></i> Comptabilité et Grand Livre</a></li>
+                        <li class="nav-item" id="menu-config"><a class="nav-link" href="configuration.html"><i class="fa-solid fa-gears me-1"></i> Configuration</a></li>
+                        </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        
+        <div class="hero-banner d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+            <div>
+                <h1 class="hero-title mb-2">Bienvenue sur AFRI-LINK LEDGER</h1>
+                <p class="text-muted mb-0 fs-5">Le concentrateur de gestion financière de votre réseau de transfert bilatéral.</p>
+                <div class="mt-3" id="companyBadgeStatus"></div>
+            </div>
+        </div>
+
+        <div class="page-header mb-4">
+            <h1>Indicateurs de Structure</h1>
+            <p class="text-muted">Vue d'ensemble en temps réel des entités enregistrées dans votre écosystème.</p>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-6 col-md-3">
+                <div class="card card-config h-100 shadow-sm border-0 bg-white">
+                    <div class="card-body p-3 p-md-4 d-flex align-items-center">
+                        <div class="stat-icon-wrapper bg-success bg-opacity-10 text-success me-2 me-md-3">
+                            <i class="fa-solid fa-earth-africa"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted small uppercase fw-bold mb-1">Pays Actifs</h6>
+                            <h2 class="fw-bold mb-0" id="statCountries">0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-config h-100 shadow-sm border-0 bg-white">
+                    <div class="card-body p-3 p-md-4 d-flex align-items-center">
+                        <div class="stat-icon-wrapper bg-primary bg-opacity-10 text-primary me-2 me-md-3">
+                            <i class="fa-solid fa-shop"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted small uppercase fw-bold mb-1">Guichets Ouverts</h6>
+                            <h2 class="fw-bold mb-0" id="statDesks">0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-config h-100 shadow-sm border-0 bg-white">
+                    <div class="card-body p-3 p-md-4 d-flex align-items-center">
+                        <div class="stat-icon-wrapper bg-info bg-opacity-10 text-info me-2 me-md-3">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted small uppercase fw-bold mb-1">Agents Connectés</h6>
+                            <h2 class="fw-bold mb-0" id="statAgents">0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-config h-100 shadow-sm border-0 bg-white">
+                    <div class="card-body p-3 p-md-4 d-flex align-items-center">
+                        <div class="stat-icon-wrapper bg-warning bg-opacity-10 text-warning me-2 me-md-3">
+                            <i class="fa-solid fa-coins"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted small uppercase fw-bold mb-1">Devises Gérées</h6>
+                            <h2 class="fw-bold mb-0" id="statCurrencies">0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-5" id="block-exchange-rate">
+                <div class="card card-config shadow-sm border-0 h-100 bg-white">
+                    <div class="card-body p-4 d-flex flex-column justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-3" style="color: var(--wa-dark); font-weight: 600;">
+                                <i class="fa-solid fa-money-bill-trend-up me-2"></i>Cours de Change Actuel
+                            </h5>
+                            <p class="text-muted small">Valeur de référence monétaire verrouillée pour les calculs de transactions bilatérales.</p>
+                        </div>
+                        
+                        <div class="p-4 rounded-3 border text-center my-3 bg-light">
+                            <div class="row align-items-center">
+                                <div class="col-5">
+                                    <span class="fs-3 fw-bold text-dark">1 USD</span>
+                                    <div class="text-muted small">Dollar ($)</div>
+                                </div>
+                                <div class="col-2 text-muted">
+                                    <i class="fa-solid fa-arrow-right-arrow-left fa-lg text-secondary"></i>
+                                </div>
+                                <div class="col-5">
+                                    <span class="fs-2 fw-black text-danger" id="homeDollarRateDisplay">--</span>
+                                    <div class="text-muted small fw-bold">Franc CFA (XOF/XAF)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <a href="configuration.html" id="btn-adjust-exchange" class="btn btn-outline-secondary w-100 mt-2">
+                            <i class="fa-solid fa-sliders me-2"></i>Ajuster les paramètres de change
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card card-config shadow-sm border-0 h-100 bg-white">
+                    <div class="card-body p-4">
+                        <h5 class="card-title mb-4" style="color: var(--wa-dark); font-weight: 600;">
+                            <i class="fa-solid fa-bolt me-2"></i>Actions Opérationnelles Rapides
+                        </h5>
+                        
+                        <div class="row g-3" id="quickActionsContainer">
+                            <div class="col-6 col-md-6" id="action-envoi">
+                                <a href="transfert-envoi.html" class="card card-config hover-card border text-decoration-none h-100 p-2 p-md-3 bg-light">
+                                    <div class="d-flex align-items-center text-dark">
+                                        <div class="stat-icon-wrapper bg-success text-white me-2 me-md-3">
+                                            <i class="fa-solid fa-paper-plane"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold mb-0">Émettre un Envoi</h6>
+                                            <span class="text-muted small d-none d-md-block">Initier un transfert de fonds</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+
+                            <div class="col-6 col-md-6" id="action-retrait">
+                                <a href="transfert-reception.html" class="card card-config hover-card border text-decoration-none h-100 p-2 p-md-3 bg-light">
+                                    <div class="d-flex align-items-center text-dark">
+                                        <div class="stat-icon-wrapper bg-primary text-white me-2 me-md-3">
+                                            <i class="fa-solid fa-hand-holding-dollar"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold mb-0">Payer un Retrait</h6>
+                                            <span class="text-muted small d-none d-md-block">Valider la réception de fonds</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+
+                            <div class="col-6 col-md-6" id="action-approvisionner">
+                                <a href="approvisionnement.html" class="card card-config hover-card border text-decoration-none h-100 p-2 p-md-3 bg-light">
+                                    <div class="d-flex align-items-center text-dark">
+                                        <div class="stat-icon-wrapper bg-warning text-white me-2 me-md-3">
+                                            <i class="fa-solid fa-wallet"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold mb-0">Approvisionner</h6>
+                                            <span class="text-muted small d-none d-md-block">Gérer la liquidité des guichets</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+
+                            <div class="col-6 col-md-6" id="action-codes">
+                                <a href="report-codes.html" class="card card-config hover-card border text-decoration-none h-100 p-2 p-md-3 bg-light">
+                                    <div class="d-flex align-items-center text-dark">
+                                        <div class="stat-icon-wrapper bg-secondary text-white me-2 me-md-3">
+                                            <i class="fa-solid fa-clock-rotate-left"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold mb-0">Codes en Attente</h6>
+                                            <span class="text-muted small d-none d-md-block">Suivi des flux non réclamés</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-header mb-4" id="title-identity-section">
+            <h1>Identité de l'Établissement</h1>
+            <p class="text-muted">Profil réglementaire et contacts administratifs de l'organisation.</p>
+        </div>
+
+        <div class="card card-config shadow-sm border-0 mb-5 bg-white" id="block-identity-card">
+            <div class="card-body p-4">
+                <div class="row g-4" id="identityContentArea">
+                    </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="success-overlay">
+        <i class="fa-solid fa-circle-check success-icon"></i>
+        <h4 class="mt-3 fw-bold" id="success-message">Opération réussie</h4>
+    </div>
+
+    <div id="pwa-install-container" class="fixed-bottom p-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <img src="logo.png" alt="Logo" style="height: 40px; width: 40px; margin-right: 12px; border-radius: 8px;">
+                <div>
+                    <strong class="text-dark">AFRI-LINK LEDGER</strong>
+                    <div class="text-muted small d-none d-sm-block">Installer l'application pour un accès rapide et hors ligne</div>
+                </div>
+            </div>
+            <button id="btn-pwa-install" class="btn btn-wa px-4 py-2 rounded-pill">
+                <i class="fa-solid fa-download me-2"></i>Installer
+            </button>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <div class="footer-text mb-2">&copy; 2026 <span class="concepteur-name">AFRI-LINK LEDGER</span>. Tous droits réservés.</div>
+            <div class="footer-contact d-flex justify-content-center flex-wrap gap-3">
+                <span><i class="fa-solid fa-user"></i> Concepteur : <strong>Atizoun Plateny AMOUSSOU</strong></span>
+                <span><i class="fa-solid fa-envelope"></i> atizoun@gmail.com</span>
+                <span><i class="fa-solid fa-phone"></i> 01 97 74 40 35</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Intégration de Firebase en mode Module pour synchronisation temps réel -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZQ51o3eor8aeowH5-SoC9fJE_Z71hMwU",
+            authDomain: "afri-link-ledger.firebaseapp.com",
+            projectId: "afri-link-ledger",
+            storageBucket: "afri-link-ledger.firebasestorage.app",
+            messagingSenderId: "120519932316",
+            appId: "1:120519932316:web:e555d0cd42bce8ef923059",
+            databaseURL: "https://afri-link-ledger-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+
+        // Initialisation de Firebase et de la Realtime Database
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- CONTRÔLE DE SÉCURITÉ ET ACCÈS SESSION COMPTE ---
+        const currentUser = JSON.parse(localStorage.getItem('current_user'));
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        }
+
+        // Variable globale partagée pour la configuration
+        let ledgerConfig = {
+            companyName: "AFRI-LINK LEDGER",
+            dollarRate: 600,
+            countries: [],
+            currencies: [],
+            desks: [],
+            agents: [],
+            company: {
+                name: "", country: "", loc: "", email: "", phone: "", rccm: "", 
+                promoter: "", promoterWa: "", manager: "", managerPhone: "",
+                isLocked: false
+            },
+            dollarRateConfig: {
+                value: "",
+                isLocked: false
+            }
+        };
+
+        // Déclaration globale de handleLogout pour les attributs HTML inline onclick
+        window.handleLogout = function(e) {
+            e.preventDefault();
+            localStorage.removeItem('current_user');
+            window.location.href = 'login.html';
+        };
+
+        // --- APPLICATION DYNAMIQUE DES DROITS ET FILTRES DE SESSIONS ---
+        function applyRoleAccessControl() {
+            // 1. Affichage de la session dans le Header
+            const sessionBox = document.getElementById('headerUserSession');
+            if (sessionBox && currentUser) {
+                sessionBox.innerHTML = `
+                    <i class="fa-solid fa-user-circle me-1"></i> ${currentUser.name} (${currentUser.role})<br>
+                    <i class="fa-solid fa-map-marker-alt me-1"></i> ${currentUser.desk}
+                `;
+            }
+
+            // 2. Injection du bouton de Déconnexion dans la barre de navigation (si pas déjà présent)
+            const navContainer = document.getElementById('navLinksContainer');
+            if (navContainer && !document.getElementById('btnLogoutCustom')) {
+                const logoutLi = document.createElement('li');
+                logoutLi.className = 'nav-item ms-lg-2';
+                logoutLi.id = 'btnLogoutCustom';
+                logoutLi.innerHTML = `
+                    <a class="nav-link btn btn-danger btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle" href="#" onclick="handleLogout(event)" style="background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important;">
+                        <i class="fa-solid fa-power-off me-1"></i> Déconnexion
+                    </a>
+                `;
+                navContainer.appendChild(logoutLi);
+            }
+
+            // 3. Restriction structurelle si le profil est un Agent
+            if (currentUser && currentUser.role === 'Agent') {
+                const menuApprovisionnement = document.getElementById('menu-approvisionnement');
+                const menuCompta = document.getElementById('menu-compta');
+                const menuConfig = document.getElementById('menu-config');
+                if (menuApprovisionnement) menuApprovisionnement.remove();
+                if (menuCompta) menuCompta.remove();
+                if (menuConfig) menuConfig.remove();
+
+                const actionApprovisionner = document.getElementById('action-approvisionner');
+                const actionCodes = document.getElementById('action-codes');
+                if (actionApprovisionner) actionApprovisionner.remove();
+                if (actionCodes) actionCodes.remove();
+
+                const btnAdjustExchange = document.getElementById('btn-adjust-exchange');
+                if (btnAdjustExchange) btnAdjustExchange.remove();
+
+                const titleIdentity = document.getElementById('title-identity-section');
+                const blockIdentity = document.getElementById('block-identity-card');
+                if (titleIdentity) titleIdentity.remove();
+                if (blockIdentity) blockIdentity.remove();
+            }
+        }
+
+        // --- CHARGEMENT ET RENDU DES STATISTIQUES D'ACCUEIL ---
+        function loadHomeDashboardData() {
+            document.getElementById('statCountries').innerText = ledgerConfig.countries ? Object.keys(ledgerConfig.countries).length : 0;
+            document.getElementById('statDesks').innerText = ledgerConfig.desks ? Object.keys(ledgerConfig.desks).length : 0;
+            document.getElementById('statAgents').innerText = ledgerConfig.agents ? Object.keys(ledgerConfig.agents).length : 0;
+            document.getElementById('statCurrencies').innerText = ledgerConfig.currencies ? Object.keys(ledgerConfig.currencies).length : 0;
+
+            const dollarRateValue = (ledgerConfig.dollarRateConfig && ledgerConfig.dollarRateConfig.value) || ledgerConfig.dollarRate || "Non défini";
+            document.getElementById('homeDollarRateDisplay').innerText = dollarRateValue;
+
+            const headerName = document.getElementById('headerCompanyName');
+            if (ledgerConfig.company && ledgerConfig.company.isLocked && ledgerConfig.company.name) {
+                headerName.innerText = ledgerConfig.company.name;
+                document.getElementById('companyBadgeStatus').innerHTML = `
+                    <span class="badge bg-success px-3 py-2 fs-6">
+                        <i class="fa-solid fa-circle-check me-2"></i>Structure Certifiée :<br>
+                        <span class="fw-bold fs-5 mt-1 d-inline-block">${ledgerConfig.company.name}</span>
+                    </span>
+                `;
+            } else {
+                headerName.innerText = "";
+                document.getElementById('companyBadgeStatus').innerHTML = `
+                    <span class="badge bg-warning text-dark px-3 py-2 fs-6"><i class="fa-solid fa-triangle-exclamation me-2"></i>Mode Démonstration (Structure non verrouillée)</span>
+                `;
+            }
+
+            if (document.getElementById('identityContentArea')) {
+                renderIdentitySection();
+            }
+        }
+
+        // Rendu de la fiche d'identité structurelle
+        function renderIdentitySection() {
+            const container = document.getElementById('identityContentArea');
+            const comp = ledgerConfig.company;
+
+            if (!comp || !comp.isLocked || !comp.name) {
+                container.innerHTML = `
+                    <div class="col-12 text-center py-4">
+                        <i class="fa-solid fa-building-shield text-muted fa-3x mb-3"></i>
+                        <h5>Aucune entreprise n'est actuellement verrouillée dans le système.</h5>
+                        <p class="text-muted small">Rendez-vous dans la page de configuration pour renseigner et sceller les informations officielles de la structure.</p>
+                        <a href="configuration.html" class="btn btn-wa mt-2"><i class="fa-solid fa-gears me-2"></i>Configurer Maintenant</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="text-muted small uppercase fw-bold d-block">Dénomination Sociale</label>
+                        <span class="fs-5 fw-bold text-dark">${comp.name}</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small uppercase fw-bold d-block">Pays d'Implantation</label>
+                        <span class="fw-semibold text-secondary"><i class="fa-solid fa-location-dot me-2 text-danger"></i>${comp.country} (${comp.loc})</span>
+                    </div>
+                    <div>
+                        <label class="text-muted small uppercase fw-bold d-block">Registre du Commerce (RCCM)</label>
+                        <span class="badge bg-dark text-white font-monospace py-2 px-3">${comp.rccm}</span>
+                    </div>
+                </div>
+                <div class="col-md-4" style="border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08);">
+                    <div class="mb-3 px-md-3">
+                        <label class="text-muted small uppercase fw-bold d-block">Email Institutionnel</label>
+                        <span class="fw-semibold text-dark"><i class="fa-solid fa-envelope me-2 text-muted"></i>${comp.email}</span>
+                    </div>
+                    <div class="px-md-3">
+                        <label class="text-muted small uppercase fw-bold d-block">Téléphone Siège</label>
+                        <span class="fw-semibold text-dark"><i class="fa-solid fa-phone me-2 text-muted"></i>${comp.phone}</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="text-muted small uppercase fw-bold d-block">Promoteur Agrée</label>
+                        <span class="fw-bold text-dark"><i class="fa-solid fa-user-tie me-2 text-muted"></i>${comp.promoter}</span>
+                        <div class="text-muted small mt-1"><i class="fa-brands fa-whatsapp text-success me-1"></i>WhatsApp : ${comp.promoterWa}</div>
+                    </div>
+                    <div>
+                        <label class="text-muted small uppercase fw-bold d-block">Gestionnaire de Plateforme</label>
+                        <span class="fw-bold text-dark"><i class="fa-solid fa-user-gear me-2 text-muted"></i>${comp.manager}</span>
+                        <div class="text-muted small mt-1"><i class="fa-solid fa-phone text-muted me-1"></i>Contact : ${comp.managerPhone}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- SYNCHRONISATION EN TEMPS RÉEL AVEC CLOUD FIREBASE ---
+        const configRef = ref(db, 'ledger_config');
+        
+        // Indicateurs HTML de connectivité
+        const cloudStatus = document.getElementById('cloudStatus');
+        const cloudStatusText = document.getElementById('cloudStatusText');
+
+        onValue(configRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                
+                // Fusion sécurisée pour éviter l'écrasement ou l'absence de sous-objets
+                ledgerConfig = {
+                    ...ledgerConfig,
+                    ...data,
+                    company: data.company ? { ...ledgerConfig.company, ...data.company } : ledgerConfig.company,
+                    dollarRateConfig: data.dollarRateConfig ? { ...ledgerConfig.dollarRateConfig, ...data.dollarRateConfig } : ledgerConfig.dollarRateConfig
+                };
+                
+                // Sauvegarde locale miroir non destructive (uniquement pour la persistence immédiate)
+                localStorage.setItem('ledger_config', JSON.stringify(ledgerConfig));
+            }
+            
+            // Mise à jour visuelle du statut : En ligne
+            if (cloudStatus && cloudStatusText) {
+                cloudStatus.className = "cloud-status-indicator online";
+                cloudStatusText.innerText = "En ligne";
+            }
+            
+            // Exécution des rendus d'interface
+            loadHomeDashboardData();
+        }, (error) => {
+            console.error("Erreur de synchronisation Firebase : ", error);
+            if (cloudStatus && cloudStatusText) {
+                cloudStatus.className = "cloud-status-indicator offline";
+                cloudStatusText.innerText = "Hors ligne";
+            }
+        });
+
+        // Détection native complémentaire de perte de réseau
+        window.addEventListener('online', () => {
+            if (cloudStatus && cloudStatusText) {
+                cloudStatus.className = "cloud-status-indicator online";
+                cloudStatusText.innerText = "En ligne";
+            }
+        });
+        window.addEventListener('offline', () => {
+            if (cloudStatus && cloudStatusText) {
+                cloudStatus.className = "cloud-status-indicator offline";
+                cloudStatusText.innerText = "Hors ligne";
+            }
+        });
+
+        // Initialisation de la vue d'accueil et Logique PWA
+        applyRoleAccessControl();
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('Service Worker enregistré avec succès.'))
+                .catch(err => console.error('Échec de l\'enregistrement du Service Worker :', err));
+        }
+
+        let deferredPrompt;
+        const installContainer = document.getElementById('pwa-install-container');
+        const installBtn = document.getElementById('btn-pwa-install');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (installContainer) {
+                installContainer.style.display = 'block';
+            }
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`Choix de l'utilisateur face à l'installation : ${outcome}`);
+                deferredPrompt = null;
+                if (installContainer) {
+                    installContainer.style.display = 'none';
+                }
+            });
+        }
+
+        window.addEventListener('appinstalled', () => {
+            console.log('L\'application AFRI-LINK LEDGER a été installée avec succès !');
+            if (installContainer) {
+                installContainer.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
