@@ -367,9 +367,39 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+        .spinner-border-custom {
+            width: 3rem;
+            height: 3rem;
+            color: var(--wa-medium);
+        }
     </style>
 </head>
 <body>
+
+    <!-- Loading overlay until cloud data is loaded -->
+    <div id="loading-overlay">
+        <div class="spinner-border spinner-border-custom mb-3" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <h5 class="text-muted">Synchronisation des données cloud...</h5>
+        <p class="small text-muted">Veuillez patienter</p>
+    </div>
 
     <button id="pwaInstallBtn">
         <i class="fa-solid fa-download me-2"></i> Installer l'App
@@ -670,6 +700,10 @@
         window.fbSet = set;
         window.fbRemove = remove;
 
+        // Loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        let isFirstLoad = true;
+
         // Gestionnaire de statut de connexion internet/cloud
         const connectedRef = ref(db, ".info/connected");
         const statusIndicator = document.getElementById("cloud-status-indicator");
@@ -686,21 +720,26 @@
 
         // Écoute en temps réel de la configuration globale (ledger_config) pour extraire dynamiquement les guichets
         const configRef = ref(db, "ledger_config");
+        let configReceived = false;
         onValue(configRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 window.ledgerConfig = data;
                 window.desks = data.desks || [];
+                window.adminCode = (data.admin && data.admin.code) ? data.admin.code : '12345';
                 
                 // Rafraîchissement des modules dépendants
                 window.loadHeaderBrand();
                 window.loadDynamicDollarRate();
                 window.populateDesks();
+                configReceived = true;
+                checkFirstLoadComplete();
             }
         });
 
         // Écoute en temps réel du registre des approvisionnements (ledger_supply)
         const supplyRef = ref(db, "ledger_supply");
+        let supplyReceived = false;
         onValue(supplyRef, (snapshot) => {
             const data = snapshot.val();
             window.approvisionnements = [];
@@ -716,10 +755,13 @@
             }
             window.renderTable();
             window.updateDashboard();
+            supplyReceived = true;
+            checkFirstLoadComplete();
         });
 
         // Écoute en temps réel du registre des sources de fonds (ledger_sources)
         const sourcesRef = ref(db, "ledger_sources");
+        let sourcesReceived = false;
         onValue(sourcesRef, (snapshot) => {
             const data = snapshot.val();
             if (data && Array.isArray(data)) {
@@ -730,10 +772,13 @@
                 window.sources = ["Poche Personnel", "Compte Bancaire", "Transfert Inter-Agence"];
             }
             window.renderSources();
+            sourcesReceived = true;
+            checkFirstLoadComplete();
         });
 
         // Écoute en temps réel des transactions de transfert (ledger_transfers)
         const transfersRef = ref(db, "ledger_transfers");
+        let transfersReceived = false;
         onValue(transfersRef, (snapshot) => {
             const data = snapshot.val();
             window.transfers = [];
@@ -747,7 +792,21 @@
                 window.transfers.sort((a, b) => b.id - a.id);
             }
             window.updateDashboard();
+            transfersReceived = true;
+            checkFirstLoadComplete();
         });
+
+        function checkFirstLoadComplete() {
+            if (isFirstLoad && configReceived && supplyReceived && sourcesReceived && transfersReceived) {
+                isFirstLoad = false;
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
+            }
+        }
 
         // Liaison de l'action d'ajout de source depuis le module
         document.getElementById('btnAddSourceDirect').onclick = function() {
@@ -779,9 +838,10 @@
 
             // 2. Injection du bouton de Déconnexion harmonisé dans la barre de navigation
             const navContainer = document.getElementById('navLinksContainer');
-            if (navContainer) {
+            if (navContainer && !document.getElementById('nav-logout-btn')) {
                 const logoutLi = document.createElement('li');
                 logoutLi.className = 'nav-item ms-lg-2';
+                logoutLi.id = 'nav-logout-btn';
                 logoutLi.innerHTML = `
                     <a class="nav-link btn btn-danger btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle" href="#" onclick="handleLogout(event)" style="background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important;">
                         <i class="fa-solid fa-power-off me-1"></i> Déconnexion
@@ -802,6 +862,7 @@
         // Initialisation de fallback pour la configuration unifiée (mise à jour par Firebase)
         window.ledgerConfig = JSON.parse(localStorage.getItem('ledger_config')) || {};
         window.desks = window.ledgerConfig.desks || [];
+        window.adminCode = (window.ledgerConfig.admin && window.ledgerConfig.admin.code) || '12345';
         
         // Initialisation de tableaux vides en attente de la synchronisation Firebase
         window.approvisionnements = [];
@@ -953,20 +1014,26 @@
             // Calcul du Solde du Flux
             const soldeFlux = totalApprov - totalEnvois;
             
-            document.getElementById('totalLiquide').innerText = liq.toLocaleString() + ' FCFA';
-            document.getElementById('totalVirtuel').innerText = virt.toLocaleString() + ' FCFA';
+            const totalLiquideElem = document.getElementById('totalLiquide');
+            const totalVirtuelElem = document.getElementById('totalVirtuel');
+            if (totalLiquideElem) totalLiquideElem.innerText = liq.toLocaleString() + ' FCFA';
+            if (totalVirtuelElem) totalVirtuelElem.innerText = virt.toLocaleString() + ' FCFA';
             
             // Assignation des valeurs bicolores dans la plaquette
-            document.getElementById('appTotalPart').innerText = totalApprov.toLocaleString() + ' FCFA';
-            document.getElementById('envTotalPart').innerText = totalEnvois.toLocaleString() + ' FCFA';
+            const appTotalPartElem = document.getElementById('appTotalPart');
+            const envTotalPartElem = document.getElementById('envTotalPart');
+            if (appTotalPartElem) appTotalPartElem.innerText = totalApprov.toLocaleString() + ' FCFA';
+            if (envTotalPartElem) envTotalPartElem.innerText = totalEnvois.toLocaleString() + ' FCFA';
             
             // Rendu et coloration dynamique du Solde du Flux (Rouge si négatif, Bleu si positif ou nul)
             const soldeElement = document.getElementById('soldeTotalPart');
-            soldeElement.innerText = soldeFlux.toLocaleString() + ' FCFA';
-            if (soldeFlux < 0) {
-                soldeElement.className = 'text-red-bold';
-            } else {
-                soldeElement.className = 'text-blue-bold';
+            if (soldeElement) {
+                soldeElement.innerText = soldeFlux.toLocaleString() + ' FCFA';
+                if (soldeFlux < 0) {
+                    soldeElement.className = 'text-red-bold';
+                } else {
+                    soldeElement.className = 'text-blue-bold';
+                }
             }
         }
 
@@ -1035,7 +1102,7 @@
                     <td class="fw-bold text-success">
                         ${a.currencyDetails ? a.currencyDetails : parseFloat(a.amount).toLocaleString() + ' FCFA'}
                     </td>
-                    <td><span class="status-badge ${a.status === 'Validé' ? 'bg-success text-white' : 'bg-secondary text-white'}">${a.status}</span></td>
+                    <td class="text-center"><span class="status-badge ${a.status === 'Validé' ? 'bg-success text-white' : 'bg-secondary text-white'}">${a.status}</span></td>
                     <td class="text-end">
                         <div class="d-inline-flex gap-1">
                             ${a.status === 'En attente' ? `
@@ -1053,7 +1120,7 @@
             if(!fbKey || fbKey === 'undefined') return;
             
             // Récupération dynamique et sécurisée du code admin directement depuis la configuration cloud synchronisée
-            const expectedCode = (window.ledgerConfig && window.ledgerConfig.admin) ? window.ledgerConfig.admin.code : '12345';
+            const expectedCode = window.adminCode || '12345';
             
             const codeInput = prompt("Validation de sécurité : veuillez saisir votre code de connexion utilisateur pour valider cet approvisionnement :");
             if (codeInput === null) return; // Action annulée par l'opérateur

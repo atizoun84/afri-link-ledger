@@ -174,6 +174,27 @@
             to { transform: scale(1); }
         }
 
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+        .spinner-border-custom {
+            width: 3rem;
+            height: 3rem;
+            color: var(--wa-medium);
+        }
+
         /* --- PWA Intelligent Installation Button Style --- */
         #pwaInstallBtn {
             display: none;
@@ -250,6 +271,15 @@
     </style>
 </head>
 <body>
+
+    <!-- Loading overlay until cloud data is loaded -->
+    <div id="loading-overlay">
+        <div class="spinner-border spinner-border-custom mb-3" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <h5 class="text-muted">Synchronisation des données cloud...</h5>
+        <p class="small text-muted">Veuillez patienter</p>
+    </div>
 
     <header>
         <nav class="navbar navbar-expand-lg">
@@ -642,6 +672,10 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // Loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        let isFirstLoad = true;
+
         // --- CONTRÔLE DE SÉCURITÉ ET ACCÈS FILTRÉ GESTIONNAIRE ---
         const currentUser = JSON.parse(localStorage.getItem('current_user'));
         if (!currentUser || currentUser.role !== 'Gestionnaire') {
@@ -667,6 +701,9 @@
             }
         };
 
+        // Flag pour éviter les boucles infinies lors des mises à jour
+        let isUpdatingFromCloud = false;
+
         // --- ECOUTEUR TEMPS REEL FIREBASE (Remplace complètement LocalStorage) ---
         const configRef = ref(db, 'ledger_config');
         
@@ -684,12 +721,13 @@
             }
         });
 
-        // Synchronisation en temps réel descendante
+        // Synchronisation en temps réel descendante (Cloud -> Interface)
         onValue(configRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
+                isUpdatingFromCloud = true;
                 // Rétrocompatibilité interne
-                ledgerConfig = data;
+                ledgerConfig = JSON.parse(JSON.stringify(data)); // Deep copy pour éviter les références
                 if (!ledgerConfig.countries) ledgerConfig.countries = [];
                 if (!ledgerConfig.currencies) ledgerConfig.currencies = [];
                 if (!ledgerConfig.desks) ledgerConfig.desks = [];
@@ -700,22 +738,42 @@
                 if (!ledgerConfig.dollarRateConfig) {
                     ledgerConfig.dollarRateConfig = { value: "", isLocked: false };
                 }
-            } else {
+                
+                // Sauvegarde locale miroir pour résilience hors ligne
+                localStorage.setItem('ledger_config', JSON.stringify(ledgerConfig));
+                
+                // Re-render automatique de tous les modules de l'interface
+                loadCompany();
+                loadDollarRate();
+                renderCountries();
+                renderCurrencies();
+                renderDesks(); 
+                renderAgents();
+                
+                isUpdatingFromCloud = false;
+            } else if (!isUpdatingFromCloud) {
                 // Premier push d'initialisation sur le cloud si vide
                 pushConfigToCloud();
             }
             
-            // Re-render automatique de tous les modules de l'interface
-            loadCompany();
-            loadDollarRate();
-            renderCountries();
-            renderCurrencies();
-            renderDesks(); 
-            renderAgents();
+            // Hide loading overlay on first load
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
+            }
         });
 
         function pushConfigToCloud() {
-            set(configRef, ledgerConfig);
+            if (!isUpdatingFromCloud) {
+                set(configRef, ledgerConfig).then(() => {
+                    console.log("Configuration sauvegardée sur le cloud");
+                }).catch(err => console.error("Erreur de sauvegarde cloud:", err));
+            }
         }
 
         // --- INTERFACE UTILISATEUR : SESSION ET DECONNEXION ---
@@ -750,16 +808,27 @@
 
         // --- CONFIGURATION ENTREPRISE ---
         window.loadCompany = function() {
-            document.getElementById('compName').value = ledgerConfig.company.name || "";
-            document.getElementById('compCountry').value = ledgerConfig.company.country || "";
-            document.getElementById('compLoc').value = ledgerConfig.company.loc || "";
-            document.getElementById('compEmail').value = ledgerConfig.company.email || "";
-            document.getElementById('compPhone').value = ledgerConfig.company.phone || "";
-            document.getElementById('compRccm').value = ledgerConfig.company.rccm || "";
-            document.getElementById('compPromoter').value = ledgerConfig.company.promoter || "";
-            document.getElementById('compPromoterWa').value = ledgerConfig.company.promoterWa || "";
-            document.getElementById('compManager').value = ledgerConfig.company.manager || "";
-            document.getElementById('compManagerPhone').value = ledgerConfig.company.managerPhone || "";
+            const compName = document.getElementById('compName');
+            const compCountry = document.getElementById('compCountry');
+            const compLoc = document.getElementById('compLoc');
+            const compEmail = document.getElementById('compEmail');
+            const compPhone = document.getElementById('compPhone');
+            const compRccm = document.getElementById('compRccm');
+            const compPromoter = document.getElementById('compPromoter');
+            const compPromoterWa = document.getElementById('compPromoterWa');
+            const compManager = document.getElementById('compManager');
+            const compManagerPhone = document.getElementById('compManagerPhone');
+            
+            if (compName) compName.value = ledgerConfig.company.name || "";
+            if (compCountry) compCountry.value = ledgerConfig.company.country || "";
+            if (compLoc) compLoc.value = ledgerConfig.company.loc || "";
+            if (compEmail) compEmail.value = ledgerConfig.company.email || "";
+            if (compPhone) compPhone.value = ledgerConfig.company.phone || "";
+            if (compRccm) compRccm.value = ledgerConfig.company.rccm || "";
+            if (compPromoter) compPromoter.value = ledgerConfig.company.promoter || "";
+            if (compPromoterWa) compPromoterWa.value = ledgerConfig.company.promoterWa || "";
+            if (compManager) compManager.value = ledgerConfig.company.manager || "";
+            if (compManagerPhone) compManagerPhone.value = ledgerConfig.company.managerPhone || "";
             updateCompanyUI();
         }
 
@@ -780,6 +849,7 @@
                 showSuccess("Configuration enregistrée et verrouillée");
             } else {
                 ledgerConfig.company.isLocked = false;
+                showSuccess("Configuration déverrouillée, vous pouvez maintenant modifier les informations");
             }
             updateCompanyUI();
             pushConfigToCloud();
@@ -792,20 +862,25 @@
 
             if (ledgerConfig.company.isLocked) {
                 inputs.forEach(i => { i.readOnly = true; i.classList.add('locked-info'); });
-                btn.innerHTML = '<i class="fa-solid fa-unlock me-2"></i>Déverrouiller';
-                btn.className = "btn btn-outline-primary px-5";
-                headerName.innerText = ledgerConfig.company.name;
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-unlock me-2"></i>Déverrouiller';
+                    btn.className = "btn btn-outline-primary px-5";
+                }
+                if (headerName) headerName.innerText = ledgerConfig.company.name;
             } else {
                 inputs.forEach(i => { i.readOnly = false; i.classList.remove('locked-info'); });
-                btn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Enregistrer et verrouiller';
-                btn.className = "btn btn-wa px-5";
-                headerName.innerText = "";
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Enregistrer et verrouiller';
+                    btn.className = "btn btn-wa px-5";
+                }
+                if (headerName) headerName.innerText = "";
             }
         }
 
         // --- GESTION DU TAUX DOLLAR ---
         window.loadDollarRate = function() {
-            document.getElementById('dollarExchangeRate').value = ledgerConfig.dollarRateConfig.value || "";
+            const rateInput = document.getElementById('dollarExchangeRate');
+            if (rateInput) rateInput.value = ledgerConfig.dollarRateConfig.value || "";
             updateRateUI();
         }
 
@@ -825,6 +900,7 @@
                 const code = prompt("Entrez le code de confirmation pour modifier le taux :");
                 if (code === "1234") {
                     ledgerConfig.dollarRateConfig.isLocked = false;
+                    showSuccess("Taux dollar déverrouillé, vous pouvez maintenant le modifier");
                 } else {
                     alert("Code incorrect ! Modification annulée.");
                     return;
@@ -839,15 +915,23 @@
             const btn = document.getElementById('btnToggleRate');
 
             if (ledgerConfig.dollarRateConfig.isLocked) {
-                rateInput.readOnly = true;
-                rateInput.classList.add('rate-locked');
-                btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i>Remettre à jour';
-                btn.className = "btn btn-danger w-100";
+                if (rateInput) {
+                    rateInput.readOnly = true;
+                    rateInput.classList.add('rate-locked');
+                }
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i>Remettre à jour';
+                    btn.className = "btn btn-danger w-100";
+                }
             } else {
-                rateInput.readOnly = false;
-                rateInput.classList.remove('rate-locked');
-                btn.innerHTML = '<i class="fa-solid fa-rotate me-2"></i>Mettre à jour le taux';
-                btn.className = "btn btn-wa w-100";
+                if (rateInput) {
+                    rateInput.readOnly = false;
+                    rateInput.classList.remove('rate-locked');
+                }
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-rotate me-2"></i>Mettre à jour le taux';
+                    btn.className = "btn btn-wa w-100";
+                }
             }
         }
 
@@ -866,9 +950,11 @@
             if(!tbody || !selectDesk) return;
 
             tbody.innerHTML = ledgerConfig.countries.map(c => `
-                <tr><td><span class="badge bg-light text-dark border">${c.code}</span></td>
-                <td class="fw-semibold">${c.name}</td>
-                <td class="text-end"><button onclick="deleteCountry(${c.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td></tr>
+                <tr>
+                    <td><span class="badge bg-light text-dark border">${c.code}</span></td>
+                    <td class="fw-semibold">${c.name}</td>
+                    <td class="text-end"><button onclick="deleteCountry(${c.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td>
+                </tr>
             `).join('');
             selectDesk.innerHTML = '<option value="">Sélectionner un pays...</option>' + 
                 ledgerConfig.countries.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
@@ -876,13 +962,9 @@
 
         window.deleteCountry = function(id) {
             if(confirm('Supprimer ce pays ?')) { 
-                const updatedCountries = ledgerConfig.countries.filter(c => c.id !== id);
-                // Utilisation ciblée de la suppression cloud
-                if (updatedCountries.length === 0) {
-                    remove(ref(db, 'ledger_config/countries')).then(() => { showSuccess("Pays supprimé"); });
-                } else {
-                    set(ref(db, 'ledger_config/countries'), updatedCountries).then(() => { showSuccess("Pays supprimé"); });
-                }
+                ledgerConfig.countries = ledgerConfig.countries.filter(c => c.id !== id);
+                pushConfigToCloud();
+                showSuccess("Pays supprimé");
             }
         }
 
@@ -891,20 +973,19 @@
             const tbody = document.getElementById('currencyTableBody');
             if(!tbody) return;
             tbody.innerHTML = ledgerConfig.currencies.map(c => `
-                <tr><td><span class="badge bg-info text-white">${c.symbol}</span></td>
-                <td class="fw-semibold">${c.name}</td>
-                <td class="text-end"><button onclick="deleteCurrency(${c.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td></tr>
+                <tr>
+                    <td><span class="badge bg-info text-white">${c.symbol}</span></td>
+                    <td class="fw-semibold">${c.name}</td>
+                    <td class="text-end"><button onclick="deleteCurrency(${c.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td>
+                </tr>
             `).join('');
         }
 
         window.deleteCurrency = function(id) {
             if(confirm('Supprimer cette devise ?')) { 
-                const updatedCurrencies = ledgerConfig.currencies.filter(c => c.id !== id);
-                if (updatedCurrencies.length === 0) {
-                    remove(ref(db, 'ledger_config/currencies')).then(() => { showSuccess("Devise supprimée"); });
-                } else {
-                    set(ref(db, 'ledger_config/currencies'), updatedCurrencies).then(() => { showSuccess("Devise supprimée"); });
-                }
+                ledgerConfig.currencies = ledgerConfig.currencies.filter(c => c.id !== id);
+                pushConfigToCloud();
+                showSuccess("Devise supprimée");
             }
         }
 
@@ -924,9 +1005,12 @@
 
             tbody.innerHTML = ledgerConfig.desks.length === 0 ? '<tr><td colspan="4" class="text-center text-muted">Aucun guichet</td></tr>' :
                 ledgerConfig.desks.map(d => `
-                <tr><td><span class="badge bg-light text-dark border">${d.code}</span></td>
-                <td class="fw-semibold">${d.name}</td><td>${d.country}</td>
-                <td class="text-end"><button onclick="deleteDesk(${d.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td></tr>
+                <tr>
+                    <td><span class="badge bg-light text-dark border">${d.code}</span></td>
+                    <td class="fw-semibold">${d.name}</td>
+                    <td>${d.country}</td>
+                    <td class="text-end"><button onclick="deleteDesk(${d.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td>
+                </tr>
             `).join('');
             selectAgent.innerHTML = '<option value="">Sélectionner un guichet...</option>' + 
                 ledgerConfig.desks.map(d => `<option value="${d.id}">${d.name} (${d.country})</option>`).join('');
@@ -934,12 +1018,9 @@
 
         window.deleteDesk = function(id) {
             if(confirm('Supprimer ce guichet ?')) { 
-                const updatedDesks = ledgerConfig.desks.filter(d => d.id !== id);
-                if (updatedDesks.length === 0) {
-                    remove(ref(db, 'ledger_config/desks')).then(() => { showSuccess("Guichet supprimé"); });
-                } else {
-                    set(ref(db, 'ledger_config/desks'), updatedDesks).then(() => { showSuccess("Guichet supprimé"); });
-                }
+                ledgerConfig.desks = ledgerConfig.desks.filter(d => d.id !== id);
+                pushConfigToCloud();
+                showSuccess("Guichet supprimé");
             }
         }
 
@@ -960,60 +1041,94 @@
                 ledgerConfig.agents.map(a => {
                     const deskObj = ledgerConfig.desks.find(d => d.id == a.deskId) || { name: 'N/A', country: 'N/A' };
                     return `
-                    <tr><td><span class="badge bg-light text-dark border">${a.code}</span></td>
-                    <td class="fw-semibold">${a.name}</td><td>${deskObj.name}</td><td>${deskObj.country}</td>
-                    <td class="text-end"><button onclick="deleteAgent(${a.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
+                    <tr>
+                        <td><span class="badge bg-light text-dark border">${a.code}</span></td>
+                        <td class="fw-semibold">${a.name}</td>
+                        <td>${deskObj.name}</td>
+                        <td>${deskObj.country}</td>
+                        <td class="text-end"><button onclick="deleteAgent(${a.id})" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash-can"></i></button></td>
+                    </tr>`;
                 }).join('');
         }
 
         window.deleteAgent = function(id) {
             if(confirm('Supprimer cet agent ?')) { 
-                const updatedAgents = ledgerConfig.agents.filter(a => a.id !== id);
-                if (updatedAgents.length === 0) {
-                    remove(ref(db, 'ledger_config/agents')).then(() => { showSuccess("Agent supprimé"); });
-                } else {
-                    set(ref(db, 'ledger_config/agents'), updatedAgents).then(() => { showSuccess("Agent supprimé"); });
-                }
+                ledgerConfig.agents = ledgerConfig.agents.filter(a => a.id !== id);
+                pushConfigToCloud();
+                showSuccess("Agent supprimé");
             }
         }
 
         // --- SOUCHETS D'ÉCOUTES DES FORMULAIRES ---
-        document.getElementById('addCountryForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            ledgerConfig.countries.push({ id: Date.now(), name: document.getElementById('countryName').value, code: document.getElementById('countryCode').value });
-            pushConfigToCloud(); showSuccess("Pays ajouté"); this.reset();
-        });
+        const addCountryForm = document.getElementById('addCountryForm');
+        if (addCountryForm) {
+            addCountryForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                ledgerConfig.countries.push({ id: Date.now(), name: document.getElementById('countryName').value, code: document.getElementById('countryCode').value });
+                pushConfigToCloud(); 
+                showSuccess("Pays ajouté"); 
+                this.reset();
+            });
+        }
 
-        document.getElementById('addCurrencyForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            ledgerConfig.currencies.push({ id: Date.now(), name: document.getElementById('currName').value, symbol: document.getElementById('currSymbol').value });
-            pushConfigToCloud(); showSuccess("Devise ajoutée"); this.reset();
-        });
+        const addCurrencyForm = document.getElementById('addCurrencyForm');
+        if (addCurrencyForm) {
+            addCurrencyForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                ledgerConfig.currencies.push({ id: Date.now(), name: document.getElementById('currName').value, symbol: document.getElementById('currSymbol').value });
+                pushConfigToCloud(); 
+                showSuccess("Devise ajoutée"); 
+                this.reset();
+            });
+        }
 
-        document.getElementById('addDeskForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            ledgerConfig.desks.push({ id: Date.now(), name: document.getElementById('deskName').value, country: document.getElementById('deskCountry').value, code: document.getElementById('deskCode').value });
-            pushConfigToCloud(); showSuccess("Guichet ajouté"); this.reset();
-        });
+        const addDeskForm = document.getElementById('addDeskForm');
+        if (addDeskForm) {
+            addDeskForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                ledgerConfig.desks.push({ id: Date.now(), name: document.getElementById('deskName').value, country: document.getElementById('deskCountry').value, code: document.getElementById('deskCode').value });
+                pushConfigToCloud(); 
+                showSuccess("Guichet ajouté"); 
+                this.reset();
+            });
+        }
 
-        document.getElementById('addAgentForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            ledgerConfig.agents.push({ id: Date.now(), name: document.getElementById('agentName').value, deskId: document.getElementById('agentDesk').value, code: document.getElementById('agentCode').value });
-            pushConfigToCloud(); showSuccess("Agent ajouté"); this.reset();
-        });
+        const addAgentForm = document.getElementById('addAgentForm');
+        if (addAgentForm) {
+            addAgentForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                ledgerConfig.agents.push({ id: Date.now(), name: document.getElementById('agentName').value, deskId: document.getElementById('agentDesk').value, code: document.getElementById('agentCode').value });
+                pushConfigToCloud(); 
+                showSuccess("Agent ajouté"); 
+                this.reset();
+            });
+        }
 
         // Liaison des écouteurs de saisie dynamiques pour les codes automatiques
-        document.getElementById('countryName').addEventListener('input', generateCountryCode);
-        document.getElementById('deskName').addEventListener('input', generateDeskCode);
-        document.getElementById('agentName').addEventListener('input', generateAgentCode);
-        document.getElementById('btnToggleLock').addEventListener('click', toggleCompanyLock);
-        document.getElementById('btnToggleRate').addEventListener('click', toggleRateLock);
+        const countryNameInput = document.getElementById('countryName');
+        if (countryNameInput) countryNameInput.addEventListener('input', generateCountryCode);
+        
+        const deskNameInput = document.getElementById('deskName');
+        if (deskNameInput) deskNameInput.addEventListener('input', generateDeskCode);
+        
+        const agentNameInput = document.getElementById('agentName');
+        if (agentNameInput) agentNameInput.addEventListener('input', generateAgentCode);
+        
+        const btnToggleLock = document.getElementById('btnToggleLock');
+        if (btnToggleLock) btnToggleLock.addEventListener('click', toggleCompanyLock);
+        
+        const btnToggleRate = document.getElementById('btnToggleRate');
+        if (btnToggleRate) btnToggleRate.addEventListener('click', toggleRateLock);
 
         // --- UTILITAIRES ---
         window.showSuccess = function(msg) {
-            document.getElementById('success-message').innerText = msg;
-            document.getElementById('success-overlay').style.display = 'flex';
-            setTimeout(() => { document.getElementById('success-overlay').style.display = 'none'; }, 1800);
+            const successMessage = document.getElementById('success-message');
+            const successOverlay = document.getElementById('success-overlay');
+            if (successMessage && successOverlay) {
+                successMessage.innerText = msg;
+                successOverlay.style.display = 'flex';
+                setTimeout(() => { successOverlay.style.display = 'none'; }, 1800);
+            }
         }
 
         // --- LOGIQUE PWA AVANCÉE ---

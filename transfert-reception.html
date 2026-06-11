@@ -80,6 +80,27 @@
             box-shadow: 0 0 8px #dc3545;
         }
 
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+        .spinner-border-custom {
+            width: 3rem;
+            height: 3rem;
+            color: var(--wa-medium);
+        }
+
         /* --- Header & Navigation --- */
         header {
             background: linear-gradient(135deg, var(--wa-dark) 0%, var(--wa-medium) 100%);
@@ -460,6 +481,15 @@
 </head>
 <body>
 
+    <!-- Loading overlay until cloud data is loaded -->
+    <div id="loading-overlay">
+        <div class="spinner-border spinner-border-custom mb-3" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <h5 class="text-muted">Synchronisation des données cloud...</h5>
+        <p class="small text-muted">Veuillez patienter</p>
+    </div>
+
     <div id="connectionStatusIndicator" class="connection-status status-offline">
         <span class="status-dot"></span> Hors ligne
     </div>
@@ -624,9 +654,14 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="mb-0 text-secondary" style="font-family: var(--font-title);"><i class="fa-solid fa-clock-rotate-left me-2"></i>Registre des Retraits</h4>
-                    <button class="btn btn-outline-secondary btn-sm px-3" id="btnToggleHistory" onclick="toggleHistoryTable()">
-                        <i class="fa-solid fa-eye me-1"></i> Afficher l'historique
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm px-3" id="btnToggleHistory" onclick="toggleHistoryTable()">
+                            <i class="fa-solid fa-eye me-1"></i> Afficher l'historique
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm px-3" id="btnClearHistory" onclick="clearWithdrawalHistory()" style="display: none;">
+                            <i class="fa-solid fa-trash-can me-1"></i> Vider l'historique
+                        </button>
+                    </div>
                 </div>
 
                 <div class="card card-form shadow-sm d-none" id="historyCard">
@@ -768,7 +803,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
         // Configuration Firebase Cloud de l'application
         const firebaseConfig = {
@@ -784,6 +819,14 @@
         // Initialisation de l'instance Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+
+        // Loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        let isFirstLoad = true;
+        let transfersReceived = false;
+        let supplyReceived = false;
+        let ledgerTransfersReceived = false;
+        let configReceived = false;
 
         // Variables globales du module
         let transfers = [];
@@ -803,6 +846,18 @@
             "Niger": "+227",
             "Gabon": "+241"
         };
+
+        function checkFirstLoadComplete() {
+            if (isFirstLoad && transfersReceived && supplyReceived && ledgerTransfersReceived && configReceived) {
+                isFirstLoad = false;
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
+            }
+        }
 
         // Enregistrement du Service Worker pour la logique PWA
         if ('serviceWorker' in navigator) {
@@ -829,7 +884,36 @@
             }
         });
 
-        // Écouteur Firebase en temps réel sur le nœud 'transfers' (Grand livre synchronisé)
+        // --- Mise à jour dynamique du taux de change depuis le cloud FireBase ---
+        const configRef = ref(db, "ledger_config");
+        onValue(configRef, (snapshot) => {
+            const data = snapshot.val();
+            let newRate = USD_RATE;
+            if (data) {
+                if (data.dollarRateConfig && data.dollarRateConfig.value && !isNaN(parseFloat(data.dollarRateConfig.value))) {
+                    newRate = parseFloat(data.dollarRateConfig.value);
+                } else if (data.dollarRate && !isNaN(parseFloat(data.dollarRate))) {
+                    newRate = parseFloat(data.dollarRate);
+                }
+                localStorage.setItem('ledger_config', JSON.stringify(data));
+            }
+            if (newRate !== USD_RATE && newRate > 0) {
+                USD_RATE = newRate;
+                const rateDisplayElement = document.getElementById('headerExchangeRate');
+                const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
+                if (rateDisplayElement) rateDisplayElement.innerText = USD_RATE;
+                if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = USD_RATE;
+                
+                if (currentActiveTransfer && document.getElementById('detailsCard') && !document.getElementById('detailsCard').classList.contains('d-none')) {
+                    const usdAmount = currentActiveTransfer.totalUSD ? parseFloat(currentActiveTransfer.totalUSD) : (parseFloat(currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0) / USD_RATE);
+                    document.getElementById('totalUSD').innerText = usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+                }
+            }
+            configReceived = true;
+            checkFirstLoadComplete();
+        });
+
+        // Écouteur Firebase en temps réel sur le nœud 'transfers'
         const transfersRef = ref(db, "transfers");
         onValue(transfersRef, (snapshot) => {
             const data = snapshot.val();
@@ -846,12 +930,13 @@
                     });
                 }
             }
+            localStorage.setItem('ledger_transfers_cache', JSON.stringify(transfers));
             buildHistoryTable();
-            // Sauvegarde d'un miroir local de secours en arrière-plan sans écraser le Cloud
-            localStorage.setItem('ledger_transfers', JSON.stringify(transfers));
+            transfersReceived = true;
+            checkFirstLoadComplete();
         });
 
-        // Écouteurs synchronisés en temps réel issus d'approvisionnement.html pour l'analyse financière
+        // Écouteurs synchronisés en temps réel
         const supplyRef = ref(db, "ledger_supply");
         onValue(supplyRef, (snapshot) => {
             const data = snapshot.val();
@@ -861,6 +946,8 @@
                     ledgerSupply.push({ fbKey: key, ...data[key] });
                 });
             }
+            supplyReceived = true;
+            checkFirstLoadComplete();
         });
 
         const ledgerTransfersRef = ref(db, "ledger_transfers");
@@ -872,14 +959,14 @@
                     ledgerTransfersList.push({ fbKey: key, ...data[key] });
                 });
             }
+            ledgerTransfersReceived = true;
+            checkFirstLoadComplete();
         });
 
-        // Fonction unifiée pour le contrôle d'accès, l'affichage utilisateur et le bouton déconnexion
         function applyRoleAccessControl() {
             const currentUser = JSON.parse(localStorage.getItem('current_user'));
             if (!currentUser) return;
 
-            // Rendu de la session utilisateur sur deux lignes dans le Header
             const sessionBox = document.getElementById('headerUserSession');
             if (sessionBox) {
                 sessionBox.innerHTML = `
@@ -888,7 +975,6 @@
                 `;
             }
 
-            // Gestion des restrictions d'accès pour les agents
             const navContainer = document.getElementById('navLinksContainer');
             if (navContainer) {
                 if (currentUser.role === 'Agent') {
@@ -901,9 +987,8 @@
                     });
                 }
 
-                // Ajout intelligent du bouton d'installation PWA dans le menu
                 const installLi = document.createElement('li');
-                installLi.className = 'nav-item ms-lg-2 d-none'; // Masqué par défaut
+                installLi.className = 'nav-item ms-lg-2 d-none';
                 installLi.id = 'pwaInstallLi';
                 installLi.innerHTML = `
                     <a id="btnPwaInstall" class="nav-link btn btn-success btn-sm text-white px-3 py-1 mt-1 mt-lg-0 align-middle me-lg-1" href="#" style="background-color: var(--wa-medium) !important; border-color: var(--wa-medium) !important; color: white !important;">
@@ -912,7 +997,6 @@
                 `;
                 navContainer.appendChild(installLi);
 
-                // Écouteur PWA pour capter l'éligibilité à l'installation
                 window.addEventListener('beforeinstallprompt', (e) => {
                     e.preventDefault();
                     deferredPrompt = e;
@@ -920,18 +1004,21 @@
                     if (pwaLi) pwaLi.classList.remove('d-none');
                 });
 
-                document.getElementById('btnPwaInstall').addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    if (!deferredPrompt) return;
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                        console.log('L\'utilisateur a installé la PWA.');
-                        const pwaLi = document.getElementById('pwaInstallLi');
-                        if (pwaLi) pwaLi.classList.add('d-none');
-                    }
-                    deferredPrompt = null;
-                });
+                const pwaBtn = document.getElementById('btnPwaInstall');
+                if (pwaBtn) {
+                    pwaBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        if (!deferredPrompt) return;
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            console.log('L\'utilisateur a installé la PWA.');
+                            const pwaLi = document.getElementById('pwaInstallLi');
+                            if (pwaLi) pwaLi.classList.add('d-none');
+                        }
+                        deferredPrompt = null;
+                    });
+                }
 
                 window.addEventListener('appinstalled', () => {
                     console.log('PWA installée avec succès.');
@@ -940,7 +1027,6 @@
                     deferredPrompt = null;
                 });
 
-                // Ajout harmonisé du bouton Déconnexion
                 const logoutLi = document.createElement('li');
                 logoutLi.className = 'nav-item ms-lg-2';
                 logoutLi.innerHTML = `
@@ -978,30 +1064,6 @@
             }
         }
 
-        function loadDynamicDollarRate() {
-            const ledgerConfig = JSON.parse(localStorage.getItem('ledger_config'));
-            const oldDollarRateObj = JSON.parse(localStorage.getItem('ledger_dollar_rate'));
-            
-            let rateValue = null;
-            if (ledgerConfig && ledgerConfig.dollarRate) {
-                rateValue = parseFloat(ledgerConfig.dollarRate);
-            } else if (ledgerConfig && ledgerConfig.dollarRateConfig && ledgerConfig.dollarRateConfig.value) {
-                rateValue = parseFloat(ledgerConfig.dollarRateConfig.value);
-            } else if (oldDollarRateObj && oldDollarRateObj.value) {
-                rateValue = parseFloat(oldDollarRateObj.value);
-            }
-
-            if (rateValue && !isNaN(rateValue) && rateValue > 0) {
-                USD_RATE = rateValue;
-            }
-
-            const rateDisplayElement = document.getElementById('headerExchangeRate');
-            const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
-            if (rateDisplayElement) rateDisplayElement.innerText = USD_RATE;
-            if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = USD_RATE;
-        }
-
-        // Formulaire de vérification de code confidentiel
         document.getElementById('verificationForm').onsubmit = function(e) {
             e.preventDefault();
             const inputCode = document.getElementById('searchSecretCode').value.trim().toUpperCase();
@@ -1030,10 +1092,9 @@
             document.getElementById('beneficiaryAgency').value = matchedTransfer.beneficiary.agency;
             document.getElementById('beneficiaryPhone').value = matchedTransfer.beneficiary.phone;
 
-            // Récupération intelligente et exacte basée sur la structure de données générée par transfert-envoi.html
             const amountFCFA = matchedTransfer.amountFCFA || matchedTransfer.amount || 0;
             const feesFCFA = matchedTransfer.feesFCFA !== undefined ? matchedTransfer.feesFCFA : (matchedTransfer.fees || 0);
-            const totalUSD = matchedTransfer.totalUSD || 0;
+            const totalUSD = matchedTransfer.totalUSD || (amountFCFA / USD_RATE);
 
             document.getElementById('netTransferDisplay').innerText = parseFloat(amountFCFA).toLocaleString() + ' FCFA';
             document.getElementById('transferFees').innerText = parseFloat(feesFCFA).toLocaleString() + ' FCFA';
@@ -1062,7 +1123,6 @@
             securityModal.show();
         }
 
-        // Validation et enregistrement atomique de la modification vers Firebase Realtime Database
         function executeWithdrawal() {
             const codeInput = document.getElementById('agentSecurityCode').value;
             if (codeInput !== "1234") {
@@ -1073,7 +1133,6 @@
             bootstrap.Modal.getInstance(document.getElementById('securityModal')).hide();
 
             if (currentActiveTransfer) {
-                // Analyse financière et calcul de la disponibilité du solde d'approvisionnement
                 const amountFCFA = currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0;
                 const feesFCFA = currentActiveTransfer.feesFCFA !== undefined ? currentActiveTransfer.feesFCFA : (currentActiveTransfer.fees || 0);
                 const requiredAmount = parseFloat(amountFCFA) + parseFloat(feesFCFA);
@@ -1085,7 +1144,6 @@
                 const totalEnvois = ledgerTransfersList.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
                 const soldeFlux = totalApprov - totalEnvois;
 
-                // Blocage automatique et affichage de l'alerte si le solde global est insuffisant
                 if (soldeFlux < requiredAmount) {
                     const missingAmount = requiredAmount - soldeFlux;
                     document.getElementById('missingAmountDisplay').innerText = missingAmount.toLocaleString();
@@ -1100,14 +1158,12 @@
                     const matched = transfers[indexInArray];
                     const withdrawalDate = new Date().toLocaleString('fr-FR');
                     
-                    // Définition de la cible exacte dans la hiérarchie cloud de Firebase
                     const itemPath = matched._fbKey !== undefined ? `transfers/${matched._fbKey}` : `transfers/${indexInArray}`;
                     
                     const updates = {};
                     updates[`${itemPath}/status`] = 'Retiré';
                     updates[`${itemPath}/withdrawalDate`] = withdrawalDate;
                     
-                    // Envoi synchronisé en temps réel vers Firebase Cloud
                     update(ref(db), updates).then(() => {
                         const amountToDisplay = matched.amountFCFA || matched.amount || 0;
                         document.getElementById('successOverlayMessage').innerText = `Le décaissement de ${parseFloat(amountToDisplay).toLocaleString()} FCFA a été validé avec succès.`;
@@ -1140,12 +1196,15 @@
         function toggleHistoryTable() {
             const card = document.getElementById('historyCard');
             const btn = document.getElementById('btnToggleHistory');
+            const clearBtn = document.getElementById('btnClearHistory');
             if (card.classList.contains('d-none')) {
                 card.classList.remove('d-none');
                 btn.innerHTML = '<i class="fa-solid fa-eye-slash me-1"></i> Masquer l\'historique';
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
             } else {
                 card.classList.add('d-none');
                 btn.innerHTML = '<i class="fa-solid fa-eye me-1"></i> Afficher l\'historique';
+                if (clearBtn) clearBtn.style.display = 'none';
             }
         }
 
@@ -1153,6 +1212,7 @@
             const tbody = document.getElementById('historyTableBody');
             const printTbody = document.getElementById('printHistoryTableBody');
             const printGenNode = document.getElementById('printGenerationDate');
+            const clearBtn = document.getElementById('btnClearHistory');
             if (printGenNode) printGenNode.innerText = new Date().toLocaleString('fr-FR');
 
             const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
@@ -1161,6 +1221,7 @@
                 const emptyRow = `<tr><td colspan="6" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
                 if (tbody) tbody.innerHTML = emptyRow;
                 if (printTbody) printTbody.innerHTML = emptyRow;
+                if (clearBtn) clearBtn.style.display = 'none';
             } else {
                 const rows = withdrawnTransfers.map(t => {
                     let rawDate = t.withdrawalDate || t.date || '--';
@@ -1186,10 +1247,48 @@
                 }).join('');
                 if (tbody) tbody.innerHTML = rows;
                 if (printTbody) printTbody.innerHTML = rows;
+                if (clearBtn && withdrawnTransfers.length > 0) {
+                    clearBtn.style.display = 'inline-flex';
+                }
             }
         }
 
-        // Attachement chirurgical aux éléments globaux de la fenêtre (Scope global pour attributs HTML onclick)
+        // Fonction pour vider l'historique des retraits
+        window.clearWithdrawalHistory = function() {
+            if (confirm("Êtes-vous absolument sûr de vouloir supprimer TOUS les retraits de l'historique ? Cette action est irréversible.")) {
+                const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
+                
+                if (withdrawnTransfers.length === 0) {
+                    alert("Aucun retrait à supprimer dans l'historique.");
+                    return;
+                }
+
+                // Demander confirmation supplémentaire avec code de sécurité
+                const authCode = prompt("Veuillez saisir le code de confirmation pour supprimer l'historique des retraits :");
+                if (authCode !== "1234") {
+                    alert("Code de confirmation incorrect. Opération annulée.");
+                    return;
+                }
+
+                // Supprimer chaque retrait de Firebase
+                const deletePromises = withdrawnTransfers.map(t => {
+                    const itemPath = t._fbKey !== undefined ? `transfers/${t._fbKey}` : null;
+                    if (itemPath) {
+                        return remove(ref(db, itemPath));
+                    }
+                    return Promise.resolve();
+                });
+
+                Promise.all(deletePromises).then(() => {
+                    alert(`Historique vidé avec succès (${withdrawnTransfers.length} retrait(s) supprimé(s)).`);
+                    buildHistoryTable();
+                }).catch(err => {
+                    console.error("Erreur lors de la suppression des retraits:", err);
+                    alert("Une erreur est survenue lors de la suppression. Veuillez réessayer.");
+                });
+            }
+        };
+
         window.promptWithdrawalConfirmation = promptWithdrawalConfirmation;
         window.executeWithdrawal = executeWithdrawal;
         window.copyInsufficientFundsAlert = copyInsufficientFundsAlert;
@@ -1197,10 +1296,16 @@
         window.handleLogout = handleLogout;
         window.buildHistoryTable = buildHistoryTable;
 
-        // Initialisation de la page au chargement du module
+        const cachedTransfers = localStorage.getItem('ledger_transfers_cache');
+        if (cachedTransfers) {
+            try {
+                transfers = JSON.parse(cachedTransfers);
+                buildHistoryTable();
+            } catch(e) { console.warn("Cache parsing error", e); }
+        }
+
         applyRoleAccessControl();
         loadHeaderBrand();
-        loadDynamicDollarRate();
     </script>
 </body>
 </html>

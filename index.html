@@ -207,6 +207,31 @@
             font-size: 1.5rem;
         }
 
+        /* Skeleton loader styles */
+        .skeleton-loader {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-text {
+            height: 24px;
+            width: 80%;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-badge {
+            height: 60px;
+            width: 100%;
+            border-radius: 12px;
+        }
+
         /* --- Style du Bouton Installer PWA --- */
         #pwa-install-container {
             display: none;
@@ -264,9 +289,39 @@
             color: #842029;
             border: 1px solid #f5c2c7;
         }
+
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+        .spinner-border-custom {
+            width: 3rem;
+            height: 3rem;
+            color: var(--wa-medium);
+        }
     </style>
 </head>
 <body>
+
+    <!-- Loading overlay until cloud data is loaded -->
+    <div id="loading-overlay">
+        <div class="spinner-border spinner-border-custom mb-3" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <h5 class="text-muted">Synchronisation des données cloud...</h5>
+        <p class="small text-muted">Veuillez patienter</p>
+    </div>
 
     <header>
         <!-- Indicateur de statut de connexion en haut à droite -->
@@ -486,7 +541,12 @@
         <div class="card card-config shadow-sm border-0 mb-5 bg-white" id="block-identity-card">
             <div class="card-body p-4">
                 <div class="row g-4" id="identityContentArea">
+                    <div class="col-12 text-center py-4">
+                        <div class="skeleton-loader skeleton-badge mb-3"></div>
+                        <div class="skeleton-loader skeleton-text mx-auto"></div>
+                        <div class="skeleton-loader skeleton-text w-50 mx-auto"></div>
                     </div>
+                </div>
             </div>
         </div>
 
@@ -528,7 +588,7 @@
     <!-- Intégration de Firebase en mode Module pour synchronisation temps réel -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
         // Configuration Firebase
         const firebaseConfig = {
@@ -569,6 +629,10 @@
                 isLocked: false
             }
         };
+
+        // Flag to track first data load
+        let isFirstLoad = true;
+        const loadingOverlay = document.getElementById('loading-overlay');
 
         // Déclaration globale de handleLogout pour les attributs HTML inline onclick
         window.handleLogout = function(e) {
@@ -628,10 +692,20 @@
 
         // --- CHARGEMENT ET RENDU DES STATISTIQUES D'ACCUEIL ---
         function loadHomeDashboardData() {
-            document.getElementById('statCountries').innerText = ledgerConfig.countries ? Object.keys(ledgerConfig.countries).length : 0;
-            document.getElementById('statDesks').innerText = ledgerConfig.desks ? Object.keys(ledgerConfig.desks).length : 0;
-            document.getElementById('statAgents').innerText = ledgerConfig.agents ? Object.keys(ledgerConfig.agents).length : 0;
-            document.getElementById('statCurrencies').innerText = ledgerConfig.currencies ? Object.keys(ledgerConfig.currencies).length : 0;
+            // Safely get array lengths
+            const countriesCount = Array.isArray(ledgerConfig.countries) ? ledgerConfig.countries.length : 
+                                   (ledgerConfig.countries ? Object.keys(ledgerConfig.countries).length : 0);
+            const desksCount = Array.isArray(ledgerConfig.desks) ? ledgerConfig.desks.length : 
+                               (ledgerConfig.desks ? Object.keys(ledgerConfig.desks).length : 0);
+            const agentsCount = Array.isArray(ledgerConfig.agents) ? ledgerConfig.agents.length : 
+                                (ledgerConfig.agents ? Object.keys(ledgerConfig.agents).length : 0);
+            const currenciesCount = Array.isArray(ledgerConfig.currencies) ? ledgerConfig.currencies.length : 
+                                    (ledgerConfig.currencies ? Object.keys(ledgerConfig.currencies).length : 0);
+            
+            document.getElementById('statCountries').innerText = countriesCount;
+            document.getElementById('statDesks').innerText = desksCount;
+            document.getElementById('statAgents').innerText = agentsCount;
+            document.getElementById('statCurrencies').innerText = currenciesCount;
 
             const dollarRateValue = (ledgerConfig.dollarRateConfig && ledgerConfig.dollarRateConfig.value) || ledgerConfig.dollarRate || "Non défini";
             document.getElementById('homeDollarRateDisplay').innerText = dollarRateValue;
@@ -721,6 +795,22 @@
         const cloudStatus = document.getElementById('cloudStatus');
         const cloudStatusText = document.getElementById('cloudStatusText');
 
+        // Listen to Firebase connection state
+        const connectedRef = ref(db, '.info/connected');
+        onValue(connectedRef, (snap) => {
+            if (snap.val() === true) {
+                if (cloudStatus && cloudStatusText) {
+                    cloudStatus.className = "cloud-status-indicator online";
+                    cloudStatusText.innerText = "En ligne";
+                }
+            } else {
+                if (cloudStatus && cloudStatusText) {
+                    cloudStatus.className = "cloud-status-indicator offline";
+                    cloudStatusText.innerText = "Hors ligne";
+                }
+            }
+        });
+
         onValue(configRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
@@ -735,21 +825,40 @@
                 
                 // Sauvegarde locale miroir non destructive (uniquement pour la persistence immédiate)
                 localStorage.setItem('ledger_config', JSON.stringify(ledgerConfig));
+            } else {
+                // Initialize cloud with default structure if empty
+                set(configRef, ledgerConfig);
             }
             
-            // Mise à jour visuelle du statut : En ligne
-            if (cloudStatus && cloudStatusText) {
-                cloudStatus.className = "cloud-status-indicator online";
-                cloudStatusText.innerText = "En ligne";
+            // Hide loading overlay on first successful data load
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
             }
             
-            // Exécution des rendus d'interface
+            // Exécution des rendus d'interface et application des permissions
             loadHomeDashboardData();
+            applyRoleAccessControl();
         }, (error) => {
             console.error("Erreur de synchronisation Firebase : ", error);
             if (cloudStatus && cloudStatusText) {
                 cloudStatus.className = "cloud-status-indicator offline";
                 cloudStatusText.innerText = "Hors ligne";
+            }
+            // Hide loading overlay even on error to prevent blocking
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
             }
         });
 
@@ -767,8 +876,24 @@
             }
         });
 
+        // Try to load from localStorage cache while waiting for cloud data
+        const cachedConfig = localStorage.getItem('ledger_config');
+        if (cachedConfig) {
+            try {
+                const parsedCache = JSON.parse(cachedConfig);
+                ledgerConfig = {
+                    ...ledgerConfig,
+                    ...parsedCache,
+                    company: parsedCache.company ? { ...ledgerConfig.company, ...parsedCache.company } : ledgerConfig.company,
+                    dollarRateConfig: parsedCache.dollarRateConfig ? { ...ledgerConfig.dollarRateConfig, ...parsedCache.dollarRateConfig } : ledgerConfig.dollarRateConfig
+                };
+                loadHomeDashboardData();
+                applyRoleAccessControl();
+            } catch(e) { console.warn("Cache parsing error", e); }
+        }
+
         // Initialisation de la vue d'accueil et Logique PWA
-        applyRoleAccessControl();
+        // applyRoleAccessControl is already called inside onValue and cache
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')

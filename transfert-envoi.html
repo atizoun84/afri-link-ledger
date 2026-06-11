@@ -130,6 +130,27 @@
             gap: 8px;
         }
 
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+        .spinner-border-custom {
+            width: 3rem;
+            height: 3rem;
+            color: var(--wa-medium);
+        }
+
         /* --- Main Content Area --- */
         main {
             flex: 1;
@@ -414,6 +435,15 @@
     </script>
 </head>
 <body>
+
+    <!-- Loading overlay until cloud data is loaded -->
+    <div id="loading-overlay">
+        <div class="spinner-border spinner-border-custom mb-3" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <h5 class="text-muted">Synchronisation des données cloud...</h5>
+        <p class="small text-muted">Veuillez patienter</p>
+    </div>
 
     <div id="fbConnectionIndicator" class="fb-status-indicator fb-status-offline">
         <div class="fb-status-dot"></div>
@@ -828,14 +858,23 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // Loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        let isFirstLoad = true;
+        let configReceived = false;
+        let transfersReceived = false;
+
         // Mémoire tampon temps réel locale alimentée par Firebase pour l'historique et les codes
         let cacheTransfers = [];
 
-        // Taux de change dynamique récupéré du localStorage (Valeur fallback par défaut : 600)
+        // Taux de change dynamique - sera mis à jour depuis Firebase
         let USD_RATE = 600;
 
         // Stockage local temporaire pour le taux spécial de frais saisi manuellement (null par défaut)
         let specialFeePercentage = null;
+        
+        // Stockage dynamique des devises depuis le cloud
+        let dynamicCurrencies = [];
         
         // Mapping des indicatifs téléphoniques par pays
         const phonePrefixes = {
@@ -878,7 +917,113 @@
                 // Tri décroissant systématique par date pour correspondre au comportement natif unshift
                 cacheTransfers.sort((a, b) => new Date(b.date) - new Date(a.date));
             }
+            transfersReceived = true;
+            checkFirstLoadComplete();
         });
+
+        // ** MISE À JOUR DYNAMIQUE DU TAUX DE CHANGE DEPUIS FIREBASE **
+        // Écoute en temps réel du noeud ledger_config pour charger le taux dollar verrouillé
+        const configRef = ref(db, 'ledger_config');
+        onValue(configRef, (snapshot) => {
+            const cloudConfig = snapshot.val();
+            if (cloudConfig) {
+                // Sauvegarde locale pour résilience hors ligne
+                localStorage.setItem('ledger_config', JSON.stringify(cloudConfig));
+                
+                if (cloudConfig.dollarRateConfig && cloudConfig.dollarRateConfig.value) {
+                    const dynamicRate = parseFloat(cloudConfig.dollarRateConfig.value);
+                    if (!isNaN(dynamicRate) && dynamicRate > 0) {
+                        USD_RATE = dynamicRate;
+                    }
+                } else if (cloudConfig.dollarRate) {
+                    const fallbackRate = parseFloat(cloudConfig.dollarRate);
+                    if (!isNaN(fallbackRate) && fallbackRate > 0) {
+                        USD_RATE = fallbackRate;
+                    }
+                }
+                
+                // Mise à jour dynamique des devises depuis le cloud
+                if (cloudConfig.currencies && Array.isArray(cloudConfig.currencies)) {
+                    dynamicCurrencies = cloudConfig.currencies;
+                    populateCurrencies();
+                }
+                
+                // Mise à jour des pays et guichets
+                if (cloudConfig.countries) {
+                    populateCountriesFromConfig(cloudConfig);
+                }
+                if (cloudConfig.desks) {
+                    populateAgenciesFromConfig(cloudConfig);
+                }
+                
+                // Mise à jour immédiate de l'affichage du taux dans le header
+                const rateDisplayElement = document.getElementById('headerExchangeRate');
+                const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
+                if (rateDisplayElement) rateDisplayElement.innerText = USD_RATE;
+                if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = USD_RATE;
+                
+                // Recalcul dynamique des frais si un montant est déjà saisi
+                const currentAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
+                if (currentAmount > 0) {
+                    updateFees();
+                }
+            }
+            configReceived = true;
+            checkFirstLoadComplete();
+        });
+
+        function checkFirstLoadComplete() {
+            if (isFirstLoad && configReceived && transfersReceived) {
+                isFirstLoad = false;
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
+            }
+        }
+
+        // Fonctions de chargement depuis la config cloud
+        function populateCountriesFromConfig(config) {
+            let countries = [];
+            if (config.countries) {
+                countries = config.countries.map(c => typeof c === 'object' ? c.name : c);
+            }
+            
+            if (countries.length === 0) {
+                countries = ["Bénin", "Côte d'Ivoire", "Sénégal", "Cameroun", "Togo", "Burkina Faso", "Mali", "Niger", "Gabon"];
+            }
+            
+            const options = '<option value="">Sélectionner le pays...</option>' + 
+                countries.map(c => `<option value="${c}">${c}</option>`).join('');
+            
+            const senderCountry = document.getElementById('senderCountry');
+            const beneficiaryCountry = document.getElementById('beneficiaryCountry');
+            const historyCountry = document.getElementById('historyCountry');
+            
+            if (senderCountry) senderCountry.innerHTML = options;
+            if (beneficiaryCountry) beneficiaryCountry.innerHTML = options;
+            if (historyCountry) historyCountry.innerHTML = options;
+        }
+
+        function populateAgenciesFromConfig(config) {
+            let desks = [];
+            if (config.desks) {
+                desks = config.desks;
+            }
+            
+            const selectSender = document.getElementById('senderAgency');
+            const selectBeneficiary = document.getElementById('beneficiaryAgency');
+            
+            const options = '<option value="">Choisir l\'agence...</option>' + 
+                desks.map(d => `<option value="${d.id}">${d.name} (${d.country})</option>`).join('');
+            
+            if (selectSender) selectSender.innerHTML = options;
+            if (selectBeneficiary) selectBeneficiary.innerHTML = options;
+            
+            filterAgenciesByCountry();
+        }
 
         // 2. Affichage dynamique dans le Header et Gestion des Droits de Navigation (Uniformisé)
         function applyRoleAccessControl() {
@@ -960,25 +1105,6 @@
                 }
             }
         }
-
-        // Récupération et affichage dynamique du taux Dollar / FCFA configuré depuis la clé globale unifiée ledger_config
-        function loadDynamicDollarRate() {
-            const config = JSON.parse(localStorage.getItem('ledger_config'));
-            if (config && config.dollarRate) {
-                const computedRate = parseFloat(config.dollarRate);
-                if (!isNaN(computedRate) && computedRate > 0) {
-                    USD_RATE = computedRate;
-                }
-            }
-            const rateDisplayElement = document.getElementById('headerExchangeRate');
-            const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
-            if (rateDisplayElement) {
-                rateDisplayElement.innerText = USD_RATE;
-            }
-            if (rateDisplayBrandElement) {
-                rateDisplayBrandElement.innerText = USD_RATE;
-            }
-        }
         
         // Fonction pour mettre à jour l'indicatif téléphone en fonction du pays
         function updatePhonePrefix(countryElementId, prefixElementId) {
@@ -999,44 +1125,64 @@
             }
         }
 
+        function populateCurrencies() {
+            // Utiliser les devises dynamiques récupérées depuis Firebase
+            const currencySelect = document.getElementById('transferCurrency');
+            if (!currencySelect) return;
+            
+            let currencies = [];
+            if (dynamicCurrencies.length > 0) {
+                currencies = dynamicCurrencies;
+            }
+            
+            // Devises par défaut (fallback) si aucune devise n'est configurée dans le cloud
+            if (currencies.length === 0) {
+                currencySelect.innerHTML = `
+                    <option value="FCFA">FCFA (Franc CFA)</option>
+                    <option value="USD">USD (Dollar US)</option>
+                `;
+                return;
+            }
+            
+            // Construire les options à partir des devises du cloud
+            let options = '';
+            currencies.forEach(currency => {
+                const currencyName = typeof currency === 'object' ? currency.name : currency;
+                const currencySymbol = typeof currency === 'object' && currency.symbol ? currency.symbol : currencyName;
+                options += `<option value="${currencySymbol}">${currencyName} (${currencySymbol})</option>`;
+            });
+            
+            currencySelect.innerHTML = options;
+        }
+
         function populateCountries() {
+            // Tentative de chargement depuis localStorage si pas encore dispo
             const config = JSON.parse(localStorage.getItem('ledger_config'));
-            let countries = [];
             if (config && config.countries) {
-                countries = config.countries.map(c => typeof c === 'object' ? c.name : c);
-            }
-            
-            if (countries.length === 0) {
-                countries = ["Bénin", "Côte d'Ivoire", "Sénégal", "Cameroun", "Togo", "Burkina Faso", "Mali", "Niger", "Gabon"];
-            }
-            
-            const options = '<option value="">Sélectionner le pays...</option>' + 
-                countries.map(c => `<option value="${c}">${c}</option>`).join('');
-            
-            document.getElementById('senderCountry').innerHTML = options;
-            document.getElementById('beneficiaryCountry').innerHTML = options;
-            
-            if (document.getElementById('historyCountry')) {
-                document.getElementById('historyCountry').innerHTML = options;
+                populateCountriesFromConfig(config);
+            } else {
+                const options = '<option value="">Sélectionner le pays...</option>' + 
+                    ["Bénin", "Côte d'Ivoire", "Sénégal", "Cameroun", "Togo", "Burkina Faso", "Mali", "Niger", "Gabon"].map(c => `<option value="${c}">${c}</option>`).join('');
+                
+                document.getElementById('senderCountry').innerHTML = options;
+                document.getElementById('beneficiaryCountry').innerHTML = options;
+                if (document.getElementById('historyCountry')) {
+                    document.getElementById('historyCountry').innerHTML = options;
+                }
             }
         }
 
         function populateAgencies() {
             const config = JSON.parse(localStorage.getItem('ledger_config'));
-            let desks = [];
             if (config && config.desks) {
-                desks = config.desks;
+                populateAgenciesFromConfig(config);
+            } else {
+                const selectSender = document.getElementById('senderAgency');
+                const selectBeneficiary = document.getElementById('beneficiaryAgency');
+                const options = '<option value="">Choisir l\'agence...</option>';
+                if (selectSender) selectSender.innerHTML = options;
+                if (selectBeneficiary) selectBeneficiary.innerHTML = options;
             }
-            
-            const selectSender = document.getElementById('senderAgency');
-            const selectBeneficiary = document.getElementById('beneficiaryAgency');
-            
-            const options = '<option value="">Choisir l\'agence...</option>' + 
-                desks.map(d => `<option value="${d.id}">${d.name} (${d.country})</option>`).join('');
-            
-            selectSender.innerHTML = options;
-            selectBeneficiary.innerHTML = options;
-            
             filterAgenciesByCountry();
         }
         
@@ -1065,8 +1211,8 @@
                 }
             });
             
-            selectSender.innerHTML = senderOptions;
-            selectBeneficiary.innerHTML = beneficiaryOptions;
+            if (selectSender) selectSender.innerHTML = senderOptions;
+            if (selectBeneficiary) selectBeneficiary.innerHTML = beneficiaryOptions;
         }
 
         // Fonction pour calculer les frais fixes en USD en fonction de la nouvelle grille
@@ -1105,7 +1251,7 @@
             if (amountInUSD > 2300.00 && amountInUSD <= 2400.00) return 120.00;
             if (amountInUSD > 2400.00 && amountInUSD <= 2500.00) return 125.00;
             if (amountInUSD > 2500.00 && amountInUSD <= 2600.00) return 130.00;
-            if (amountInUSD > 2600.00 && border <= 2700.00) return 135.00;
+            if (amountInUSD > 2600.00 && amountInUSD <= 2700.00) return 135.00;
             if (amountInUSD > 2700.00 && amountInUSD <= 2800.00) return 140.00;
             if (amountInUSD > 2800.00 && amountInUSD <= 2900.00) return 145.00;
             if (amountInUSD > 2900.00 && amountInUSD <= 3000.00) return 150.00;
@@ -1114,15 +1260,22 @@
         }
 
         function handleCurrencyChange() {
-            const currency = document.getElementById('transferCurrency').value;
+            const currencySelect = document.getElementById('transferCurrency');
+            const selectedOption = currencySelect.options[currencySelect.selectedIndex];
+            const currency = currencySelect.value;
+            const currencyName = selectedOption ? selectedOption.text : currency;
+            
             const amountLabel = document.getElementById('amountLabel');
-            amountLabel.innerText = `Montant à verser au destinataire (${currency})`;
+            amountLabel.innerText = `Montant à verser au destinataire (${currencyName})`;
             updateFees();
         }
 
         function updateFees() {
             const inputAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
-            const currency = document.getElementById('transferCurrency').value;
+            const currencySelect = document.getElementById('transferCurrency');
+            const selectedOption = currencySelect.options[currencySelect.selectedIndex];
+            const currency = currencySelect.value;
+            const currencyName = selectedOption ? selectedOption.text : currency;
             
             if (inputAmount <= 0) {
                 document.getElementById('transferFees').value = '0 FCFA (0.00 USD)';
@@ -1136,10 +1289,12 @@
             let amountUSD = 0;
             let amountFCFA = 0;
 
+            // Si la devise sélectionnée est FCFA ou USD (ou toute autre devise, on convertit en USD via le taux)
             if (currency === 'FCFA') {
                 amountFCFA = inputAmount;
                 amountUSD = amountFCFA / USD_RATE;
             } else {
+                // Pour USD ou toute autre devise, on considère que le montant saisi est en USD
                 amountUSD = inputAmount;
                 amountFCFA = amountUSD * USD_RATE;
             }
@@ -1380,7 +1535,10 @@
             const senderFullPhone = document.getElementById('senderPhonePrefix').innerText + document.getElementById('senderPhone').value;
             const beneficiaryFullPhone = document.getElementById('beneficiaryPhonePrefix').innerText + document.getElementById('beneficiaryPhone').value;
             
-            const currencyChoice = document.getElementById('transferCurrency').value;
+            const currencySelect = document.getElementById('transferCurrency');
+            const selectedCurrencyOption = currencySelect.options[currencySelect.selectedIndex];
+            const currencyChoice = currencySelect.value;
+            const currencyDisplayName = selectedCurrencyOption ? selectedCurrencyOption.text : currencyChoice;
             
             const transferData = {
                 id: Date.now(),
@@ -1388,6 +1546,7 @@
                 secretCode: secretCode,
                 amount: rawAmount,
                 currency: currencyChoice,
+                currencyDisplayName: currencyDisplayName,
                 rate: USD_RATE,
                 amountFCFA: feeCalculations.initialAmountFCFA,
                 amountUSD: feeCalculations.initialAmountUSD,
@@ -1439,8 +1598,12 @@
             document.getElementById('totalFCFA').innerHTML = '0 FCFA';
             document.getElementById('totalUSD').innerHTML = '0 USD';
             document.getElementById('netTransferDisplay').innerHTML = '0 FCFA';
-            document.getElementById('transferCurrency').value = "FCFA";
-            document.getElementById('amountLabel').innerText = "Montant à verser au destinataire (FCFA)";
+            // Réinitialiser la devise par défaut à la première option disponible
+            const currencySelectReset = document.getElementById('transferCurrency');
+            if (currencySelectReset.options.length > 0) {
+                currencySelectReset.selectedIndex = 0;
+                handleCurrencyChange();
+            }
             updatePhonePrefix('senderCountry', 'senderPhonePrefix');
             updatePhonePrefix('beneficiaryCountry', 'beneficiaryPhonePrefix');
         };
@@ -1502,7 +1665,8 @@
         window.onload = function() { 
             applyRoleAccessControl();
             loadHeaderBrand();
-            loadDynamicDollarRate();
+            // Le taux de change est désormais mis à jour dynamiquement via l'écouteur Firebase onValue (configRef)
+            // Les devises sont également chargées dynamiquement via le même écouteur
             populateCountries();
             populateAgencies();
             

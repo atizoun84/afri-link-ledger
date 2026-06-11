@@ -149,6 +149,27 @@
         .status-online { color: #25D366; }
         .status-offline { color: #dc3545; }
 
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+        .spinner-border-custom {
+            width: 3rem;
+            height: 3rem;
+            color: var(--wa-medium);
+        }
+
         /* --- Main Content Area --- */
         main {
             flex: 1;
@@ -392,6 +413,15 @@
 </head>
 <body>
 
+    <!-- Loading overlay until cloud data is loaded -->
+    <div id="loading-overlay">
+        <div class="spinner-border spinner-border-custom mb-3" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <h5 class="text-muted">Synchronisation des données cloud...</h5>
+        <p class="small text-muted">Veuillez patienter</p>
+    </div>
+
     <header>
         <div class="cloud-status-indicator" id="cloudStatusIndicator">
             <i class="fa-solid fa-circle text-danger small" id="cloudStatusIcon"></i>
@@ -430,7 +460,7 @@
                         <li class="nav-item"><a class="nav-link" href="approvisionnement.html"><i class="fa-solid fa-wallet me-1"></i> Approvisionnement</a></li>
                         <li class="nav-item"><a class="nav-link" href="transfert-envoi.html"><i class="fa-solid fa-paper-plane me-1"></i> Envoi</a></li>
                         <li class="nav-item"><a class="nav-link" href="transfert-reception.html"><i class="fa-solid fa-hand-holding-dollar me-1"></i> Retrait</a></li>
-                        <li class="nav-item"><a class="nav-link active" href="accounting.html" style="color: var(--wa-light) !important;"><i class="fa-solid fa-clock-rotate-left me-1"></i> Comptabilité et Grand Livre</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="report-codes.html" style="color: var(--wa-light) !important;"><i class="fa-solid fa-clock-rotate-left me-1"></i> Comptabilité et Grand Livre</a></li>
                         <li class="nav-item"><a class="nav-link" href="configuration.html"><i class="fa-solid fa-gears me-1"></i> Configuration</a></li>
                     </ul>
                 </div>
@@ -722,6 +752,26 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // Loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        let isFirstLoad = true;
+        let transfersReceived = false;
+        let approvsReceived = false;
+        let gainsReceived = false;
+        let configReceived = false;
+
+        function checkFirstLoadComplete() {
+            if (isFirstLoad && transfersReceived && approvsReceived && gainsReceived && configReceived) {
+                isFirstLoad = false;
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
+            }
+        }
+
         // Variables globales accessibles par les fonctions d'affichage
         window.transfers = [];
         window.approvs = [];
@@ -748,24 +798,35 @@
         onValue(ref(db, 'ledger_config'), (snapshot) => {
             const configObj = snapshot.val() || {};
             
+            // Sauvegarde locale pour résilience hors ligne
+            localStorage.setItem('ledger_config', JSON.stringify(configObj));
+            
             // Gestion de la marque et du nom de l'entreprise
             const company = configObj.company;
             const dynamicName = document.getElementById('dynamicCompanyName');
             const printCompName = document.getElementById('printHeaderCompany');
+            const headerName = document.getElementById('headerCompanyName');
             
             if (company && company.isLocked && company.name) {
                 if (dynamicName) dynamicName.innerText = company.name;
                 if (printCompName) printCompName.innerText = company.name;
+                if (headerName) headerName.innerText = company.name;
             } else if (configObj.companyName) {
                 if (dynamicName) dynamicName.innerText = configObj.companyName;
                 if (printCompName) printCompName.innerText = configObj.companyName;
+                if (headerName) headerName.innerText = configObj.companyName;
             }
 
             // Gestion dynamique du taux de change du dollar
             const rateDisplayElement = document.getElementById('headerExchangeRate');
             const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
             
-            if (configObj.dollarRate) {
+            if (configObj.dollarRateConfig && configObj.dollarRateConfig.value) {
+                const computedRate = parseFloat(configObj.dollarRateConfig.value);
+                if (!isNaN(computedRate) && computedRate > 0) {
+                    window.USD_RATE = computedRate;
+                }
+            } else if (configObj.dollarRate) {
                 const computedRate = parseFloat(configObj.dollarRate);
                 if (!isNaN(computedRate) && computedRate > 0) {
                     window.USD_RATE = computedRate;
@@ -773,10 +834,12 @@
             }
             if (rateDisplayElement) rateDisplayElement.innerText = window.USD_RATE;
             if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = window.USD_RATE;
+            
+            configReceived = true;
+            checkFirstLoadComplete();
         });
 
         // Synchronisation croisée et instantanée des 3 collections majeures du Grand Livre
-        let dataLoadedCount = 0;
         function checkAndRefreshUI() {
             computeFinancialKPIs();
             buildAccountingTable();
@@ -785,20 +848,38 @@
         onValue(ref(db, 'ledger_transfers'), (snapshot) => {
             const data = snapshot.val();
             window.transfers = data ? Object.values(data) : [];
+            // Sauvegarde locale pour résilience hors ligne
+            localStorage.setItem('ledger_transfers_cache', JSON.stringify(window.transfers));
+            transfersReceived = true;
+            checkFirstLoadComplete();
             checkAndRefreshUI();
         });
 
         onValue(ref(db, 'ledger_supply'), (snapshot) => {
             const data = snapshot.val();
             window.approvs = data ? Object.values(data) : [];
+            localStorage.setItem('ledger_supply_cache', JSON.stringify(window.approvs));
+            approvsReceived = true;
+            checkFirstLoadComplete();
             checkAndRefreshUI();
         });
 
         onValue(ref(db, 'ledger_profits'), (snapshot) => {
             const data = snapshot.val();
             window.gainsWithdrawals = data ? Object.values(data) : [];
+            localStorage.setItem('ledger_profits_cache', JSON.stringify(window.gainsWithdrawals));
+            gainsReceived = true;
+            checkFirstLoadComplete();
             checkAndRefreshUI();
         });
+
+        // Tentative de chargement depuis les caches locaux
+        const cachedTransfers = localStorage.getItem('ledger_transfers_cache');
+        const cachedApprovs = localStorage.getItem('ledger_supply_cache');
+        const cachedGains = localStorage.getItem('ledger_profits_cache');
+        if (cachedTransfers) window.transfers = JSON.parse(cachedTransfers);
+        if (cachedApprovs) window.approvs = JSON.parse(cachedApprovs);
+        if (cachedGains) window.gainsWithdrawals = JSON.parse(cachedGains);
 
         // Liaison des fonctions de modification au contexte global Window pour compatibilité HTML Inline
         window.executeGainWithdrawal = function(event) {
@@ -855,6 +936,11 @@
                     remove(ref(db, 'ledger_supply')),
                     remove(ref(db, 'ledger_profits'))
                 ]).then(() => {
+                    // Nettoyer également les caches locaux
+                    localStorage.removeItem('ledger_config');
+                    localStorage.removeItem('ledger_transfers_cache');
+                    localStorage.removeItem('ledger_supply_cache');
+                    localStorage.removeItem('ledger_profits_cache');
                     sessionStorage.clear();
                     location.reload();
                 }).catch((err) => {
@@ -1089,25 +1175,38 @@
 
             let soldeNetCaisseGlobale = (globalSommeApprov + sommeTotalFcaEncaisses) - (sommeAmountFcaRetires + globalRetraitsGainsEffectues);
 
-            document.getElementById('kpiTotalEnvoisBrut').innerText = totalEnvoisBrut.toLocaleString() + ' FCFA';
-            document.getElementById('kpiTotalEnvois').innerText = totalEnvoisAvecFrais.toLocaleString() + ' FCFA';
-            document.getElementById('kpiBeneficeEnvois').innerText = totalFeesCollectes.toLocaleString() + ' FCFA';
-            
-            document.getElementById('kpiTotalRetraits').innerText = totalRetraits.toLocaleString() + ' FCFA';
-            document.getElementById('kpiGainsRetraits').innerText = totalGainsRetraits.toLocaleString() + ' FCFA';
-            document.getElementById('kpiSoldeGainsDispo').innerText = window.cachedSoldeGainsDispo.toLocaleString() + ' FCFA';
-            
-            document.getElementById('kpiTotalApprov').innerText = totalApprov.toLocaleString() + ' FCFA';
-            document.getElementById('kpiTotalRetraitsGains').innerText = totalRetraitsGains.toLocaleString() + ' FCFA';
-            document.getElementById('kpiSoldeNet').innerText = soldeNetCaisseGlobale.toLocaleString() + ' FCFA';
+            const kpiTotalEnvoisBrutElem = document.getElementById('kpiTotalEnvoisBrut');
+            const kpiTotalEnvoisElem = document.getElementById('kpiTotalEnvois');
+            const kpiBeneficeEnvoisElem = document.getElementById('kpiBeneficeEnvois');
+            const kpiTotalRetraitsElem = document.getElementById('kpiTotalRetraits');
+            const kpiGainsRetraitsElem = document.getElementById('kpiGainsRetraits');
+            const kpiSoldeGainsDispoElem = document.getElementById('kpiSoldeGainsDispo');
+            const kpiTotalApprovElem = document.getElementById('kpiTotalApprov');
+            const kpiTotalRetraitsGainsElem = document.getElementById('kpiTotalRetraitsGains');
+            const kpiSoldeNetElem = document.getElementById('kpiSoldeNet');
+
+            if (kpiTotalEnvoisBrutElem) kpiTotalEnvoisBrutElem.innerText = totalEnvoisBrut.toLocaleString() + ' FCFA';
+            if (kpiTotalEnvoisElem) kpiTotalEnvoisElem.innerText = totalEnvoisAvecFrais.toLocaleString() + ' FCFA';
+            if (kpiBeneficeEnvoisElem) kpiBeneficeEnvoisElem.innerText = totalFeesCollectes.toLocaleString() + ' FCFA';
+            if (kpiTotalRetraitsElem) kpiTotalRetraitsElem.innerText = totalRetraits.toLocaleString() + ' FCFA';
+            if (kpiGainsRetraitsElem) kpiGainsRetraitsElem.innerText = totalGainsRetraits.toLocaleString() + ' FCFA';
+            if (kpiSoldeGainsDispoElem) kpiSoldeGainsDispoElem.innerText = window.cachedSoldeGainsDispo.toLocaleString() + ' FCFA';
+            if (kpiTotalApprovElem) kpiTotalApprovElem.innerText = totalApprov.toLocaleString() + ' FCFA';
+            if (kpiTotalRetraitsGainsElem) kpiTotalRetraitsGainsElem.innerText = totalRetraitsGains.toLocaleString() + ' FCFA';
+            if (kpiSoldeNetElem) kpiSoldeNetElem.innerText = soldeNetCaisseGlobale.toLocaleString() + ' FCFA';
         }
 
         function openGainWithdrawalModal() {
-            document.getElementById('modalSoldeGains').innerText = window.cachedSoldeGainsDispo.toLocaleString() + ' FCFA';
-            document.getElementById('withdrawGainBeneficiary').value = '';
-            document.getElementById('withdrawGainAmount').value = '';
-            document.getElementById('withdrawGainComment').value = '';
-            document.getElementById('withdrawGainAuthCode').value = '';
+            const modalSoldeGainsElem = document.getElementById('modalSoldeGains');
+            if (modalSoldeGainsElem) modalSoldeGainsElem.innerText = window.cachedSoldeGainsDispo.toLocaleString() + ' FCFA';
+            const beneficiaryInput = document.getElementById('withdrawGainBeneficiary');
+            const amountInput = document.getElementById('withdrawGainAmount');
+            const commentInput = document.getElementById('withdrawGainComment');
+            const authInput = document.getElementById('withdrawGainAuthCode');
+            if (beneficiaryInput) beneficiaryInput.value = '';
+            if (amountInput) amountInput.value = '';
+            if (commentInput) commentInput.value = '';
+            if (authInput) authInput.value = '';
             
             const modal = new bootstrap.Modal(document.getElementById('gainWithdrawalModal'));
             modal.show();
@@ -1117,13 +1216,14 @@
             const tbody = document.getElementById('accountingTableBody');
             const printTbody = document.getElementById('printAccountingTableBody');
             const gainsTbody = document.getElementById('gainsHistoryTableBody');
+            const printGenNode = document.getElementById('printGenerationDate');
             
             if(!tbody || !printTbody || !gainsTbody) return;
 
-            document.getElementById('printGenerationDate').innerText = new Date().toLocaleString('fr-FR');
+            if (printGenNode) printGenNode.innerText = new Date().toLocaleString('fr-FR');
 
-            const filterType = document.getElementById('filterType').value;
-            const filterSearch = document.getElementById('filterSearch').value.trim().toLowerCase();
+            const filterType = document.getElementById('filterType') ? document.getElementById('filterType').value : 'ALL';
+            const filterSearch = document.getElementById('filterSearch') ? document.getElementById('filterSearch').value.trim().toLowerCase() : '';
 
             let unifiedLedger = [];
             const transfersList = window.transfers || [];
@@ -1250,13 +1350,13 @@
                     return `
                         <tr>
                             <td>${item.date}</td>
-                            <td>${typeBadge}</td>
-                            <td class="fw-bold font-monospace">${item.code}</td>
-                            <td><small>${item.debitor}</small></td>
-                            <td><small>${item.creditor}</small></td>
-                            <td class="text-end fw-bold ${amountColor}">${item.amount.toLocaleString()} FCFA</td>
-                            <td class="text-end text-muted">${item.fees > 0 ? item.fees.toLocaleString() + ' FCFA' : '-'}</td>
-                            <td class="text-center">${statusBadge}</td>
+                            <td>${typeBadge}</strong></td>
+                            <td class="fw-bold font-monospace">${item.code}</strong></td>
+                            <td><small>${item.debitor}</small></strong></td>
+                            <td><small>${item.creditor}</small></strong></td>
+                            <td class="text-end fw-bold ${amountColor}">${item.amount.toLocaleString()} FCFA</strong></td>
+                            <td class="text-end text-muted">${item.fees > 0 ? item.fees.toLocaleString() + ' FCFA' : '-'}</strong></td>
+                            <td class="text-center">${statusBadge}</strong></td>
                         </tr>
                     `;
                 }).join('');
@@ -1266,17 +1366,17 @@
             }
 
             if (gainsWithdrawalsList.length === 0) {
-                gainsTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Aucun prélèvement enregistré sur le compte de profits.</td></tr>`;
+                gainsTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Aucun prélèvement enregistré sur le compte de profits.</strong></td></tr>`;
             } else {
                 gainsTbody.innerHTML = gainsWithdrawalsList.map(gw => `
                     <tr>
-                        <td>${gw.date}</td>
-                        <td class="font-monospace fw-bold">${gw.id}</td>
-                        <td><span class="badge bg-light text-dark border">${gw.beneficiary || 'Non spécifié'}</span></td>
-                        <td>${gw.comment}</td>
-                        <td class="text-end fw-bold text-danger">-${parseFloat(gw.amount).toLocaleString()} FCFA</td>
-                        <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-check-double me-1"></i>${gw.status}</span></td>
-                    </tr>
+                        <td>${gw.date}</strong></td>
+                        <td class="font-monospace fw-bold">${gw.id}</strong></strong></td>
+                        <td><span class="badge bg-light text-dark border">${gw.beneficiary || 'Non spécifié'}</span></strong></strong></td>
+                        <td>${gw.comment}</strong></strong></td>
+                        <td class="text-end fw-bold text-danger">-${parseFloat(gw.amount).toLocaleString()} FCFA</strong></strong></td>
+                        <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-check-double me-1"></i>${gw.status}</span></strong></strong></td>
+                    </table>
                 `).join('');
             }
         }
@@ -1306,7 +1406,7 @@
         });
 
         document.addEventListener('click', function(e) {
-            if (e.target && e.target.id === 'pwaInstallBtn' || e.target.closest('#pwaInstallBtn')) {
+            if (e.target && e.target.id === 'pwaInstallBtn' || (e.target.closest && e.target.closest('#pwaInstallBtn'))) {
                 if (e) e.preventDefault();
                 if (!deferredPrompt) return;
 
