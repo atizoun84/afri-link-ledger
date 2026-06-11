@@ -556,8 +556,13 @@
                                             <p class="mb-0 text-success fw-black" id="totalFCFA" style="font-size: 2.25rem; font-weight: 900; letter-spacing: -0.5px;">0 FCFA</p>
                                         </div>
                                         <div class="col-md-4 text-center">
-                                            <small class="text-muted">Taux réel de frais calculé</small>
-                                            <p class="fw-bold mb-0" id="feePercentage">0.00%</p>
+                                            <div class="d-flex flex-column align-items-center justify-content-center">
+                                                <small class="text-muted">Taux réel de frais calculé</small>
+                                                <p class="fw-bold mb-1" id="feePercentage">0.00%</p>
+                                                <button type="button" class="btn btn-sm btn-outline-success px-2 py-0 style-special-rate-btn" onclick="openSpecialRateModal()" style="font-size: 0.75rem; border-radius: 20px;">
+                                                    <i class="fa-solid fa-percentage me-1"></i>Taux Spécial
+                                                </button>
+                                            </div>
                                         </div>
                                         <div class="col-md-4 text-center">
                                             <small class="text-muted">Total équivalent (DOLLAR US)</small>
@@ -584,6 +589,34 @@
             </div>
         </div>
     </main>
+
+    <div class="modal fade" id="specialRateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content elegant-modal">
+                <div class="elegant-modal-header">
+                    <i class="fa-solid fa-sliders fa-2x mb-2 text-warning"></i>
+                    <h4 class="mb-0">Définir un Taux Spécial</h4>
+                    <p class="mb-0 mt-1 opacity-75 text-white small">Surcharge manuelle du pourcentage de frais pour cette opération</p>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="specialRateForm">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Pourcentage de frais personnalisé (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" id="specialRateInput" class="form-control form-control-lg fw-bold text-center text-success" placeholder="Ex: 5.00" required>
+                                <span class="input-group-text fw-bold bg-light">%</span>
+                            </div>
+                            <small class="text-muted mt-1 d-block">Laissez vide ou entrez 0 pour réinitialiser et appliquer la grille tarifaire standard.</small>
+                        </div>
+                        <div class="d-flex gap-3 mt-4">
+                            <button type="button" class="btn btn-close-modal flex-grow-1" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-wa flex-grow-1">Appliquer le taux</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="modal fade" id="historyFilterModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -800,6 +833,9 @@
 
         // Taux de change dynamique récupéré du localStorage (Valeur fallback par défaut : 600)
         let USD_RATE = 600;
+
+        // Stockage local temporaire pour le taux spécial de frais saisi manuellement (null par défaut)
+        let specialFeePercentage = null;
         
         // Mapping des indicatifs téléphoniques par pays
         const phonePrefixes = {
@@ -1069,7 +1105,7 @@
             if (amountInUSD > 2300.00 && amountInUSD <= 2400.00) return 120.00;
             if (amountInUSD > 2400.00 && amountInUSD <= 2500.00) return 125.00;
             if (amountInUSD > 2500.00 && amountInUSD <= 2600.00) return 130.00;
-            if (amountInUSD > 2600.00 && amountInUSD <= 2700.00) return 135.00;
+            if (amountInUSD > 2600.00 && border <= 2700.00) return 135.00;
             if (amountInUSD > 2700.00 && amountInUSD <= 2800.00) return 140.00;
             if (amountInUSD > 2800.00 && amountInUSD <= 2900.00) return 145.00;
             if (amountInUSD > 2900.00 && amountInUSD <= 3000.00) return 150.00;
@@ -1094,7 +1130,7 @@
                 document.getElementById('totalFCFA').innerHTML = '0 FCFA';
                 document.getElementById('totalUSD').innerHTML = '0.00 USD';
                 document.getElementById('netTransferDisplay').innerHTML = '0 FCFA';
-                return { fees: 0, totalFCFA: 0, totalUSD: 0, feePercent: 0, initialAmountFCFA: 0 };
+                return { fees: 0, totalFCFA: 0, totalUSD: 0, feePercent: 0, initialAmountFCFA: 0, initialAmountUSD: 0, feesUSD: 0 };
             }
 
             let amountUSD = 0;
@@ -1108,13 +1144,23 @@
                 amountFCFA = amountUSD * USD_RATE;
             }
             
-            const feesUSD = getFeeInUSD(amountUSD);
-            const feesFCFA = feesUSD * USD_RATE;
+            let feesUSD = 0;
+            let feesFCFA = 0;
+            let computedFeePercent = 0;
+
+            // Logique adaptative : si un taux spécial manuel est appliqué, écraser le calcul forfaitaire standard
+            if (specialFeePercentage !== null && specialFeePercentage > 0) {
+                computedFeePercent = specialFeePercentage;
+                feesFCFA = amountFCFA * (specialFeePercentage / 100);
+                feesUSD = feesFCFA / USD_RATE;
+            } else {
+                feesUSD = getFeeInUSD(amountUSD);
+                feesFCFA = feesUSD * USD_RATE;
+                computedFeePercent = (feesFCFA / amountFCFA) * 100;
+            }
             
             const totalFCFA = amountFCFA + feesFCFA;
             const totalUSD = totalFCFA / USD_RATE;
-            
-            const computedFeePercent = (feesFCFA / amountFCFA) * 100;
             
             document.getElementById('transferFees').value = Math.round(feesFCFA).toLocaleString() + ' FCFA (' + feesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD)';
             document.getElementById('feePercentage').innerHTML = computedFeePercent.toFixed(2) + '%';
@@ -1132,6 +1178,30 @@
                 feesUSD: feesUSD
             };
         }
+
+        // Fonctions d'ouverture et d'application de la modal de taux spécial
+        function openSpecialRateModal() {
+            const currentAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
+            if (currentAmount <= 0) {
+                alert("Veuillez d'abord saisir un montant de transfert avant d'appliquer un taux spécial.");
+                return;
+            }
+            document.getElementById('specialRateInput').value = specialFeePercentage !== null ? specialFeePercentage : '';
+            const specModal = new bootstrap.Modal(document.getElementById('specialRateModal'));
+            specModal.show();
+        }
+
+        document.getElementById('specialRateForm').onsubmit = function(e) {
+            e.preventDefault();
+            const inputVal = parseFloat(document.getElementById('specialRateInput').value);
+            if (!isNaN(inputVal) && inputVal >= 0) {
+                specialFeePercentage = inputVal === 0 ? null : inputVal;
+            } else {
+                specialFeePercentage = null;
+            }
+            updateFees();
+            bootstrap.Modal.getInstance(document.getElementById('specialRateModal')).hide();
+        };
 
         document.getElementById('senderCountry').addEventListener('change', function() {
             filterAgenciesByCountry();
@@ -1363,6 +1433,7 @@
             });
             
             this.reset();
+            specialFeePercentage = null; // Réinitialisation du taux spécial pour l'opération suivante
             document.getElementById('transferFees').value = '0 FCFA (0.00 USD)';
             document.getElementById('feePercentage').innerHTML = '0.00%';
             document.getElementById('totalFCFA').innerHTML = '0 FCFA';
@@ -1424,6 +1495,7 @@
 
         // Liaison globale des fonctions appelées en inline depuis le DOM HTML
         window.openHistoryFilterModal = openHistoryFilterModal;
+        window.openSpecialRateModal = openSpecialRateModal;
         window.copySecretCode = copySecretCode;
         window.handleLogout = handleLogout;
 
