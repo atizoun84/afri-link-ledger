@@ -116,137 +116,147 @@
             font-weight: 700;
         }
 
-        /* --- Plaquette Flottante ALLONGÉE --- */
-        .floating-total-box {
+        /* --- Plaquette Flottante du Flux d'Approvisionnement --- */
+        .floating-supply-box {
             position: fixed;
             top: 90px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.95);
+            z-index: 1050;
+            background: rgba(255, 255, 255, 0.97);
             backdrop-filter: blur(15px);
-            padding: 8px 20px;
-            border-radius: 25px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-            display: inline-flex;
-            align-items: center;
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
             border: 1.5px solid var(--wa-medium);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 280px;
             max-width: 95%;
-            overflow: hidden;
+            transition: all 0.3s ease;
+            text-align: center;
+            line-height: 1.4;
         }
 
-        /* Mode Minimalisé */
-        .floating-total-box.minimized {
-            padding: 8px 15px;
+        .floating-supply-box .supply-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 5px 15px;
+            width: 100%;
+        }
+
+        .floating-supply-box .supply-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #777;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .floating-supply-box .supply-value {
+            font-size: 1rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .floating-supply-box .supply-value.blue {
+            color: #0275d8;
+        }
+        .floating-supply-box .supply-value.red {
+            color: #d9534f;
+        }
+        .floating-supply-box .supply-value.green {
+            color: #28a745;
+        }
+        .floating-supply-box .separator {
+            color: #adb5bd;
+            font-weight: 300;
+            margin: 0 2px;
+        }
+
+        .floating-supply-box .supply-sub-line {
+            font-size: 0.8rem;
+            color: #555;
+            margin-top: 2px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0 15px;
+        }
+
+        .floating-supply-box .toggle-supply-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--wa-medium);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            z-index: 1051;
+        }
+
+        .floating-supply-box .toggle-supply-btn:hover {
+            background: var(--wa-dark);
+            transform: scale(1.05);
+        }
+
+        .floating-supply-box.collapsed {
+            padding: 6px 20px;
+            min-width: unset;
             width: auto;
             border-radius: 100px;
         }
 
-        .floating-total-box.minimized .total-content-wrapper {
-            width: 0;
-            opacity: 0;
-            margin: 0;
-            pointer-events: none;
+        .floating-supply-box.collapsed .supply-line,
+        .floating-supply-box.collapsed .supply-sub-line {
             display: none;
         }
 
-        .floating-total-box i.main-icon {
-            font-size: 1.2rem;
-            color: var(--wa-medium);
-            margin-right: 12px;
-        }
-
-        .total-content-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            transition: all 0.3s ease;
-        }
-
-        .total-item {
-            display: flex;
-            align-items: center;
-            line-height: 1.2;
-        }
-
-        .total-label {
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            font-weight: 600;
-            color: #777;
-            letter-spacing: 0.5px;
-            margin-right: 6px;
-            white-space: nowrap;
-        }
-
-        .total-value {
-            font-family: var(--font-main);
-            font-size: 1rem;
+        .floating-supply-box.collapsed .toggle-supply-btn {
+            position: static;
             margin: 0;
-            white-space: nowrap;
+            transform: rotate(180deg);
         }
 
-        /* Responsive : Sur grand écran, on remet tout sur une seule ligne */
-        @media (min-width: 768px) {
-            .floating-total-box {
-                padding: 8px 30px;
-                border-radius: 100px;
-                max-width: 90%;
-            }
-            .total-content-wrapper {
-                flex-direction: row;
-                align-items: center;
-            }
-            .total-item {
-                align-items: center;
-            }
-            .total-value {
-                font-size: 1.1rem;
-            }
-        }
-
-        /* Classes de couleurs spécifiques pour la demande bicolore */
-        .text-blue-bold {
-            color: #0275d8 !important;
-            font-weight: 700;
-        }
-
-        .text-red-bold {
-            color: #d9534f !important;
-            font-weight: 700;
-        }
-
-        .toggle-minimize {
-            background: var(--wa-bg);
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-left: 15px;
-            cursor: pointer;
-            color: var(--wa-medium);
-            transition: background 0.2s;
-        }
-
-        .toggle-minimize:hover {
-            background: #e0e0e0;
-        }
-
-        /* Ajustement de l'espacement du contenu */
+        /* Ajustement du contenu pour éviter le chevauchement */
         .content-wrapper {
-            margin-top: 60px;
+            margin-top: 70px;
         }
 
-        @keyframes slideDown {
-            from { opacity: 0; transform: translate(-50%, -20px); }
-            to { opacity: 1; transform: translate(-50%, 0); }
+        @media (max-width: 576px) {
+            .floating-supply-box {
+                top: 70px;
+                padding: 10px 15px;
+                min-width: unset;
+                width: 95%;
+                border-radius: 15px;
+            }
+            .floating-supply-box .supply-value {
+                font-size: 0.9rem;
+            }
+            .floating-supply-box .supply-label {
+                font-size: 0.65rem;
+            }
+            .content-wrapper {
+                margin-top: 95px;
+            }
         }
 
-        /* --- Custom Styles for Financials --- */
+        /* --- Card Styles --- */
         .card-stats {
             border-radius: 15px;
             border: none;
@@ -329,7 +339,7 @@
             bottom: 85px;
             right: 20px;
             z-index: 1050;
-            display: none; /* Masqué par défaut, géré par le script */
+            display: none;
             background-color: var(--wa-dark);
             color: white;
             border: 2px solid white;
@@ -440,27 +450,25 @@
         </nav>
     </header>
 
-    <div class="floating-total-box" id="floatingPlaquette">
-        <i class="fa-solid fa-scale-balanced main-icon"></i>
-        <div class="total-content-wrapper" id="totalWrapper">
-            <div class="total-item mb-1 mb-md-0 me-md-3">
-                <span class="total-label">Flux :</span>
-                <p class="total-value">
-                    <span id="appTotalPart" class="text-blue-bold">0</span> 
-                    <span class="text-muted fw-bold"> / </span> 
-                    <span id="envTotalPart" class="text-red-bold">0</span>
-                </p>
-            </div>
-            <div class="total-item">
-                <span class="total-label">Solde :</span>
-                <p class="total-value">
-                    <span id="soldeTotalPart" class="text-blue-bold">0</span>
-                </p>
-            </div>
-        </div>
-        <button class="toggle-minimize" onclick="togglePlaquette()" title="Réduire/Agrandir">
-            <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
+    <!-- Plaquette Flottante du Flux d'Approvisionnement avec bouton de rétractation -->
+    <div class="floating-supply-box" id="floatingSupplyBox">
+        <button class="toggle-supply-btn" id="toggleSupplyBtn" onclick="toggleSupplyBox()" title="Rétracter/Déplier">
+            <i class="fa-solid fa-chevron-up" id="supplyToggleIcon"></i>
         </button>
+        <div class="supply-line" id="supplyLineContent">
+            <span class="supply-label"><i class="fa-solid fa-scale-balanced me-1 text-success"></i>Flux :</span>
+            <span class="supply-value blue" id="supplyTotalApprov">0 USD (0 FCFA)</span>
+            <span class="separator">/</span>
+            <span class="supply-value red" id="supplyTotalEnvois">0 USD (0 FCFA)</span>
+            <span class="separator">|</span>
+            <span class="supply-label"><i class="fa-solid fa-coins me-1 text-warning"></i>Solde :</span>
+            <span class="supply-value" id="supplySoldeFlux">0 USD (0 FCFA)</span>
+        </div>
+        <div class="supply-sub-line" id="supplySubLineContent">
+            <span><span class="text-muted">✅ Retirés</span> <strong id="supplyValidCount">0</strong></span>
+            <span><span class="text-muted">⏳ En attente de retrait</span> <strong id="supplyPendingCount">0</strong></span>
+            <span><span class="text-muted">📦 Envois</span> <strong id="supplyTransferCount">0</strong></span>
+        </div>
     </div>
 
     <main class="container content-wrapper">
@@ -476,7 +484,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="text-muted small text-uppercase fw-bold">Total Liquide (Cash)</h6>
-                                <h2 class="mb-0 fw-bold" id="totalLiquide">0 FCFA</h2>
+                                <h2 class="mb-0 fw-bold" id="totalLiquide">0 USD (0 FCFA)</h2>
                             </div>
                             <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-warning">
                                 <i class="fa-solid fa-money-bill-wave fa-2x"></i>
@@ -491,7 +499,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="text-muted small text-uppercase fw-bold">Total Virtuel (Unités)</h6>
-                                <h2 class="mb-0 fw-bold" id="totalVirtuel">0 FCFA</h2>
+                                <h2 class="mb-0 fw-bold" id="totalVirtuel">0 USD (0 FCFA)</h2>
                             </div>
                             <div class="bg-info bg-opacity-10 p-3 rounded-circle text-info">
                                 <i class="fa-solid fa-cloud fa-2x"></i>
@@ -727,10 +735,10 @@
                 window.ledgerConfig = data;
                 window.desks = data.desks || [];
                 window.adminCode = (data.admin && data.admin.code) ? data.admin.code : '12345';
+                window.dollarRate = (data.dollarRateConfig && data.dollarRateConfig.value) ? parseFloat(data.dollarRateConfig.value) : (data.dollarRate || 600);
                 
                 // Rafraîchissement des modules dépendants
                 window.loadHeaderBrand();
-                window.loadDynamicDollarRate();
                 window.populateDesks();
                 configReceived = true;
                 checkFirstLoadComplete();
@@ -744,7 +752,6 @@
             const data = snapshot.val();
             window.approvisionnements = [];
             if (data) {
-                // Conversion de l'objet Firebase en tableau exploitable trié par ID décroissant
                 Object.keys(data).forEach(key => {
                     window.approvisionnements.push({
                         fbKey: key,
@@ -776,8 +783,8 @@
             checkFirstLoadComplete();
         });
 
-        // Écoute en temps réel des transactions de transfert (ledger_transfers)
-        const transfersRef = ref(db, "ledger_transfers");
+        // Écoute en temps réel des transactions de transfert (transfers) - correction du chemin
+        const transfersRef = ref(db, "transfers");
         let transfersReceived = false;
         onValue(transfersRef, (snapshot) => {
             const data = snapshot.val();
@@ -863,14 +870,12 @@
         window.ledgerConfig = JSON.parse(localStorage.getItem('ledger_config')) || {};
         window.desks = window.ledgerConfig.desks || [];
         window.adminCode = (window.ledgerConfig.admin && window.ledgerConfig.admin.code) || '12345';
+        window.dollarRate = (window.ledgerConfig.dollarRateConfig && window.ledgerConfig.dollarRateConfig.value) ? parseFloat(window.ledgerConfig.dollarRateConfig.value) : (window.ledgerConfig.dollarRate || 600);
         
         // Initialisation de tableaux vides en attente de la synchronisation Firebase
         window.approvisionnements = [];
         window.sources = ["Poche Personnel", "Compte Bancaire", "Transfert Inter-Agence"];
         window.transfers = [];
-        
-        // Taux de change dynamique avec valeur fallback par défaut : 600
-        let USD_RATE = 600;
 
         // Fonction pour activer/désactiver dynamiquement l'affichage des champs de montant
         function toggleCurrencyField(currency) {
@@ -901,22 +906,15 @@
             }
         }
 
-        // Fonction pour réduire/agrandir la plaquette
-        function togglePlaquette() {
-            const plaquette = document.getElementById('floatingPlaquette');
-            const icon = document.getElementById('toggleIcon');
-            const wrapper = document.getElementById('totalWrapper');
-            
-            if (plaquette.classList.contains('minimized')) {
-                plaquette.classList.remove('minimized');
-                wrapper.style.display = 'flex';
-                setTimeout(() => { wrapper.style.opacity = '1'; }, 10);
-                icon.classList.replace('fa-chevron-right', 'fa-chevron-left');
+        // Fonction pour rétracter/déplier la plaquette
+        function toggleSupplyBox() {
+            const box = document.getElementById('floatingSupplyBox');
+            const icon = document.getElementById('supplyToggleIcon');
+            box.classList.toggle('collapsed');
+            if (box.classList.contains('collapsed')) {
+                icon.className = 'fa-solid fa-chevron-down';
             } else {
-                plaquette.classList.add('minimized');
-                wrapper.style.opacity = '0';
-                setTimeout(() => { wrapper.style.display = 'none'; }, 300);
-                icon.classList.replace('fa-chevron-left', 'fa-chevron-right');
+                icon.className = 'fa-solid fa-chevron-up';
             }
         }
 
@@ -938,16 +936,6 @@
                 headerName.innerText = window.ledgerConfig.company.name;
             } else if (headerName) {
                 headerName.innerText = "";
-            }
-        }
-
-        // Récupération et affichage dynamique du taux Dollar / FCFA configuré depuis ledger_config.dollarRate
-        function loadDynamicDollarRate() {
-            if (window.ledgerConfig && window.ledgerConfig.dollarRate) {
-                const computedRate = parseFloat(window.ledgerConfig.dollarRate);
-                if (!isNaN(computedRate) && computedRate > 0) {
-                    USD_RATE = computedRate;
-                }
             }
         }
 
@@ -1006,37 +994,66 @@
             const liq = valid.filter(a => a.type === 'liquide').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
             const virt = valid.filter(a => a.type === 'virtuel').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
             
-            // Calcul global des approvisionnements validés (Liquide + Virtuel)
-            const totalApprov = liq + virt;
-            // Récupération et calcul de la somme totale brute de tous les envois effectués
-            const totalEnvois = window.transfers.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-            
-            // Calcul du Solde du Flux
-            const soldeFlux = totalApprov - totalEnvois;
-            
             const totalLiquideElem = document.getElementById('totalLiquide');
             const totalVirtuelElem = document.getElementById('totalVirtuel');
-            if (totalLiquideElem) totalLiquideElem.innerText = liq.toLocaleString() + ' FCFA';
-            if (totalVirtuelElem) totalVirtuelElem.innerText = virt.toLocaleString() + ' FCFA';
             
-            // Assignation des valeurs bicolores dans la plaquette
-            const appTotalPartElem = document.getElementById('appTotalPart');
-            const envTotalPartElem = document.getElementById('envTotalPart');
-            if (appTotalPartElem) appTotalPartElem.innerText = totalApprov.toLocaleString() + ' FCFA';
-            if (envTotalPartElem) envTotalPartElem.innerText = totalEnvois.toLocaleString() + ' FCFA';
-            
-            // Rendu et coloration dynamique du Solde du Flux (Rouge si négatif, Bleu si positif ou nul)
-            const soldeElement = document.getElementById('soldeTotalPart');
-            if (soldeElement) {
-                soldeElement.innerText = soldeFlux.toLocaleString() + ' FCFA';
-                if (soldeFlux < 0) {
-                    soldeElement.className = 'text-red-bold';
-                } else {
-                    soldeElement.className = 'text-blue-bold';
-                }
+            // Affichage en USD (FCFA entre parenthèses)
+            if (totalLiquideElem) {
+                const liqUSD = liq / window.dollarRate;
+                totalLiquideElem.innerText = liqUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(liq).toLocaleString() + ' FCFA)';
             }
+            if (totalVirtuelElem) {
+                const virtUSD = virt / window.dollarRate;
+                totalVirtuelElem.innerText = virtUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(virt).toLocaleString() + ' FCFA)';
+            }
+            
+            // Mise à jour de la plaquette
+            updateSupplyPlaquette();
         }
 
+        // --- Mise à jour de la plaquette flottante du flux d'approvisionnement ---
+        function updateSupplyPlaquette() {
+            // Calcul des approvisionnements validés
+            const validSupply = window.approvisionnements.filter(item => item.status === 'Validé');
+            const pendingSupply = window.approvisionnements.filter(item => item.status === 'En attente');
+            
+            const totalApprovFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const totalApprovUSD = totalApprovFCFA / window.dollarRate;
+            
+            // Total des envois (tous, y compris ceux en attente)
+            const totalEnvoisFCFA = window.transfers.reduce((sum, t) => sum + (parseFloat(t.amountFCFA) || 0), 0);
+            const totalEnvoisUSD = totalEnvoisFCFA / window.dollarRate;
+            
+            // Solde du flux = approvisionnements validés - total des envois
+            const soldeFluxFCFA = totalApprovFCFA - totalEnvoisFCFA;
+            const soldeFluxUSD = soldeFluxFCFA / window.dollarRate;
+            
+            // Nombre d'envois en attente (non retirés)
+            const pendingTransfers = window.transfers.filter(t => t.status === 'En attente');
+            const pendingTransfersCount = pendingTransfers.length;
+            
+            const validCount = validSupply.length;
+            const pendingCount = pendingSupply.length;
+            const transferCount = window.transfers.length;
+
+            // Formatage des montants en USD (principal) et FCFA (entre parenthèses)
+            const formatAmount = (usd, fcfa) => {
+                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            };
+
+            document.getElementById('supplyTotalApprov').innerText = formatAmount(totalApprovUSD, totalApprovFCFA);
+            document.getElementById('supplyTotalEnvois').innerText = formatAmount(totalEnvoisUSD, totalEnvoisFCFA);
+            
+            const soldeEl = document.getElementById('supplySoldeFlux');
+            soldeEl.innerText = formatAmount(soldeFluxUSD, soldeFluxFCFA);
+            soldeEl.className = 'supply-value' + (soldeFluxFCFA < 0 ? ' red' : ' blue');
+            
+            document.getElementById('supplyValidCount').innerText = validCount;
+            document.getElementById('supplyPendingCount').innerText = pendingCount;
+            document.getElementById('supplyTransferCount').innerText = transferCount;
+        }
+
+        // --- Gestion du formulaire d'approvisionnement ---
         document.getElementById('approvForm').onsubmit = function(e) {
             e.preventDefault();
             
@@ -1058,7 +1075,7 @@
             }
             if (isUSD) {
                 const amtUSD = parseFloat(document.getElementById('approvAmountUSD').value) || 0;
-                calculatedAmountXOF += (amtUSD * USD_RATE);
+                calculatedAmountXOF += (amtUSD * window.dollarRate);
                 if (displayDetails !== "") displayDetails += " + ";
                 displayDetails += amtUSD.toLocaleString() + " USD";
             }
@@ -1070,8 +1087,8 @@
                 deskName: document.getElementById('targetDesk').options[document.getElementById('targetDesk').selectedIndex].text,
                 type: document.getElementById('fundType').value,
                 source: document.getElementById('fundSource').value,
-                amount: calculatedAmountXOF, // Stockage unifié en FCFA pour la compatibilité du grand livre
-                currencyDetails: displayDetails, // Champ étendu pour mémoriser la répartition
+                amount: calculatedAmountXOF,
+                currencyDetails: displayDetails,
                 status: 'En attente'
             };
 
@@ -1115,15 +1132,13 @@
             `).join('');
         }
 
-        // Modification chirurgicale : Validation par code secret de session extrait du cloud (ledger_config.admin.code)
         function validateApprov(fbKey) {
             if(!fbKey || fbKey === 'undefined') return;
             
-            // Récupération dynamique et sécurisée du code admin directement depuis la configuration cloud synchronisée
             const expectedCode = window.adminCode || '12345';
             
             const codeInput = prompt("Validation de sécurité : veuillez saisir votre code de connexion utilisateur pour valider cet approvisionnement :");
-            if (codeInput === null) return; // Action annulée par l'opérateur
+            if (codeInput === null) return;
             
             if (expectedCode && codeInput === expectedCode.toString()) {
                 if (window.fbDatabase) {
@@ -1155,15 +1170,27 @@
             if (window.transfers.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">Aucun envoi disponible.</td></tr>`;
             } else {
-                tbody.innerHTML = window.transfers.map(t => `
-                    <tr style="cursor: pointer;" onclick="viewTransferDetail('${t.fbKey}')">
-                        <td class="small">${t.date || 'N/A'}</td>
-                        <td class="fw-bold">${t.senderName || 'N/A'}</td>
-                        <td>${t.recipientName || 'N/A'}</td>
-                        <td class="fw-bold text-danger">${parseFloat(t.amount).toLocaleString()} FCFA</td>
-                        <td><span class="badge bg-dark text-warning font-monospace">${t.secretCode || 'N/A'}</span></td>
-                    </tr>
-                `).join('');
+                tbody.innerHTML = window.transfers.map(t => {
+                    const senderName = t.sender && t.sender.firstname && t.sender.name ? `${t.sender.firstname} ${t.sender.name}` : 'N/A';
+                    const recipientName = t.beneficiary && t.beneficiary.firstname && t.beneficiary.name ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A';
+                    
+                    // Affichage en USD (FCFA entre parenthèses)
+                    const amountFCFA = parseFloat(t.amountFCFA || t.amount || 0);
+                    const amountUSD = amountFCFA / window.dollarRate;
+                    const amountDisplay = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
+                    
+                    const codeDisplay = t.secretCode || 'N/A';
+                    const dateDisplay = t.date ? new Date(t.date).toLocaleDateString('fr-FR') : 'N/A';
+                    return `
+                        <tr style="cursor: pointer;" onclick="viewTransferDetail('${t.fbKey}')">
+                            <td class="small">${dateDisplay}</td>
+                            <td class="fw-bold">${senderName}</td>
+                            <td>${recipientName}</td>
+                            <td class="fw-bold text-danger">${amountDisplay}</td>
+                            <td><span class="badge bg-dark text-warning font-monospace">${codeDisplay}</span></td>
+                        </tr>
+                    `;
+                }).join('');
             }
             const modal = new bootstrap.Modal(document.getElementById('modalTransfers'));
             modal.show();
@@ -1173,40 +1200,52 @@
             const t = window.transfers.find(item => item.fbKey === fbKey);
             if (!t) return;
 
-            // Détermination précise du guichet de destination / Pays
-            const targetDeskName = t.targetDeskName || t.deskName || 'Non spécifié';
-            const targetCountry = t.targetCountry || 'Non spécifié';
+            const targetDeskName = (t.beneficiary && t.beneficiary.agency) || 'Non spécifié';
+            const targetCountry = (t.beneficiary && t.beneficiary.country) || 'Non spécifié';
             
-            // Calcul du montant à verser au destinataire (Si montant déjà stocké ou calculé selon devise)
-            const amountToPay = t.amountToPay || t.amount; 
-            const finalCurrency = t.currency || 'FCFA';
+            const amountToPay = t.amountFCFA || t.amount || 0;
+            const finalCurrency = t.currencyDisplayName || 'FCFA';
+            const senderName = t.sender && t.sender.firstname && t.sender.name ? `${t.sender.firstname} ${t.sender.name}` : 'N/A';
+            const senderPhone = (t.sender && t.sender.phone) || 'N/A';
+            const recipientName = t.beneficiary && t.beneficiary.firstname && t.beneficiary.name ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A';
+            const recipientPhone = (t.beneficiary && t.beneficiary.phone) || 'N/A';
+            const dateDisplay = t.date ? new Date(t.date).toLocaleString('fr-FR') : 'N/A';
+
+            // Affichage des montants en USD (FCFA entre parenthèses)
+            const amountFCFA = parseFloat(t.amountFCFA || t.amount || 0);
+            const amountUSD = amountFCFA / window.dollarRate;
+            const amountDisplay = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
+            
+            const totalFCFA = parseFloat(t.totalFCFA || amountFCFA);
+            const totalUSD = totalFCFA / window.dollarRate;
+            const totalDisplay = totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(totalFCFA).toLocaleString() + ' FCFA)';
 
             const content = document.getElementById('transferDetailContent');
             content.innerHTML = `
                 <div class="row g-3" id="transferDetailRawText">
                     <div class="col-6">
                         <label class="text-muted small text-uppercase">Date & Heure</label>
-                        <p class="fw-bold border-bottom pb-1" data-label="Date">${t.date || 'N/A'}</p>
+                        <p class="fw-bold border-bottom pb-1" data-label="Date">${dateDisplay}</p>
                     </div>
                     <div class="col-6">
                         <label class="text-muted small text-uppercase">Montant Envoyé</label>
-                        <p class="fw-bold text-danger border-bottom pb-1" data-label="Montant Envoyé">${parseFloat(t.amount).toLocaleString()} FCFA</p>
+                        <p class="fw-bold text-danger border-bottom pb-1" data-label="Montant Envoyé">${amountDisplay}</p>
                     </div>
                     <div class="col-6">
                         <label class="text-muted small text-uppercase">Expéditeur</label>
-                        <p class="fw-bold border-bottom pb-1" data-label="Expéditeur">${t.senderName || 'N/A'}</p>
+                        <p class="fw-bold border-bottom pb-1" data-label="Expéditeur">${senderName}</p>
                     </div>
                     <div class="col-6">
                         <label class="text-muted small text-uppercase">Téléphone Exp.</label>
-                        <p class="fw-bold border-bottom pb-1" data-label="Téléphone Exp.">${t.senderPhone || 'N/A'}</p>
+                        <p class="fw-bold border-bottom pb-1" data-label="Téléphone Exp.">${senderPhone}</p>
                     </div>
                     <div class="col-6">
                         <label class="text-muted small text-uppercase">Bénéficiaire</label>
-                        <p class="fw-bold border-bottom pb-1" data-label="Bénéficiaire">${t.recipientName || 'N/A'}</p>
+                        <p class="fw-bold border-bottom pb-1" data-label="Bénéficiaire">${recipientName}</p>
                     </div>
                     <div class="col-6">
                         <label class="text-muted small text-uppercase">Téléphone Bénéf.</label>
-                        <p class="fw-bold border-bottom pb-1" data-label="Téléphone Bénéf.">${t.recipientPhone || 'N/A'}</p>
+                        <p class="fw-bold border-bottom pb-1" data-label="Téléphone Bénéf.">${recipientPhone}</p>
                     </div>
                     <div class="col-6">
                         <label class="text-muted small text-uppercase">Guichet Concerné</label>
@@ -1218,7 +1257,11 @@
                     </div>
                     <div class="col-12">
                         <label class="text-muted small text-uppercase">Montant Net à Verser au Destinataire</label>
-                        <p class="fw-bold fs-5 text-success border-bottom pb-1" data-label="Montant Net à Verser">${parseFloat(amountToPay).toLocaleString()} ${finalCurrency}</p>
+                        <p class="fw-bold fs-5 text-success border-bottom pb-1" data-label="Montant Net à Verser">${amountDisplay}</p>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted small text-uppercase">Total Encaissé par l'Opérateur</label>
+                        <p class="fw-bold fs-5 text-primary border-bottom pb-1" data-label="Total Encaissé">${totalDisplay}</p>
                     </div>
                     <div class="col-12 mt-2">
                         <div class="p-3 bg-light rounded border text-center">
@@ -1244,11 +1287,9 @@
                 </div>
             `;
 
-            // Fermer proprement la modale de liste d'abord
             const modalTransfers = bootstrap.Modal.getInstance(document.getElementById('modalTransfers'));
             if (modalTransfers) modalTransfers.hide();
 
-            // Ouvrir la modale de détail
             const modalDetail = new bootstrap.Modal(document.getElementById('modalTransferDetail'));
             modalDetail.show();
         }
@@ -1262,24 +1303,37 @@
             });
         }
 
-        // Fonction intelligente pour copier toutes les informations structurées de l'envoi
         function copyAllTransferDetails(fbKey) {
             const t = window.transfers.find(item => item.fbKey === fbKey);
             if (!t) return;
             
-            const targetDeskName = t.targetDeskName || t.deskName || 'Non spécifié';
-            const targetCountry = t.targetCountry || 'Non spécifié';
-            const amountToPay = t.amountToPay || t.amount;
-            const finalCurrency = t.currency || 'FCFA';
+            const targetDeskName = (t.beneficiary && t.beneficiary.agency) || 'Non spécifié';
+            const targetCountry = (t.beneficiary && t.beneficiary.country) || 'Non spécifié';
+            const amountToPay = t.amountFCFA || t.amount || 0;
+            const finalCurrency = t.currencyDisplayName || 'FCFA';
+            const senderName = t.sender && t.sender.firstname && t.sender.name ? `${t.sender.firstname} ${t.sender.name}` : 'N/A';
+            const senderPhone = (t.sender && t.sender.phone) || 'N/A';
+            const recipientName = t.beneficiary && t.beneficiary.firstname && t.beneficiary.name ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A';
+            const recipientPhone = (t.beneficiary && t.beneficiary.phone) || 'N/A';
+            const dateDisplay = t.date ? new Date(t.date).toLocaleString('fr-FR') : 'N/A';
+
+            // Affichage des montants en USD (FCFA entre parenthèses)
+            const amountFCFA = parseFloat(t.amountFCFA || t.amount || 0);
+            const amountUSD = amountFCFA / window.dollarRate;
+            const amountDisplay = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
+            
+            const totalFCFA = parseFloat(t.totalFCFA || amountFCFA);
+            const totalUSD = totalFCFA / window.dollarRate;
+            const totalDisplay = totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(totalFCFA).toLocaleString() + ' FCFA)';
 
             const textToCopy = `--- AFRI-LINK LEDGER : DETAIL TRANSACTION ---
-Date/Heure : ${t.date || 'N/A'}
-Expéditeur : ${t.senderName || 'N/A'} (${t.senderPhone || 'N/A'})
-Bénéficiaire : ${t.recipientName || 'N/A'} (${t.recipientPhone || 'N/A'})
-Montant Brut Envoyé : ${parseFloat(t.amount).toLocaleString()} FCFA
+Date/Heure : ${dateDisplay}
+Expéditeur : ${senderName} (${senderPhone})
+Bénéficiaire : ${recipientName} (${recipientPhone})
+Montant Net à Verser : ${amountDisplay}
+Total Encaissé par l'Opérateur : ${totalDisplay}
 Guichet Concerné : ${targetDeskName}
 Pays de Destination : ${targetCountry}
-Montant Net à Verser : ${parseFloat(amountToPay).toLocaleString()} ${finalCurrency}
 CODE SECRET : ${t.secretCode || 'N/A'}
 ---------------------------------------------`;
 
@@ -1290,17 +1344,15 @@ CODE SECRET : ${t.secretCode || 'N/A'}
             });
         }
 
-        // Fonction sécurisée avec code de confirmation 1233 par défaut pour supprimer/annuler l'envoi
         function cancelTransferAction(fbKey) {
             if(!fbKey || fbKey === 'undefined') return;
             const codeInput = prompt("Veuillez saisir le code de confirmation requis pour annuler et supprimer cet envoi :");
-            if (codeInput === null) return; // Action annulée par l'utilisateur
+            if (codeInput === null) return;
             
             if (codeInput === "1233") {
                 if (window.fbDatabase) {
-                    const tRef = window.fbRef(window.fbDatabase, `ledger_transfers/${fbKey}`);
+                    const tRef = window.fbRef(window.fbDatabase, `transfers/${fbKey}`);
                     window.fbRemove(tRef).then(() => {
-                        // Fermeture de la modale de détail
                         const modalDetail = bootstrap.Modal.getInstance(document.getElementById('modalTransferDetail'));
                         if (modalDetail) modalDetail.hide();
                         showSuccess("Envoi annulé et supprimé avec succès");
@@ -1315,38 +1367,28 @@ CODE SECRET : ${t.secretCode || 'N/A'}
         let deferredPrompt;
         const installBtn = document.getElementById('pwaInstallBtn');
 
-        // Écoute de l'événement système avant l'affichage du prompt d'installation natif
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Empêche la barre native mini-infobar de s'afficher sur mobile
             e.preventDefault();
-            // Conserve l'événement pour l'utiliser plus tard
             deferredPrompt = e;
-            // Affiche le bouton personnalisé intelligent uniquement si l'app n'est pas installée
             installBtn.style.display = 'block';
         });
 
-        // Détection de clic sur le bouton d'installation personnalisé
         installBtn.addEventListener('click', async () => {
             if (!deferredPrompt) return;
-            // Affiche l'invite d'installation native
             deferredPrompt.prompt();
-            // Attend le choix de l'utilisateur
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
                 console.log('L\'utilisateur a accepté l\'installation de AFRI-LINK LEDGER');
             }
-            // Réinitialise l'événement, le bouton disparaît
             deferredPrompt = null;
             installBtn.style.display = 'none';
         });
 
-        // Gestion de la disparition si l'application est déjà ou vient d'être installée
         window.addEventListener('appinstalled', (evt) => {
             console.log('AFRI-LINK LEDGER a été installée avec succès !');
             installBtn.style.display = 'none';
         });
 
-        // Enregistrement du Service Worker pour l'activation PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
@@ -1358,11 +1400,9 @@ CODE SECRET : ${t.secretCode || 'N/A'}
         window.onload = function() { 
             applyRoleAccessControl();
             loadHeaderBrand();
-            loadDynamicDollarRate();
             populateDesks();
             renderSources();
             
-            // Initialisation explicite des champs requis au chargement
             toggleCurrencyField('XOF');
             toggleCurrencyField('USD');
             

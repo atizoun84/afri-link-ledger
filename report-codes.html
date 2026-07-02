@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#075E54">
     <link class="apple-touch-icon" href="logo.png">
     
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght=0,700;1,700&family=Poppins:wght=300;400;600&family=Montserrat:wght=800&family=Orbitron:wght=700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -409,6 +409,16 @@
                 print-color-adjust: exact;
             }
         }
+
+        /* Style pour les filtres de date */
+        .date-filter-input {
+            max-width: 180px;
+        }
+        @media (max-width: 576px) {
+            .date-filter-input {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -474,12 +484,16 @@
             <p class="text-muted">Consultez l'historique complet et croisé de vos mouvements financiers (Envois, Retraits, Approvisionnements)</p>
         </div>
 
-        <div class="d-flex flex-wrap gap-2 mb-4 justify-content-center justify-content-md-start">
+        <!-- Filtres de date améliorés -->
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
             <button class="btn btn-sm btn-wa px-3 filter-time-btn active" id="timeFilterAll" onclick="setTimeFilter('ALL')"><i class="fa-solid fa-globe me-1"></i>Tout voir</button>
-            <button class="btn btn-sm btn-outline-secondary px-3 filter-time-btn" id="timeFilterDay" onclick="setTimeFilter('DAY')"><i class="fa-solid fa-calendar-day me-1"></i>Aujourd'hui</button>
-            <button class="btn btn-sm btn-outline-secondary px-3 filter-time-btn" id="timeFilterWeek" onclick="setTimeFilter('WEEK')"><i class="fa-solid fa-calendar-week me-1"></i>Cette semaine</button>
-            <button class="btn btn-sm btn-outline-secondary px-3 filter-time-btn" id="timeFilterMonth" onclick="setTimeFilter('MONTH')"><i class="fa-solid fa-calendar-days me-1"></i>Ce mois</button>
-            <button class="btn btn-sm btn-outline-secondary px-3 filter-time-btn" id="timeFilterYear" onclick="setTimeFilter('YEAR')"><i class="fa-solid fa-calendar me-1"></i>Cette année</button>
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small">Du</span>
+                <input type="date" id="filterDateStart" class="form-control form-control-sm date-filter-input" onchange="updateDateFilter()">
+                <span class="text-muted small">au</span>
+                <input type="date" id="filterDateEnd" class="form-control form-control-sm date-filter-input" onchange="updateDateFilter()">
+                <button class="btn btn-sm btn-outline-secondary" onclick="clearDateFilter()"><i class="fa-solid fa-times"></i></button>
+            </div>
         </div>
 
         <div class="row g-3 mb-4">
@@ -489,15 +503,15 @@
                     <div class="mt-2">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-secondary">Total Brut :</span>
-                            <span class="fw-bold text-dark" id="kpiTotalEnvoisBrut">0 FCFA</span>
+                            <span class="fw-bold text-dark" id="kpiTotalEnvoisBrut">0 USD (0 FCFA)</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-secondary">Avec Frais :</span>
-                            <span class="fw-bold text-primary" id="kpiTotalEnvois">0 FCFA</span>
+                            <span class="fw-bold text-primary" id="kpiTotalEnvois">0 USD (0 FCFA)</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center pt-1 border-top dashed">
                             <span class="small text-success fw-bold">Marge brute collectée :</span>
-                            <span class="fw-bold text-success" id="kpiBeneficeEnvois">0 FCFA</span>
+                            <span class="fw-bold text-success" id="kpiBeneficeEnvois">0 USD (0 FCFA)</span>
                         </div>
                     </div>
                 </div>
@@ -509,15 +523,15 @@
                     <div class="mt-2">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-secondary">Total Retraits :</span>
-                            <span class="fw-bold text-danger" id="kpiTotalRetraits">0 FCFA</span>
+                            <span class="fw-bold text-danger" id="kpiTotalRetraits">0 USD (0 FCFA)</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-secondary">Gains / Retrait :</span>
-                            <span class="fw-bold text-info" id="kpiGainsRetraits">0 FCFA</span>
+                            <span class="fw-bold text-info" id="kpiGainsRetraits">0 USD (0 FCFA)</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center pt-1 border-top dashed">
                             <span class="small text-dark fw-bold">Solde Gains Dispo :</span>
-                            <span class="fw-bold text-dark" id="kpiSoldeGainsDispo">0 FCFA</span>
+                            <span class="fw-bold text-dark" id="kpiSoldeGainsDispo">0 USD (0 FCFA)</span>
                         </div>
                     </div>
                     <div class="mt-2">
@@ -534,15 +548,15 @@
                     <div class="mt-2">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-secondary">Approvisionnements :</span>
-                            <span class="fw-bold text-warning" id="kpiTotalApprov">0 FCFA</span>
+                            <span class="fw-bold text-warning" id="kpiTotalApprov">0 USD (0 FCFA)</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-secondary">Retraits de Gains Effectués :</span>
-                            <span class="fw-bold text-muted" id="kpiTotalRetraitsGains">0 FCFA</span>
+                            <span class="fw-bold text-muted" id="kpiTotalRetraitsGains">0 USD (0 FCFA)</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center pt-1 border-top">
                             <span class="small text-success fw-bold">Solde Net En Caisse :</span>
-                            <span class="fw-bold text-success" id="kpiSoldeNet">0 FCFA</span>
+                            <span class="fw-bold text-success" id="kpiSoldeNet">0 USD (0 FCFA)</span>
                         </div>
                     </div>
                 </div>
@@ -654,7 +668,7 @@
                     </div>
                     <div class="p-3 bg-light rounded-3 text-center mb-3">
                         <span class="text-muted small d-block">Solde des gains disponible :</span>
-                        <strong class="fs-4 text-success" id="modalSoldeGains">0 FCFA</strong>
+                        <strong class="fs-4 text-success" id="modalSoldeGains">0 USD (0 FCFA)</strong>
                     </div>
                     <form id="formWithdrawGains" onsubmit="executeGainWithdrawal(event)">
                         <div class="mb-3">
@@ -777,7 +791,9 @@
         window.approvs = [];
         window.gainsWithdrawals = [];
         window.USD_RATE = 600;
-        window.currentTimeFilter = 'ALL'; 
+        window.currentDateStart = null;
+        window.currentDateEnd = null;
+        window.currentTimeFilter = 'ALL';
         window.cachedSoldeGainsDispo = 0;
 
         // Écoute de l'état de connexion à Firebase
@@ -845,7 +861,8 @@
             buildAccountingTable();
         }
 
-        onValue(ref(db, 'ledger_transfers'), (snapshot) => {
+        // ---- CORRECTION : Écoute du bon chemin "transfers" et non "ledger_transfers" ----
+        onValue(ref(db, 'transfers'), (snapshot) => {
             const data = snapshot.val();
             window.transfers = data ? Object.values(data) : [];
             // Sauvegarde locale pour résilience hors ligne
@@ -932,7 +949,7 @@
                 // Suppression atomique via remove() sur les nœuds distants Firebase
                 Promise.all([
                     remove(ref(db, 'ledger_config')),
-                    remove(ref(db, 'ledger_transfers')),
+                    remove(ref(db, 'transfers')),
                     remove(ref(db, 'ledger_supply')),
                     remove(ref(db, 'ledger_profits'))
                 ]).then(() => {
@@ -1045,12 +1062,82 @@
                 activeBtn.classList.remove('btn-outline-secondary');
                 activeBtn.classList.add('btn-wa', 'active');
             }
+
+            // Réinitialiser les filtres de date
+            document.getElementById('filterDateStart').value = '';
+            document.getElementById('filterDateEnd').value = '';
+            window.currentDateStart = null;
+            window.currentDateEnd = null;
             
             computeFinancialKPIs();
             buildAccountingTable();
         }
 
+        function updateDateFilter() {
+            const startDate = document.getElementById('filterDateStart').value;
+            const endDate = document.getElementById('filterDateEnd').value;
+            
+            window.currentDateStart = startDate ? new Date(startDate) : null;
+            window.currentDateEnd = endDate ? new Date(endDate) : null;
+            
+            // Désactiver le bouton "Tout voir"
+            document.querySelectorAll('.filter-time-btn').forEach(btn => {
+                btn.classList.remove('btn-wa', 'active');
+                btn.classList.add('btn-outline-secondary');
+            });
+            
+            window.currentTimeFilter = 'CUSTOM';
+            computeFinancialKPIs();
+            buildAccountingTable();
+        }
+
+        function clearDateFilter() {
+            document.getElementById('filterDateStart').value = '';
+            document.getElementById('filterDateEnd').value = '';
+            window.currentDateStart = null;
+            window.currentDateEnd = null;
+            setTimeFilter('ALL');
+        }
+
         function isDateInPeriod(dateStr, period) {
+            // Si c'est "Tout voir" et pas de filtre de date personnalisé
+            if (period === 'ALL' && !window.currentDateStart && !window.currentDateEnd) return true;
+            
+            // Si filtre de date personnalisé
+            if (window.currentDateStart || window.currentDateEnd) {
+                if (!dateStr || dateStr === '--/--/----') return true;
+                
+                let matches = dateStr.match(/(\d{2,4})/g);
+                if (!matches || matches.length < 3) return true;
+                
+                let itemDate;
+                if (dateStr.includes('/')) {
+                    let day = parseInt(matches[0], 10);
+                    let month = parseInt(matches[1], 10) - 1;
+                    let year = parseInt(matches[2], 10);
+                    itemDate = new Date(year, month, day);
+                } else if (dateStr.includes('-')) {
+                    let year = parseInt(matches[0], 10);
+                    let month = parseInt(matches[1], 10) - 1;
+                    let day = parseInt(matches[2], 10);
+                    itemDate = new Date(year, month, day);
+                } else {
+                    return true;
+                }
+                
+                if (isNaN(itemDate.getTime())) return true;
+                
+                if (window.currentDateStart && itemDate < window.currentDateStart) return false;
+                if (window.currentDateEnd) {
+                    // Ajouter 1 jour pour inclure la date de fin
+                    const endDatePlusOne = new Date(window.currentDateEnd);
+                    endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+                    if (itemDate >= endDatePlusOne) return false;
+                }
+                return true;
+            }
+            
+            // Sinon, pour les autres périodes (jour, semaine, mois, année)
             if (period === 'ALL' || !dateStr || dateStr === '--/--/----') return true;
             
             let matches = dateStr.match(/(\d{2,4})/g);
@@ -1062,11 +1149,13 @@
                 let month = parseInt(matches[1], 10) - 1;
                 let year = parseInt(matches[2], 10);
                 itemDate = new Date(year, month, day);
-            } else {
+            } else if (dateStr.includes('-')) {
                 let year = parseInt(matches[0], 10);
                 let month = parseInt(matches[1], 10) - 1;
                 let day = parseInt(matches[2], 10);
                 itemDate = new Date(year, month, day);
+            } else {
+                return true;
             }
             
             if (isNaN(itemDate.getTime())) return true; 
@@ -1127,15 +1216,19 @@
                 if (isDateInPeriod(t.date, window.currentTimeFilter)) {
                     totalEnvoisBrut += amount;
                     totalEnvoisAvecFrais += totalEncaisse;
-                    totalFeesCollectes += fees;
+                    // Les frais ne sont collectés (comptabilisés comme gain) qu'au retrait
+                    // Donc dans la période courante, on ne les ajoute pas encore
                 }
 
                 if (t.status === 'Retiré') {
                     let wDate = t.withdrawalDate || t.date;
                     if (isDateInPeriod(wDate, window.currentTimeFilter)) {
                         totalRetraits += amount;
-                        let gainRetraitUnitaire = t.withdrawalFees ? parseFloat(t.withdrawalFees) : (fees * 0.5); 
-                        totalGainsRetraits += gainRetraitUnitaire;
+                        // Les gains sur retrait sont constitués des frais d'envoi ET des frais de retrait
+                        let gainRetraitUnitaire = t.withdrawalFees ? parseFloat(t.withdrawalFees) : 0;
+                        totalGainsRetraits += (fees + gainRetraitUnitaire);
+                        // On ajoute les frais à la collecte uniquement lors du retrait
+                        totalFeesCollectes += fees;
                     }
                 }
             });
@@ -1156,24 +1249,32 @@
                 }
             });
 
-            let globalGainsEnvois = 0;
+            // Calcul global (toutes périodes confondues) pour le solde des gains disponibles
             let globalGainsRetraits = 0;
             let globalRetraitsGainsEffectues = 0;
-            let globalSommeApprov = 0;
 
             transfersList.forEach(t => {
-                globalGainsEnvois += (parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0);
                 if (t.status === 'Retiré') {
                     let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
-                    globalGainsRetraits += (t.withdrawalFees ? parseFloat(t.withdrawalFees) : (fees * 0.5));
+                    let wGain = t.withdrawalFees ? parseFloat(t.withdrawalFees) : 0;
+                    globalGainsRetraits += (fees + wGain);
                 }
             });
             gainsWithdrawalsList.forEach(gw => { globalRetraitsGainsEffectues += (parseFloat(gw.amount) || 0); });
-            approvsList.forEach(a => { if(a.status === 'Validé') globalSommeApprov += (parseFloat(a.amount) || 0); });
             
-            window.cachedSoldeGainsDispo = (globalGainsEnvois + globalGainsRetraits) - globalRetraitsGainsEffectues;
+            // Les gains disponibles retirables sont uniquement les gains issus des retraits opérés
+            window.cachedSoldeGainsDispo = globalGainsRetraits - globalRetraitsGainsEffectues;
 
+            // Solde net en caisse global
+            let globalSommeApprov = 0;
+            approvsList.forEach(a => { if(a.status === 'Validé') globalSommeApprov += (parseFloat(a.amount) || 0); });
             let soldeNetCaisseGlobale = (globalSommeApprov + sommeTotalFcaEncaisses) - (sommeAmountFcaRetires + globalRetraitsGainsEffectues);
+
+            // Fonction pour formater les montants en USD (FCFA entre parenthèses)
+            const formatAmount = (fcfa) => {
+                const usd = fcfa / window.USD_RATE;
+                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            };
 
             const kpiTotalEnvoisBrutElem = document.getElementById('kpiTotalEnvoisBrut');
             const kpiTotalEnvoisElem = document.getElementById('kpiTotalEnvois');
@@ -1185,20 +1286,23 @@
             const kpiTotalRetraitsGainsElem = document.getElementById('kpiTotalRetraitsGains');
             const kpiSoldeNetElem = document.getElementById('kpiSoldeNet');
 
-            if (kpiTotalEnvoisBrutElem) kpiTotalEnvoisBrutElem.innerText = totalEnvoisBrut.toLocaleString() + ' FCFA';
-            if (kpiTotalEnvoisElem) kpiTotalEnvoisElem.innerText = totalEnvoisAvecFrais.toLocaleString() + ' FCFA';
-            if (kpiBeneficeEnvoisElem) kpiBeneficeEnvoisElem.innerText = totalFeesCollectes.toLocaleString() + ' FCFA';
-            if (kpiTotalRetraitsElem) kpiTotalRetraitsElem.innerText = totalRetraits.toLocaleString() + ' FCFA';
-            if (kpiGainsRetraitsElem) kpiGainsRetraitsElem.innerText = totalGainsRetraits.toLocaleString() + ' FCFA';
-            if (kpiSoldeGainsDispoElem) kpiSoldeGainsDispoElem.innerText = window.cachedSoldeGainsDispo.toLocaleString() + ' FCFA';
-            if (kpiTotalApprovElem) kpiTotalApprovElem.innerText = totalApprov.toLocaleString() + ' FCFA';
-            if (kpiTotalRetraitsGainsElem) kpiTotalRetraitsGainsElem.innerText = totalRetraitsGains.toLocaleString() + ' FCFA';
-            if (kpiSoldeNetElem) kpiSoldeNetElem.innerText = soldeNetCaisseGlobale.toLocaleString() + ' FCFA';
+            if (kpiTotalEnvoisBrutElem) kpiTotalEnvoisBrutElem.innerText = formatAmount(totalEnvoisBrut);
+            if (kpiTotalEnvoisElem) kpiTotalEnvoisElem.innerText = formatAmount(totalEnvoisAvecFrais);
+            if (kpiBeneficeEnvoisElem) kpiBeneficeEnvoisElem.innerText = formatAmount(totalFeesCollectes);
+            if (kpiTotalRetraitsElem) kpiTotalRetraitsElem.innerText = formatAmount(totalRetraits);
+            if (kpiGainsRetraitsElem) kpiGainsRetraitsElem.innerText = formatAmount(totalGainsRetraits);
+            if (kpiSoldeGainsDispoElem) kpiSoldeGainsDispoElem.innerText = formatAmount(window.cachedSoldeGainsDispo);
+            if (kpiTotalApprovElem) kpiTotalApprovElem.innerText = formatAmount(totalApprov);
+            if (kpiTotalRetraitsGainsElem) kpiTotalRetraitsGainsElem.innerText = formatAmount(totalRetraitsGains);
+            if (kpiSoldeNetElem) kpiSoldeNetElem.innerText = formatAmount(soldeNetCaisseGlobale);
         }
 
         function openGainWithdrawalModal() {
             const modalSoldeGainsElem = document.getElementById('modalSoldeGains');
-            if (modalSoldeGainsElem) modalSoldeGainsElem.innerText = window.cachedSoldeGainsDispo.toLocaleString() + ' FCFA';
+            if (modalSoldeGainsElem) {
+                const usd = window.cachedSoldeGainsDispo / window.USD_RATE;
+                modalSoldeGainsElem.innerText = usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(window.cachedSoldeGainsDispo).toLocaleString() + ' FCFA)';
+            }
             const beneficiaryInput = document.getElementById('withdrawGainBeneficiary');
             const amountInput = document.getElementById('withdrawGainAmount');
             const commentInput = document.getElementById('withdrawGainComment');
@@ -1230,6 +1334,12 @@
             const approvsList = window.approvs || [];
             const gainsWithdrawalsList = window.gainsWithdrawals || [];
 
+            // Fonction pour formater les montants en USD (FCFA entre parenthèses)
+            const formatAmount = (fcfa) => {
+                const usd = fcfa / window.USD_RATE;
+                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            };
+
             transfersList.forEach(t => {
                 if (isDateInPeriod(t.date, window.currentTimeFilter)) {
                     const senderDisplay = t.senderName ? t.senderName : (t.sender ? `${t.sender.firstname} ${t.sender.name}` : 'N/A');
@@ -1258,7 +1368,9 @@
                         const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.country : 'N/A');
                         let amount = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
                         let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
-                        let wGain = t.withdrawalFees ? parseFloat(t.withdrawalFees) : (fees * 0.5);
+                        let wGain = t.withdrawalFees ? parseFloat(t.withdrawalFees) : 0;
+                        // Le gain total sur le retrait = frais d'envoi + frais de retrait
+                        let totalGainRetrait = fees + wGain;
 
                         unifiedLedger.push({
                             date: wDate,
@@ -1268,7 +1380,7 @@
                             childCreditor: recipientDisplay,
                             creditor: `${recipientDisplay} (📍 ${targetLocation})`,
                             amount: amount,
-                            fees: wGain, 
+                            fees: totalGainRetrait, 
                             status: 'Validé'
                         });
                     }
@@ -1350,13 +1462,13 @@
                     return `
                         <tr>
                             <td>${item.date}</td>
-                            <td>${typeBadge}</strong></td>
-                            <td class="fw-bold font-monospace">${item.code}</strong></td>
-                            <td><small>${item.debitor}</small></strong></td>
-                            <td><small>${item.creditor}</small></strong></td>
-                            <td class="text-end fw-bold ${amountColor}">${item.amount.toLocaleString()} FCFA</strong></td>
-                            <td class="text-end text-muted">${item.fees > 0 ? item.fees.toLocaleString() + ' FCFA' : '-'}</strong></td>
-                            <td class="text-center">${statusBadge}</strong></td>
+                            <td>${typeBadge}</td>
+                            <td class="fw-bold font-monospace">${item.code}</td>
+                            <td><small>${item.debitor}</small></td>
+                            <td><small>${item.creditor}</small></td>
+                            <td class="text-end fw-bold ${amountColor}">${formatAmount(item.amount)}</td>
+                            <td class="text-end text-muted">${item.fees > 0 ? formatAmount(item.fees) : '-'}</td>
+                            <td class="text-center">${statusBadge}</td>
                         </tr>
                     `;
                 }).join('');
@@ -1366,18 +1478,22 @@
             }
 
             if (gainsWithdrawalsList.length === 0) {
-                gainsTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Aucun prélèvement enregistré sur le compte de profits.</strong></td></tr>`;
+                gainsTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Aucun prélèvement enregistré sur le compte de profits.</td></tr>`;
             } else {
-                gainsTbody.innerHTML = gainsWithdrawalsList.map(gw => `
-                    <tr>
-                        <td>${gw.date}</strong></td>
-                        <td class="font-monospace fw-bold">${gw.id}</strong></strong></td>
-                        <td><span class="badge bg-light text-dark border">${gw.beneficiary || 'Non spécifié'}</span></strong></strong></td>
-                        <td>${gw.comment}</strong></strong></td>
-                        <td class="text-end fw-bold text-danger">-${parseFloat(gw.amount).toLocaleString()} FCFA</strong></strong></td>
-                        <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-check-double me-1"></i>${gw.status}</span></strong></strong></td>
-                    </table>
-                `).join('');
+                gainsTbody.innerHTML = gainsWithdrawalsList.map(gw => {
+                    const usd = parseFloat(gw.amount) / window.USD_RATE;
+                    const formattedAmount = usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(parseFloat(gw.amount)).toLocaleString() + ' FCFA)';
+                    return `
+                        <tr>
+                            <td>${gw.date}</td>
+                            <td class="font-monospace fw-bold">${gw.id}</td>
+                            <td><span class="badge bg-light text-dark border">${gw.beneficiary || 'Non spécifié'}</span></td>
+                            <td>${gw.comment}</td>
+                            <td class="text-end fw-bold text-danger">-${formattedAmount}</td>
+                            <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-check-double me-1"></i>${gw.status}</span></td>
+                        </tr>
+                    `;
+                }).join('');
             }
         }
 

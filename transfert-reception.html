@@ -196,6 +196,147 @@
             gap: 8px;
         }
 
+        /* --- Plaquette Flottante du Flux d'Approvisionnement --- */
+        .floating-supply-box {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1050;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(15px);
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            border: 1.5px solid var(--wa-medium);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 280px;
+            max-width: 95%;
+            transition: all 0.3s ease;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .floating-supply-box .supply-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 5px 15px;
+            width: 100%;
+        }
+
+        .floating-supply-box .supply-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #777;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .floating-supply-box .supply-value {
+            font-size: 1rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .floating-supply-box .supply-value.blue {
+            color: #0275d8;
+        }
+        .floating-supply-box .supply-value.red {
+            color: #d9534f;
+        }
+        .floating-supply-box .supply-value.green {
+            color: #28a745;
+        }
+        .floating-supply-box .separator {
+            color: #adb5bd;
+            font-weight: 300;
+            margin: 0 2px;
+        }
+
+        .floating-supply-box .supply-sub-line {
+            font-size: 0.8rem;
+            color: #555;
+            margin-top: 2px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0 15px;
+        }
+
+        /* Bouton pour rétracter/déplier */
+        .floating-supply-box .toggle-supply-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--wa-medium);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            z-index: 1051;
+        }
+
+        .floating-supply-box .toggle-supply-btn:hover {
+            background: var(--wa-dark);
+            transform: scale(1.05);
+        }
+
+        .floating-supply-box.collapsed {
+            padding: 6px 20px;
+            min-width: unset;
+            width: auto;
+            border-radius: 100px;
+        }
+
+        .floating-supply-box.collapsed .supply-line,
+        .floating-supply-box.collapsed .supply-sub-line {
+            display: none;
+        }
+
+        .floating-supply-box.collapsed .toggle-supply-btn {
+            position: static;
+            margin: 0;
+            transform: rotate(180deg);
+        }
+
+        /* Ajustement du contenu pour éviter le chevauchement */
+        .content-wrapper {
+            margin-top: 70px;
+        }
+
+        @media (max-width: 576px) {
+            .floating-supply-box {
+                top: 70px;
+                padding: 10px 15px;
+                min-width: unset;
+                width: 95%;
+                border-radius: 15px;
+            }
+            .floating-supply-box .supply-value {
+                font-size: 0.9rem;
+            }
+            .floating-supply-box .supply-label {
+                font-size: 0.65rem;
+            }
+            .content-wrapper {
+                margin-top: 95px;
+            }
+        }
+
         /* --- Main Content Area --- */
         main {
             flex: 1;
@@ -540,7 +681,28 @@
         </nav>
     </header>
 
-    <main class="container">
+    <!-- Plaquette Flottante du Flux d'Approvisionnement avec bouton de rétractation -->
+    <div class="floating-supply-box" id="floatingSupplyBox">
+        <button class="toggle-supply-btn" id="toggleSupplyBtn" onclick="toggleSupplyBox()" title="Rétracter/Déplier">
+            <i class="fa-solid fa-chevron-up" id="supplyToggleIcon"></i>
+        </button>
+        <div class="supply-line" id="supplyLineContent">
+            <span class="supply-label"><i class="fa-solid fa-scale-balanced me-1 text-success"></i>Flux :</span>
+            <span class="supply-value blue" id="supplyTotalApprov">0 USD (0 FCFA)</span>
+            <span class="separator">/</span>
+            <span class="supply-value red" id="supplyTotalEnvois">0 USD (0 FCFA)</span>
+            <span class="separator">|</span>
+            <span class="supply-label"><i class="fa-solid fa-coins me-1 text-warning"></i>Solde :</span>
+            <span class="supply-value" id="supplySoldeFlux">0 USD (0 FCFA)</span>
+        </div>
+        <div class="supply-sub-line" id="supplySubLineContent">
+            <span><span class="text-muted">✅ Retirés</span> <strong id="supplyValidCount">0</strong></span>
+            <span><span class="text-muted">⏳ En attente de retrait</span> <strong id="supplyPendingCount">0</strong></span>
+            <span><span class="text-muted">📦 Envois</span> <strong id="supplyTransferCount">0</strong></span>
+        </div>
+    </div>
+
+    <main class="container content-wrapper">
         <div class="page-header mb-4">
             <h1>Retrait d'Argent</h1>
             <p class="text-muted">Vérifiez un transfert et effectuez le versement des fonds</p>
@@ -682,11 +844,15 @@
                                 <thead class="table-light sticky-top">
                                     <tr>
                                         <th>Date Retrait</th>
+                                        <th>Date Envoi</th>
+                                        <th>Heure Envoi</th>
+                                        <th>Référence</th>
                                         <th>Code</th>
                                         <th>Bénéficiaire</th>
                                         <th>Provenance (Agence)</th>
                                         <th class="text-end">Montant Reçu</th>
                                         <th class="text-center">Statut</th>
+                                        <th>Utilisateur agissant</th>
                                     </tr>
                                 </thead>
                                 <tbody id="historyTableBody">
@@ -724,11 +890,15 @@
             <thead>
                 <tr style="background-color: #f8f9fa;">
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Date Retrait</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Date Envoi</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Heure Envoi</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Référence</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Code Retrait</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Bénéficiaire</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Provenance & Agence d'Envoi</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6; text-align: right;">Montant Payé</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center;">Statut</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Utilisateur agissant</th>
                 </tr>
             </thead>
             <tbody id="printHistoryTableBody">
@@ -978,6 +1148,7 @@
             }
             localStorage.setItem('ledger_transfers_cache', JSON.stringify(transfers));
             buildHistoryTable();
+            updateSupplyPlaquette();
             transfersReceived = true;
             checkFirstLoadComplete();
         });
@@ -994,6 +1165,7 @@
             }
             supplyReceived = true;
             checkFirstLoadComplete();
+            updateSupplyPlaquette();
         });
 
         const ledgerTransfersRef = ref(db, "ledger_transfers");
@@ -1008,6 +1180,68 @@
             ledgerTransfersReceived = true;
             checkFirstLoadComplete();
         });
+
+        // --- Mise à jour de la plaquette flottante du flux d'approvisionnement ---
+        function updateSupplyPlaquette() {
+            // Calcul des approvisionnements validés
+            const validSupply = ledgerSupply.filter(item => item.status === 'Validé');
+            const pendingSupply = ledgerSupply.filter(item => item.status === 'En attente');
+            
+            const totalApprovFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const totalApprovUSD = totalApprovFCFA / USD_RATE;
+            
+            // Total des envois (tous les transferts du nœud 'transfers')
+            const totalEnvoisFCFA = transfers.reduce((sum, t) => sum + (parseFloat(t.amountFCFA) || 0), 0);
+            const totalEnvoisUSD = totalEnvoisFCFA / USD_RATE;
+            
+            // Solde du flux = approvisionnements validés - total des envois
+            const soldeFluxFCFA = totalApprovFCFA - totalEnvoisFCFA;
+            const soldeFluxUSD = soldeFluxFCFA / USD_RATE;
+            
+            // Compteurs pour la plaquette
+            const withdrawnCount = transfers.filter(t => t.status === 'Retiré').length;
+            const pendingCount = transfers.filter(t => t.status === 'En attente').length;
+            const totalTransferCount = transfers.length;
+
+            // Formatage des montants en USD (principal) et FCFA (entre parenthèses)
+            const formatAmount = (usd, fcfa) => {
+                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            };
+
+            const approvEl = document.getElementById('supplyTotalApprov');
+            if (approvEl) approvEl.innerText = formatAmount(totalApprovUSD, totalApprovFCFA);
+            
+            const envoisEl = document.getElementById('supplyTotalEnvois');
+            if (envoisEl) envoisEl.innerText = formatAmount(totalEnvoisUSD, totalEnvoisFCFA);
+            
+            const soldeEl = document.getElementById('supplySoldeFlux');
+            if (soldeEl) {
+                soldeEl.innerText = formatAmount(soldeFluxUSD, soldeFluxFCFA);
+                soldeEl.className = 'supply-value' + (soldeFluxFCFA < 0 ? ' red' : ' blue');
+            }
+            
+            // Mise à jour des compteurs avec les bonnes données
+            const validCountEl = document.getElementById('supplyValidCount');
+            if (validCountEl) validCountEl.innerText = withdrawnCount;
+            
+            const pendingCountEl = document.getElementById('supplyPendingCount');
+            if (pendingCountEl) pendingCountEl.innerText = pendingCount;
+            
+            const transferCountEl = document.getElementById('supplyTransferCount');
+            if (transferCountEl) transferCountEl.innerText = totalTransferCount;
+        }
+
+        // Fonction pour rétracter/déplier la plaquette
+        window.toggleSupplyBox = function() {
+            const box = document.getElementById('floatingSupplyBox');
+            const icon = document.getElementById('supplyToggleIcon');
+            box.classList.toggle('collapsed');
+            if (box.classList.contains('collapsed')) {
+                icon.className = 'fa-solid fa-chevron-down';
+            } else {
+                icon.className = 'fa-solid fa-chevron-up';
+            }
+        };
 
         // Gestion du changement de méthode de recherche
         document.getElementById('searchMethod').addEventListener('change', function() {
@@ -1071,7 +1305,6 @@
                         if (!t.date) return false;
                         const tDate = new Date(t.date);
                         if (isNaN(tDate.getTime())) return false;
-                        // Comparer jusqu'à la minute près
                         const tDateStr = tDate.toISOString().slice(0, 16);
                         return tDateStr === searchDateStr;
                     });
@@ -1230,9 +1463,18 @@
                     
                     const itemPath = matched._fbKey !== undefined ? `transfers/${matched._fbKey}` : `transfers/${indexInArray}`;
                     
+                    // Récupération de l'utilisateur connecté pour signature du retrait
+                    const currentUser = JSON.parse(localStorage.getItem('current_user'));
+                    
                     const updates = {};
                     updates[`${itemPath}/status`] = 'Retiré';
                     updates[`${itemPath}/withdrawalDate`] = withdrawalDate;
+                    // Signature de l'opérateur ayant effectué le retrait
+                    updates[`${itemPath}/withdrawalOperator`] = currentUser ? {
+                        name: currentUser.name,
+                        role: currentUser.role,
+                        desk: currentUser.desk || currentUser.guichet || 'N/A'
+                    } : { name: 'Système', role: 'Inconnu', desk: 'N/A' };
                     
                     update(ref(db), updates).then(() => {
                         const amountToDisplay = matched.amountFCFA || matched.amount || 0;
@@ -1247,6 +1489,9 @@
                             currentActiveTransfer = null;
                             // Réinitialiser le champ de recherche
                             document.getElementById('searchInput').value = '';
+                            // Mettre à jour la plaquette et l'historique
+                            updateSupplyPlaquette();
+                            buildHistoryTable();
                         }, 2000);
                     }).catch(err => {
                         console.error("Échec de mise à jour Firebase:", err);
@@ -1280,7 +1525,7 @@
             }
         }
 
-        // Fonction pour construire l'historique des retraits
+        // Fonction pour construire l'historique des retraits avec date/heure/référence d'envoi et colonne utilisateur agissant
         function buildHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
             const printTbody = document.getElementById('printHistoryTableBody');
@@ -1291,30 +1536,43 @@
             const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
 
             if (withdrawnTransfers.length === 0) {
-                const emptyRow = `<tr><td colspan="6" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
+                const emptyRow = `<tr><td colspan="10" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
                 if (tbody) tbody.innerHTML = emptyRow;
                 if (printTbody) printTbody.innerHTML = emptyRow;
                 if (clearBtn) clearBtn.style.display = 'none';
             } else {
                 const rows = withdrawnTransfers.map(t => {
-                    let rawDate = t.withdrawalDate || t.date || '--';
-                    let displayDate = rawDate;
-                    if (typeof rawDate === 'string' && rawDate.includes(' ')) {
-                        displayDate = rawDate.split(' ')[0];
-                    } else if (typeof rawDate === 'string' && rawDate.includes('T')) {
-                        displayDate = rawDate.split('T')[0];
+                    let rawWithdrawalDate = t.withdrawalDate || t.date || '--';
+                    let withdrawalDisplay = rawWithdrawalDate;
+                    if (typeof rawWithdrawalDate === 'string' && rawWithdrawalDate.includes(' ')) {
+                        withdrawalDisplay = rawWithdrawalDate.split(' ')[0];
+                    } else if (typeof rawWithdrawalDate === 'string' && rawWithdrawalDate.includes('T')) {
+                        withdrawalDisplay = rawWithdrawalDate.split('T')[0];
                     }
 
+                    // Récupération des informations d'envoi
+                    const sender = t.sender || {};
+                    const transferDate = sender.transferDate || (t.date ? new Date(t.date).toLocaleDateString('fr-FR') : '--/--/----');
+                    const transferTime = sender.transferTime || (t.date ? new Date(t.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'}) : '--:--');
+                    const transferRef = sender.transferReference || '--';
+
                     const finalAmount = t.amountFCFA || t.amount || 0;
+                    
+                    // Récupération du nom de l'opérateur de retrait
+                    const withdrawalOperatorName = t.withdrawalOperator?.name || 'N/A';
 
                     return `
                         <tr>
-                            <td>${displayDate}</td>
+                            <td>${withdrawalDisplay}</td>
+                            <td>${transferDate}</td>
+                            <td>${transferTime}</td>
+                            <td><span class="fw-bold">${transferRef}</span></td>
                             <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
                             <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-muted">${t.beneficiary.phone || ''}</small></td>
                             <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-success fw-bold">📍 ${t.sender.agency}</small></td>
                             <td class="text-end fw-bold text-danger">${parseFloat(finalAmount).toLocaleString()} FCFA</td>
                             <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span></td>
+                            <td><small class="fw-bold text-primary">${withdrawalOperatorName}</small></td>
                         </tr>
                     `;
                 }).join('');
@@ -1355,6 +1613,7 @@
                 Promise.all(deletePromises).then(() => {
                     alert(`Historique vidé avec succès (${withdrawnTransfers.length} retrait(s) supprimé(s)).`);
                     buildHistoryTable();
+                    updateSupplyPlaquette();
                 }).catch(err => {
                     console.error("Erreur lors de la suppression des retraits:", err);
                     alert("Une erreur est survenue lors de la suppression. Veuillez réessayer.");
@@ -1375,6 +1634,7 @@
             try {
                 transfers = JSON.parse(cachedTransfers);
                 buildHistoryTable();
+                updateSupplyPlaquette();
             } catch(e) { console.warn("Cache parsing error", e); }
         }
 
@@ -1384,9 +1644,17 @@
 
             const sessionBox = document.getElementById('headerUserSession');
             if (sessionBox) {
+                // Affichage enrichi et clair de l'identité de l'utilisateur connecté
                 sessionBox.innerHTML = `
-                    <i class="fa-solid fa-user-circle me-1"></i> ${currentUser.name} (${currentUser.role})<br>
-                    <i class="fa-solid fa-map-marker-alt me-1"></i> ${currentUser.desk || currentUser.guichet || 'N/A'}
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0;">
+                        <i class="fa-solid fa-user-circle" style="font-size: 1.2rem;"></i>
+                        <div>
+                            <strong style="color: #FFD700;">${currentUser.name}</strong>
+                            <span style="color: rgba(255,255,255,0.9); font-size: 0.7rem; display: block;">
+                                ${currentUser.role} — ${currentUser.desk || currentUser.guichet || 'N/A'}
+                            </span>
+                        </div>
+                    </div>
                 `;
             }
 

@@ -92,6 +92,9 @@
             height: 3rem;
             color: var(--wa-medium);
         }
+
+        /* Style pour la gestion des rôles dans la table */
+        .role-select { min-width: 120px; }
     </style>
 </head>
 <body>
@@ -144,7 +147,7 @@
     <div class="modal fade" id="adminModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Administration</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><h5 class="modal-title">Administration des Utilisateurs</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body" id="modalBody">
                     <div id="authSection">
                         <input type="password" id="adminAuthPass" class="form-control mb-2" placeholder="Mot de passe Gestionnaire">
@@ -225,7 +228,6 @@
             };
             set(dbRef, defaultConfig).then(() => {
                 console.log("Configuration cloud initialisée par défaut");
-                // Recharger depuis le cloud après initialisation
                 location.reload();
             }).catch(err => console.error("Erreur d'initialisation cloud:", err));
         }
@@ -239,16 +241,17 @@
                 if (!ledgerConfig.company) ledgerConfig.company = { manager: 'Administrateur' };
                 if (!ledgerConfig.agents) ledgerConfig.agents = [];
                 if (!ledgerConfig.desks) ledgerConfig.desks = [];
+                // S'assurer que chaque agent a un champ role
+                ledgerConfig.agents.forEach(a => {
+                    if (!a.role) a.role = 'Agent';
+                });
             } else {
-                // Initialisation de la base cloud si elle est vierge
                 initializeDefaultCloudConfig();
                 return;
             }
             
-            // Sauvegarde locale en cache miroir pour compatibilité hors-ligne PWA descendante
             localStorage.setItem('ledger_config', JSON.stringify(ledgerConfig));
             
-            // Hide loading overlay on first successful data load
             if (isFirstLoad) {
                 isFirstLoad = false;
                 if (loadingOverlay) {
@@ -263,7 +266,6 @@
         }, (error) => {
             console.error("Erreur de synchronisation Firebase:", error);
             if (isFirstLoad) {
-                // Tentative de chargement depuis le cache localStorage
                 const cachedConfig = localStorage.getItem('ledger_config');
                 if (cachedConfig) {
                     try {
@@ -272,10 +274,10 @@
                         if (!ledgerConfig.company) ledgerConfig.company = { manager: 'Administrateur' };
                         if (!ledgerConfig.agents) ledgerConfig.agents = [];
                         if (!ledgerConfig.desks) ledgerConfig.desks = [];
+                        ledgerConfig.agents.forEach(a => { if (!a.role) a.role = 'Agent'; });
                         initApp();
                     } catch(e) { console.warn("Cache parsing error", e); }
                 }
-                // Hide loading overlay after cache attempt
                 if (loadingOverlay) {
                     loadingOverlay.style.opacity = '0';
                     setTimeout(() => {
@@ -290,16 +292,34 @@
             const currentSelectedValue = userSelect.value;
             userSelect.innerHTML = '<option value="">Sélectionnez votre profil...</option>';
             
+            // Ajouter le Gestionnaire (Administrateur) depuis company.manager
             const adminOpt = document.createElement('option');
             adminOpt.value = 'admin';
-            adminOpt.textContent = (ledgerConfig.company.manager || 'Administrateur') + ' (Gestionnaire)';
+            const managerName = ledgerConfig.company.manager || 'Administrateur';
+            adminOpt.textContent = managerName + ' (Gestionnaire)';
             userSelect.appendChild(adminOpt);
 
+            // Ajouter le Promoteur si présent et différent du Gestionnaire
+            const promoterName = ledgerConfig.company.promoter || '';
+            if (promoterName && promoterName !== managerName) {
+                const promoterOpt = document.createElement('option');
+                promoterOpt.value = 'promoter';
+                promoterOpt.textContent = promoterName + ' (Promoteur)';
+                userSelect.appendChild(promoterOpt);
+            }
+
+            // Ajouter les Agents depuis ledgerConfig.agents
+            // Si l'agent a le rôle "Gestionnaire", ajouter "(Administrateur)" à côté de son nom
             ledgerConfig.agents.forEach(agent => {
                 const desk = ledgerConfig.desks.find(d => d.id == agent.deskId);
-                const desc = `${agent.name} ${desk ? '| ' + desk.country + ' - ' + desk.name : ''}`;
+                let desc = `${agent.name}`;
+                // Ajouter le rôle entre parenthèses si l'agent est Administrateur
+                if (agent.role === 'Gestionnaire') {
+                    desc += ' (Administrateur)';
+                }
+                desc += desk ? ` | ${desk.country} - ${desk.name}` : '';
                 const opt = document.createElement('option');
-                opt.value = agent.code;
+                opt.value = agent.code || agent.id;
                 opt.textContent = desc;
                 userSelect.appendChild(opt);
             });
@@ -351,18 +371,30 @@
             
             let currentUserData = null;
 
+            // Vérification pour le Gestionnaire (admin)
             if (selectedVal === 'admin' && pass === ledgerConfig.admin.code) {
                 currentUserData = {
                     role: 'Gestionnaire',
                     name: ledgerConfig.company.manager || 'Administrateur',
                     desk: 'Direction Centrale'
                 };
-            } else {
-                const agent = ledgerConfig.agents.find(a => a.code === selectedVal && a.password === pass);
+            }
+            // Vérification pour le Promoteur (si présent)
+            else if (selectedVal === 'promoter' && pass === ledgerConfig.admin.code) {
+                currentUserData = {
+                    role: 'Gestionnaire',
+                    name: ledgerConfig.company.promoter || 'Promoteur',
+                    desk: 'Direction Centrale'
+                };
+            }
+            // Vérification pour les Agents
+            else {
+                // Chercher par code ou par id
+                const agent = ledgerConfig.agents.find(a => (a.code === selectedVal || a.id == selectedVal) && a.password === pass);
                 if (agent) {
                     const desk = ledgerConfig.desks.find(d => d.id == agent.deskId);
                     currentUserData = {
-                        role: 'Agent',
+                        role: agent.role || 'Agent',
                         name: agent.name,
                         desk: desk ? `${desk.country} - ${desk.name}` : 'Guichet non défini'
                     };
@@ -395,20 +427,54 @@
         function renderManagementTable() {
             const tbody = document.getElementById('userTableBody');
             
+            // Récupérer le nom du gestionnaire depuis company.manager
+            const managerName = ledgerConfig.company.manager || 'Administrateur';
+            
+            // Ajouter la ligne du Gestionnaire (Administrateur)
             let html = `<tr>
-                <td>${ledgerConfig.company.manager || 'Admin'}</td>
-                <td><strong>Administrateur</strong></strong></td>
-                <td>-</strong></td>
+                <td><strong>${managerName}</strong></td>
+                <td>
+                    <select class="form-select form-select-sm role-select" id="role-admin" disabled>
+                        <option value="Gestionnaire" selected>Administrateur</option>
+                        <option value="Agent">Agent</option>
+                    </select>
+                </td>
+                <td>Direction Centrale</td>
                 <td><input type="text" id="pass-admin" class="form-control form-control-sm" value="${ledgerConfig.admin.code}"></td>
             </tr>`;
             
+            // Ajouter la ligne du Promoteur si présent et différent du Gestionnaire
+            const promoterName = ledgerConfig.company.promoter || '';
+            if (promoterName && promoterName !== managerName) {
+                html += `<tr>
+                    <td><strong>${promoterName}</strong></td>
+                    <td>
+                        <select class="form-select form-select-sm role-select" id="role-promoter" disabled>
+                            <option value="Gestionnaire" selected>Administrateur</option>
+                            <option value="Agent">Agent</option>
+                        </select>
+                    </td>
+                    <td>Direction Centrale</td>
+                    <td><input type="text" id="pass-promoter" class="form-control form-control-sm" value="${ledgerConfig.admin.code}"></td>
+                </tr>`;
+            }
+            
+            // Ajouter les Agents
             ledgerConfig.agents.forEach((a, index) => {
                 const d = ledgerConfig.desks.find(d => d.id == a.deskId);
+                const roleOptions = `
+                    <option value="Gestionnaire">Administrateur</option>
+                    <option value="Agent" ${a.role === 'Agent' ? 'selected' : ''}>Agent</option>
+                `;
                 html += `<tr>
                     <td>${a.name}</td>
-                    <td>Agent</strong></td>
-                    <td>${d ? d.country + ' / ' + d.name : 'N/A'}</strong></td>
-                    <td><input type="text" id="pass-agent-${index}" class="form-control form-control-sm" value="${a.password || ''}"></strong></td>
+                    <td>
+                        <select class="form-select form-select-sm role-select" id="role-agent-${index}">
+                            ${roleOptions}
+                        </select>
+                    </td>
+                    <td>${d ? d.country + ' / ' + d.name : 'N/A'}</td>
+                    <td><input type="text" id="pass-agent-${index}" class="form-control form-control-sm" value="${a.password || ''}"></td>
                 </tr>`;
             });
             
@@ -417,20 +483,32 @@
 
         // Mutation montante temps réel vers Firebase Realtime Database
         window.saveUserPasswords = function() {
+            // Mettre à jour le mot de passe admin
             ledgerConfig.admin.code = document.getElementById('pass-admin').value;
             
+            // Mettre à jour le mot de passe du promoteur si présent
+            const promoterPassInput = document.getElementById('pass-promoter');
+            if (promoterPassInput) {
+                // Le promoteur utilise le même code que l'admin
+                ledgerConfig.admin.code = promoterPassInput.value;
+            }
+            
+            // Mettre à jour les agents
             ledgerConfig.agents.forEach((a, index) => {
-                const input = document.getElementById(`pass-agent-${index}`);
-                if(input) {
-                    a.password = input.value;
+                const passInput = document.getElementById(`pass-agent-${index}`);
+                const roleSelect = document.getElementById(`role-agent-${index}`);
+                if(passInput) {
+                    a.password = passInput.value;
+                }
+                if(roleSelect) {
+                    a.role = roleSelect.value;
                 }
             });
 
-            // Envoi de la structure vers Firebase (la synchronisation en retour rafraîchira l'affichage et le cache)
+            // Envoi de la structure vers Firebase
             set(dbRef, ledgerConfig)
                 .then(() => {
                     showNotification("Modifications enregistrées avec succès", true);
-                    // Actualiser le cache local après sauvegarde
                     localStorage.setItem('ledger_config', JSON.stringify(ledgerConfig));
                 })
                 .catch((error) => {

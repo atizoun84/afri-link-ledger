@@ -130,7 +130,148 @@
             gap: 8px;
         }
 
-        /* Loading overlay */
+        /* --- Plaquette Flottante du Flux d'Approvisionnement --- */
+        .floating-supply-box {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1050;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(15px);
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            border: 1.5px solid var(--wa-medium);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 280px;
+            max-width: 95%;
+            transition: all 0.3s ease;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .floating-supply-box .supply-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 5px 15px;
+            width: 100%;
+        }
+
+        .floating-supply-box .supply-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #777;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .floating-supply-box .supply-value {
+            font-size: 1rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .floating-supply-box .supply-value.blue {
+            color: #0275d8;
+        }
+        .floating-supply-box .supply-value.red {
+            color: #d9534f;
+        }
+        .floating-supply-box .supply-value.green {
+            color: #28a745;
+        }
+        .floating-supply-box .separator {
+            color: #adb5bd;
+            font-weight: 300;
+            margin: 0 2px;
+        }
+
+        .floating-supply-box .supply-sub-line {
+            font-size: 0.8rem;
+            color: #555;
+            margin-top: 2px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0 15px;
+        }
+
+        /* Bouton pour rétracter/déplier */
+        .floating-supply-box .toggle-supply-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--wa-medium);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            z-index: 1051;
+        }
+
+        .floating-supply-box .toggle-supply-btn:hover {
+            background: var(--wa-dark);
+            transform: scale(1.05);
+        }
+
+        .floating-supply-box.collapsed {
+            padding: 6px 20px;
+            min-width: unset;
+            width: auto;
+            border-radius: 100px;
+        }
+
+        .floating-supply-box.collapsed .supply-line,
+        .floating-supply-box.collapsed .supply-sub-line {
+            display: none;
+        }
+
+        .floating-supply-box.collapsed .toggle-supply-btn {
+            position: static;
+            margin: 0;
+            transform: rotate(180deg);
+        }
+
+        /* Ajustement du contenu pour éviter le chevauchement */
+        .content-wrapper {
+            margin-top: 70px;
+        }
+
+        @media (max-width: 576px) {
+            .floating-supply-box {
+                top: 70px;
+                padding: 10px 15px;
+                min-width: unset;
+                width: 95%;
+                border-radius: 15px;
+            }
+            .floating-supply-box .supply-value {
+                font-size: 0.9rem;
+            }
+            .floating-supply-box .supply-label {
+                font-size: 0.65rem;
+            }
+            .content-wrapper {
+                margin-top: 95px;
+            }
+        }
+
+        /* --- Loading overlay --- */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -272,6 +413,22 @@
             transform: translateY(-2px);
         }
 
+        .btn-delete-history {
+            background-color: #dc3545;
+            color: white;
+            border-radius: 50px;
+            padding: 6px 16px;
+            font-weight: 600;
+            border: none;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .btn-delete-history:hover {
+            background-color: #c82333;
+            transform: translateY(-2px);
+        }
+
         .total-info {
             background: #f0f2f5;
             border-radius: 10px;
@@ -353,7 +510,7 @@
             color: var(--wa-dark);
         }
 
-        /* --- Indicateur de Connexion Firebase Éléphant et Discret --- */
+        /* --- Indicateur de Connexion Firebase --- */
         .fb-status-indicator {
             position: fixed;
             top: 12px;
@@ -490,7 +647,28 @@
         </nav>
     </header>
 
-    <main class="container">
+    <!-- Plaquette Flottante du Flux d'Approvisionnement avec bouton de rétractation -->
+    <div class="floating-supply-box" id="floatingSupplyBox">
+        <button class="toggle-supply-btn" id="toggleSupplyBtn" onclick="toggleSupplyBox()" title="Rétracter/Déplier">
+            <i class="fa-solid fa-chevron-up" id="supplyToggleIcon"></i>
+        </button>
+        <div class="supply-line" id="supplyLineContent">
+            <span class="supply-label"><i class="fa-solid fa-scale-balanced me-1 text-success"></i>Flux :</span>
+            <span class="supply-value blue" id="supplyTotalApprov">0 USD (0 FCFA)</span>
+            <span class="separator">/</span>
+            <span class="supply-value red" id="supplyTotalEnvois">0 USD (0 FCFA)</span>
+            <span class="separator">|</span>
+            <span class="supply-label"><i class="fa-solid fa-coins me-1 text-warning"></i>Solde :</span>
+            <span class="supply-value" id="supplySoldeFlux">0 USD (0 FCFA)</span>
+        </div>
+        <div class="supply-sub-line" id="supplySubLineContent">
+            <span><span class="text-muted">✅ Retirés</span> <strong id="supplyValidCount">0</strong></span>
+            <span><span class="text-muted">⏳ En attente de retrait</span> <strong id="supplyPendingCount">0</strong></span>
+            <span><span class="text-muted">📦 Envois</span> <strong id="supplyTransferCount">0</strong></span>
+        </div>
+    </div>
+
+    <main class="container content-wrapper">
         <div class="page-header mb-4">
             <h1>Transfert d'Argent</h1>
             <p class="text-muted">Effectuez un envoi d'argent sécurisé</p>
@@ -543,7 +721,13 @@
                             </div>
 
                             <div class="mb-4">
-                                <h5 class="form-section-title"><i class="fa-solid fa-user-check me-2 text-info"></i>Informations Bénéficiaire</h5>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="form-section-title mb-0"><i class="fa-solid fa-user-check me-2 text-info"></i>Informations Bénéficiaire</h5>
+                                    <div class="form-check form-switch small">
+                                        <input class="form-check-input" type="checkbox" id="beneficiaryUnknownToggle" onchange="toggleBeneficiaryStatus()">
+                                        <label class="form-check-label fw-bold text-danger" for="beneficiaryUnknownToggle">Bénéficiaire inconnu lors de l'envoi</label>
+                                    </div>
+                                </div>
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold">Nom complet</label>
@@ -587,16 +771,17 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label small fw-bold">Frais d'envoi appliqués</label>
-                                        <input type="text" id="transferFees" class="form-control form-control-lg" value="0 FCFA" readonly disabled>
+                                        <input type="text" id="transferFees" class="form-control form-control-lg" value="0.00 USD (0 FCFA)" readonly disabled>
                                     </div>
                                 </div>
                                 <div class="total-info mt-3">
                                     <div class="row align-items-center">
                                         <div class="col-md-12 mb-3 p-3 bg-white rounded shadow-sm text-center border-start border-success border-4">
-                                            <small class="text-muted text-uppercase fw-bold tracking-wider">Montant total à encaisser par l'opérateur (FCFA)</small>
-                                            <p class="mb-0 text-success fw-black" id="totalFCFA" style="font-size: 2.25rem; font-weight: 900; letter-spacing: -0.5px;">0 FCFA</p>
+                                            <small class="text-muted text-uppercase fw-bold tracking-wider">Montant total à encaisser par l'opérateur</small>
+                                            <p class="mb-0 text-success fw-black" id="totalUSD" style="font-size: 2.25rem; font-weight: 900; letter-spacing: -0.5px;">0 USD</p>
+                                            <small class="text-muted fw-bold" id="totalFCFA">(0 FCFA)</small>
                                         </div>
-                                        <div class="col-md-4 text-center">
+                                        <div class="col-md-6 text-center border-end">
                                             <div class="d-flex flex-column align-items-center justify-content-center">
                                                 <small class="text-muted">Taux réel de frais calculé</small>
                                                 <p class="fw-bold mb-1" id="feePercentage">0.00%</p>
@@ -605,13 +790,10 @@
                                                 </button>
                                             </div>
                                         </div>
-                                        <div class="col-md-4 text-center">
-                                            <small class="text-muted">Total équivalent (DOLLAR US)</small>
-                                            <p class="fw-bold mb-0 text-primary" id="totalUSD">0 USD</p>
-                                        </div>
-                                        <div class="col-md-4 text-center">
-                                            <small class="text-muted">Montant net du transfert (FCFA)</small>
-                                            <p class="fw-bold mb-0 text-secondary" id="netTransferDisplay">0 FCFA</p>
+                                        <div class="col-md-6 text-center">
+                                            <small class="text-muted">Montant net du transfert</small>
+                                            <p class="fw-bold mb-0 text-primary" id="netTransferDisplay">0 USD</p>
+                                            <small class="text-muted fw-bold" id="netTransferFCFADisplay">(0 FCFA)</small>
                                         </div>
                                     </div>
                                 </div>
@@ -713,10 +895,15 @@
     <div class="modal fade" id="historyDisplayModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content elegant-modal">
-                <div class="elegant-modal-header">
-                    <i class="fa-solid fa-list-check fa-2x mb-2"></i>
-                    <h4 class="mb-0" id="historyTitle">Envois Enregistrés</h4>
-                    <p class="mb-0 mt-1 opacity-75 text-white small" id="historySubtitle">Registre des opérations de l'agence</p>
+                <div class="elegant-modal-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fa-solid fa-list-check fa-2x mb-2"></i>
+                        <h4 class="mb-0" id="historyTitle">Envois Enregistrés</h4>
+                        <p class="mb-0 mt-1 opacity-75 text-white small" id="historySubtitle">Registre des opérations de l'agence</p>
+                    </div>
+                    <button class="btn btn-delete-history" onclick="deleteAllHistory()" id="deleteAllHistoryBtn">
+                        <i class="fa-solid fa-trash-can me-1"></i>Tout supprimer
+                    </button>
                 </div>
                 <div class="modal-body p-4">
                     <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
@@ -729,6 +916,8 @@
                                     <th>Bénéficiaire (Agence)</th>
                                     <th class="text-end">Montant</th>
                                     <th class="text-center">Statut</th>
+                                    <th>Utilisateur agissant</th>
+                                    <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="historyTableBody">
@@ -772,6 +961,7 @@
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Bénéficiaire & Agence de Retrait</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6; text-align: right;">Montant</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center;">Statut</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Utilisateur agissant</th>
                 </tr>
             </thead>
             <tbody id="printHistoryTableBody">
@@ -802,31 +992,39 @@
                     <div class="info-recap">
                         <div class="row small">
                             <div class="col-6">
+                                <strong>Référence :</strong>
+                                <span id="modalReference">-</span>
+                            </div>
+                            <div class="col-6">
+                                <strong>Date & Heure :</strong>
+                                <span id="modalDateTime">-</span>
+                            </div>
+                            <div class="col-6 mt-2">
                                 <strong>Expéditeur :</strong>
                                 <span id="modalSender">-</span>
                             </div>
-                            <div class="col-6">
+                            <div class="col-6 mt-2">
                                 <strong>Bénéficiaire :</strong>
                                 <span id="modalBeneficiary">-</span>
                             </div>
                             <div class="col-6 mt-2">
-                                <strong>Montant :</strong>
+                                <strong>Montant Net :</strong>
                                 <span id="modalAmount">-</span>
                             </div>
                             <div class="col-6 mt-2">
                                 <strong>Agence retrait :</strong>
                                 <span id="modalAgency">-</span>
                             </div>
-                            <div class="col-12 mt-2">
+                            <div class="col-12 mt-2 pt-2 border-top border-secondary">
                                 <strong>Total à payer :</strong>
-                                <span id="modalTotalPaid">-</span>
+                                <span id="modalTotalPaid" class="fw-bold text-success">-</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="d-flex gap-3 mt-4">
                         <button class="btn btn-copy flex-grow-1" onclick="copySecretCode()">
-                            <i class="fa-regular fa-copy me-2"></i>Copier le code
+                            <i class="fa-regular fa-copy me-2"></i>Copier le récapitulatif
                         </button>
                         <button class="btn btn-close-modal flex-grow-1" data-bs-dismiss="modal">
                             <i class="fa-solid fa-check me-2"></i>Fermer
@@ -852,7 +1050,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+        import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
         // Configuration Firebase unifiée
         const firebaseConfig = {
@@ -874,9 +1072,12 @@
         let isFirstLoad = true;
         let configReceived = false;
         let transfersReceived = false;
+        let supplyReceived = false;
 
         // Mémoire tampon temps réel locale alimentée par Firebase pour l'historique et les codes
         let cacheTransfers = [];
+        let cacheSupply = [];
+        let currentFilteredTransfers = [];
 
         // Taux de change dynamique - sera mis à jour depuis Firebase
         let USD_RATE = 600;
@@ -936,14 +1137,7 @@
             "Ghana": "+233",
             "Libéria": "+231",
             "Sierra Leone": "+232",
-            "Gambie": "+220",
-            "Sénégal": "+221",
-            "Mauritanie": "+222",
-            "Mali": "+223",
-            "Burkina Faso": "+226",
-            "Niger": "+227",
-            "Togo": "+228",
-            "Bénin": "+229"
+            "Gambie": "+220"
         };
 
         // Synchronisation temps réel des statuts de connectivité
@@ -969,22 +1163,38 @@
                 if (Array.isArray(data)) {
                     cacheTransfers = data.filter(Boolean);
                 } else {
-                    cacheTransfers = Object.keys(data).map(key => data[key]);
+                    cacheTransfers = Object.keys(data).map(key => ({ fbKey: key, ...data[key] }));
                 }
-                // Tri décroissant systématique par date pour correspondre au comportement natif unshift
                 cacheTransfers.sort((a, b) => new Date(b.date) - new Date(a.date));
             }
             transfersReceived = true;
             checkFirstLoadComplete();
+            updateSupplyPlaquette();
         });
 
-        // ** MISE À JOUR DYNAMIQUE DU TAUX DE CHANGE DEPUIS FIREBASE **
-        // Écoute en temps réel du noeud ledger_config pour charger le taux dollar verrouillé
+        // Écoute dynamique du nœud des approvisionnements (ledger_supply)
+        const supplyRef = ref(db, "ledger_supply");
+        onValue(supplyRef, (snapshot) => {
+            const data = snapshot.val();
+            cacheSupply = [];
+            if (data) {
+                if (Array.isArray(data)) {
+                    cacheSupply = data.filter(Boolean);
+                } else {
+                    cacheSupply = Object.keys(data).map(key => ({ fbKey: key, ...data[key] }));
+                }
+                cacheSupply.sort((a, b) => b.id - a.id);
+            }
+            supplyReceived = true;
+            checkFirstLoadComplete();
+            updateSupplyPlaquette();
+        });
+
+        // Écoute en temps réel du noeud ledger_config pour charger le taux dollar verrouillé et le flux d'approvisionnement
         const configRef = ref(db, 'ledger_config');
         onValue(configRef, (snapshot) => {
             const cloudConfig = snapshot.val();
             if (cloudConfig) {
-                // Sauvegarde locale pour résilience hors ligne
                 localStorage.setItem('ledger_config', JSON.stringify(cloudConfig));
                 
                 if (cloudConfig.dollarRateConfig && cloudConfig.dollarRateConfig.value) {
@@ -999,13 +1209,11 @@
                     }
                 }
                 
-                // Mise à jour dynamique des devises depuis le cloud
                 if (cloudConfig.currencies && Array.isArray(cloudConfig.currencies)) {
                     dynamicCurrencies = cloudConfig.currencies;
                     populateCurrencies();
                 }
                 
-                // Mise à jour des pays et guichets
                 if (cloudConfig.countries) {
                     populateCountriesFromConfig(cloudConfig);
                 }
@@ -1013,24 +1221,23 @@
                     populateAgenciesFromConfig(cloudConfig);
                 }
                 
-                // Mise à jour immédiate de l'affichage du taux dans le header
                 const rateDisplayElement = document.getElementById('headerExchangeRate');
                 const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
                 if (rateDisplayElement) rateDisplayElement.innerText = USD_RATE;
                 if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = USD_RATE;
                 
-                // Recalcul dynamique des frais si un montant est déjà saisi
                 const currentAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
                 if (currentAmount > 0) {
                     updateFees();
                 }
+                updateSupplyPlaquette();
             }
             configReceived = true;
             checkFirstLoadComplete();
         });
 
         function checkFirstLoadComplete() {
-            if (isFirstLoad && configReceived && transfersReceived) {
+            if (isFirstLoad && configReceived && transfersReceived && supplyReceived) {
                 isFirstLoad = false;
                 if (loadingOverlay) {
                     loadingOverlay.style.opacity = '0';
@@ -1041,13 +1248,245 @@
             }
         }
 
-        // Fonctions de chargement depuis la config cloud
+        // --- Fonction pour rétracter/déplier la plaquette ---
+        window.toggleSupplyBox = function() {
+            const box = document.getElementById('floatingSupplyBox');
+            const icon = document.getElementById('supplyToggleIcon');
+            box.classList.toggle('collapsed');
+            if (box.classList.contains('collapsed')) {
+                icon.className = 'fa-solid fa-chevron-down';
+            } else {
+                icon.className = 'fa-solid fa-chevron-up';
+            }
+        };
+
+        // --- Mise à jour de la plaquette flottante du flux d'approvisionnement ---
+        function updateSupplyPlaquette() {
+            // Calcul des approvisionnements validés
+            const validSupply = cacheSupply.filter(item => item.status === 'Validé');
+            const pendingSupply = cacheSupply.filter(item => item.status === 'En attente');
+            
+            const totalApprovFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const totalApprovUSD = totalApprovFCFA / USD_RATE;
+            
+            // Total des envois (tous, y compris ceux en attente)
+            const totalEnvoisFCFA = cacheTransfers.reduce((sum, t) => sum + (parseFloat(t.amountFCFA) || 0), 0);
+            const totalEnvoisUSD = totalEnvoisFCFA / USD_RATE;
+            
+            // Solde du flux = approvisionnements validés - total des envois
+            const soldeFluxFCFA = totalApprovFCFA - totalEnvoisFCFA;
+            const soldeFluxUSD = soldeFluxFCFA / USD_RATE;
+            
+            // Nombre d'envois en attente (non retirés)
+            const pendingTransfers = cacheTransfers.filter(t => t.status === 'En attente');
+            const pendingTransfersCount = pendingTransfers.length;
+            
+            const validCount = validSupply.length;
+            const pendingCount = pendingSupply.length;
+            const transferCount = cacheTransfers.length;
+
+            // Formatage des montants en USD (principal) et FCFA (entre parenthèses)
+            const formatAmount = (usd, fcfa) => {
+                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            };
+
+            document.getElementById('supplyTotalApprov').innerText = formatAmount(totalApprovUSD, totalApprovFCFA);
+            document.getElementById('supplyTotalEnvois').innerText = formatAmount(totalEnvoisUSD, totalEnvoisFCFA);
+            
+            const soldeEl = document.getElementById('supplySoldeFlux');
+            soldeEl.innerText = formatAmount(soldeFluxUSD, soldeFluxFCFA);
+            soldeEl.className = 'supply-value' + (soldeFluxFCFA < 0 ? ' red' : ' blue');
+            
+            document.getElementById('supplyValidCount').innerText = validCount;
+            document.getElementById('supplyPendingCount').innerText = pendingCount;
+            document.getElementById('supplyTransferCount').innerText = transferCount;
+        }
+
+        // --- Fonction pour supprimer un envoi individuel depuis l'historique ---
+        window.deleteHistoryItem = function(fbKey) {
+            if (!fbKey) return;
+            if (!confirm("Confirmer la suppression définitive de cet envoi ?")) return;
+            
+            const codeInput = prompt("Veuillez saisir le code de confirmation (1233) pour supprimer cet envoi :");
+            if (codeInput === null) return;
+            if (codeInput !== "1233") {
+                alert("Code incorrect. Suppression annulée.");
+                return;
+            }
+
+            const transferRef = ref(db, `transfers/${fbKey}`);
+            remove(transferRef)
+                .then(() => {
+                    // Mise à jour du cache local
+                    cacheTransfers = cacheTransfers.filter(t => t.fbKey !== fbKey);
+                    // Mise à jour de l'affichage du tableau si la modale est ouverte
+                    const currentFiltered = currentFilteredTransfers.filter(t => t.fbKey !== fbKey);
+                    currentFilteredTransfers = currentFiltered;
+                    renderHistoryTable(currentFiltered);
+                    updateSupplyPlaquette();
+                    // Afficher un message de succès
+                    const overlay = document.getElementById('success-overlay') || createSuccessOverlay();
+                    const text = document.getElementById('success-message') || overlay.querySelector('h4');
+                    if (text) text.innerText = "Envoi supprimé avec succès !";
+                    if (overlay) {
+                        overlay.style.display = 'flex';
+                        setTimeout(() => { overlay.style.display = 'none'; }, 2000);
+                    }
+                })
+                .catch(err => {
+                    alert("Erreur lors de la suppression : " + err.message);
+                });
+        };
+
+        // --- Fonction pour supprimer tous les envois de l'historique filtré ---
+        window.deleteAllHistory = function() {
+            if (currentFilteredTransfers.length === 0) {
+                alert("Aucun envoi à supprimer dans la liste actuelle.");
+                return;
+            }
+            if (!confirm(`Confirmer la suppression définitive de tous les ${currentFilteredTransfers.length} envois affichés ?`)) return;
+            
+            const codeInput = prompt("Veuillez saisir le code de confirmation (1233) pour supprimer tous ces envois :");
+            if (codeInput === null) return;
+            if (codeInput !== "1233") {
+                alert("Code incorrect. Suppression annulée.");
+                return;
+            }
+
+            // Supprimer chaque envoi un par un
+            const deletePromises = currentFilteredTransfers.map(t => {
+                if (t.fbKey) {
+                    const transferRef = ref(db, `transfers/${t.fbKey}`);
+                    return remove(transferRef);
+                }
+                return Promise.resolve();
+            });
+
+            Promise.all(deletePromises)
+                .then(() => {
+                    // Mise à jour du cache local en retirant les entrées supprimées
+                    const keysToRemove = new Set(currentFilteredTransfers.map(t => t.fbKey));
+                    cacheTransfers = cacheTransfers.filter(t => !keysToRemove.has(t.fbKey));
+                    currentFilteredTransfers = [];
+                    renderHistoryTable([]);
+                    updateSupplyPlaquette();
+                    
+                    const overlay = document.getElementById('success-overlay') || createSuccessOverlay();
+                    const text = document.getElementById('success-message') || overlay.querySelector('h4');
+                    if (text) text.innerText = "Tous les envois ont été supprimés !";
+                    if (overlay) {
+                        overlay.style.display = 'flex';
+                        setTimeout(() => { overlay.style.display = 'none'; }, 2000);
+                    }
+                })
+                .catch(err => {
+                    alert("Erreur lors de la suppression : " + err.message);
+                });
+        };
+
+        function createSuccessOverlay() {
+            const overlay = document.createElement('div');
+            overlay.id = 'success-overlay';
+            overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.9);z-index:9999;justify-content:center;align-items:center;flex-direction:column;';
+            overlay.innerHTML = `
+                <i class="fa-solid fa-circle-check success-icon" style="color:#25D366;font-size:5rem;animation:scaleUp 0.5s ease-out;"></i>
+                <h4 class="mt-3 fw-bold" id="success-message">Opération réussie</h4>
+            `;
+            document.body.appendChild(overlay);
+            return overlay;
+        }
+
+        // Fonction pour rendre le tableau d'historique avec les boutons de suppression
+        function renderHistoryTable(transfers) {
+            const tbody = document.getElementById('historyTableBody');
+            const printTbody = document.getElementById('printHistoryTableBody');
+            
+            if (!transfers || transfers.length === 0) {
+                const emptyRow = `<tr><td colspan="8" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun envoi trouvé pour cette période.</td></tr>`;
+                tbody.innerHTML = emptyRow;
+                printTbody.innerHTML = emptyRow;
+                document.getElementById('deleteAllHistoryBtn').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('deleteAllHistoryBtn').style.display = 'inline-block';
+
+            const dynamicRows = transfers.map(t => {
+                const statusBadge = t.status === 'En attente' 
+                    ? `<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>En attente de retrait</span>`
+                    : `<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span>`;
+                
+                const displayDate = t.date ? new Date(t.date).toLocaleDateString('fr-FR') : '--/--/----';
+                const amtUSD = t.amountUSD ? parseFloat(t.amountUSD).toFixed(2) : (parseFloat(t.amountFCFA) / USD_RATE).toFixed(2);
+                const fbKey = t.fbKey || '';
+                
+                // Récupération du nom de l'opérateur (utilisateur agissant)
+                const operatorName = t.operator?.name || 'N/A';
+                
+                return `
+                    <tr>
+                        <td>${displayDate}</td>
+                        <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
+                        <td>${t.sender?.firstname || ''} ${t.sender?.name || ''}<br><small class="text-muted">${t.sender?.phone || ''}</small></td>
+                        <td>${t.beneficiary?.firstname || ''} ${t.beneficiary?.name || ''}<br><small class="text-success fw-bold">📍 ${t.beneficiary?.agency || ''}</small></td>
+                        <td class="text-end fw-bold">${amtUSD} USD<br><small class="text-muted">(${parseFloat(t.amountFCFA).toLocaleString()} CFA)</small></td>
+                        <td class="text-center">${statusBadge}</td>
+                        <td><small class="fw-bold text-primary">${operatorName}</small></td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHistoryItem('${fbKey}')" title="Supprimer cet envoi">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tbody.innerHTML = dynamicRows;
+            printTbody.innerHTML = dynamicRows;
+        }
+
+        // Case à cocher pour rendre les données du bénéficiaire facultatives lors du dépôt
+        function toggleBeneficiaryStatus() {
+            const isUnknown = document.getElementById('beneficiaryUnknownToggle').checked;
+            const bName = document.getElementById('beneficiaryName');
+            const bFirstname = document.getElementById('beneficiaryFirstname');
+            const bPhone = document.getElementById('beneficiaryPhone');
+            const bCountry = document.getElementById('beneficiaryCountry');
+            const bAgency = document.getElementById('beneficiaryAgency');
+            
+            if (isUnknown) {
+                bName.value = "Inconnu";
+                bFirstname.value = "Inconnu";
+                bPhone.value = "00000000";
+                
+                bName.disabled = true;
+                bFirstname.disabled = true;
+                bPhone.disabled = true;
+                
+                bName.removeAttribute('required');
+                bFirstname.removeAttribute('required');
+                bPhone.removeAttribute('required');
+            } else {
+                bName.value = bName.value === "Inconnu" ? "" : bName.value;
+                bFirstname.value = bFirstname.value === "Inconnu" ? "" : bFirstname.value;
+                bPhone.value = bPhone.value === "00000000" ? "" : bPhone.value;
+                
+                bName.disabled = false;
+                bFirstname.disabled = false;
+                bPhone.disabled = false;
+                
+                bName.setAttribute('required', 'required');
+                bFirstname.setAttribute('required', 'required');
+                bPhone.setAttribute('required', 'required');
+            }
+        }
+        window.toggleBeneficiaryStatus = toggleBeneficiaryStatus;
+
         function populateCountriesFromConfig(config) {
             let countries = [];
             if (config.countries) {
                 countries = config.countries.map(c => typeof c === 'object' ? c.name : c);
             }
-            
             if (countries.length === 0) {
                 countries = ["Bénin", "Côte d'Ivoire", "Sénégal", "Cameroun", "Togo", "Burkina Faso", "Mali", "Niger", "Gabon"];
             }
@@ -1082,21 +1521,26 @@
             filterAgenciesByCountry();
         }
 
-        // 2. Affichage dynamique dans le Header et Gestion des Droits de Navigation (Uniformisé)
         function applyRoleAccessControl() {
             const currentUser = JSON.parse(localStorage.getItem('current_user'));
             if (!currentUser) return;
 
-            // Rendu de la session utilisateur sur deux lignes (comme sur l'accueil)
             const sessionBox = document.getElementById('headerUserSession');
             if (sessionBox) {
+                // Affichage enrichi et clair de l'identité de l'utilisateur connecté
                 sessionBox.innerHTML = `
-                    <i class="fa-solid fa-user-circle me-1"></i> ${currentUser.name} (${currentUser.role})<br>
-                    <i class="fa-solid fa-map-marker-alt me-1"></i> ${currentUser.desk || currentUser.guichet || 'N/A'}
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0;">
+                        <i class="fa-solid fa-user-circle" style="font-size: 1.2rem;"></i>
+                        <div>
+                            <strong style="color: #FFD700;">${currentUser.name}</strong>
+                            <span style="color: rgba(255,255,255,0.9); font-size: 0.7rem; display: block;">
+                                ${currentUser.role} — ${currentUser.desk || currentUser.guichet || 'N/A'}
+                            </span>
+                        </div>
+                    </div>
                 `;
             }
 
-            // Gestion des restrictions d'accès pour les agents
             const navContainer = document.getElementById('navLinksContainer');
             if (navContainer) {
                 if (currentUser.role === 'Agent') {
@@ -1109,7 +1553,6 @@
                     });
                 }
 
-                // Ajout harmonisé du bouton PWA d'installation (masqué par défaut)
                 const installLi = document.createElement('li');
                 installLi.className = 'nav-item ms-lg-2';
                 installLi.id = 'pwaInstallContainer';
@@ -1121,7 +1564,6 @@
                 `;
                 navContainer.appendChild(installLi);
 
-                // Ajout harmonisé du bouton Déconnexion
                 const logoutLi = document.createElement('li');
                 logoutLi.className = 'nav-item ms-lg-2';
                 logoutLi.innerHTML = `
@@ -1131,12 +1573,9 @@
                 `;
                 navContainer.appendChild(logoutLi);
             }
-            
-            // Initialisation de la logique du bouton d'installation intelligente PWA
             initPWAInstallationLogic();
         }
 
-        // Fonction de gestion de la déconnexion
         function handleLogout(event) {
             event.preventDefault();
             localStorage.removeItem('current_user');
@@ -1155,7 +1594,6 @@
                 } else if (config.companyName) {
                     nameToDisplay = config.companyName;
                 }
-                
                 if (nameToDisplay) {
                     if (headerName) headerName.innerText = nameToDisplay;
                     if (printCompName) printCompName.innerText = nameToDisplay;
@@ -1163,7 +1601,6 @@
             }
         }
         
-        // Fonction pour mettre à jour l'indicatif téléphone en fonction du pays
         function updatePhonePrefix(countryElementId, prefixElementId) {
             const country = document.getElementById(countryElementId).value;
             const prefixSpan = document.getElementById(prefixElementId);
@@ -1171,17 +1608,15 @@
             if (country && phonePrefixes[country]) {
                 prefixSpan.innerHTML = phonePrefixes[country];
             } else if (country) {
-                // Tentative de trouver un indicatif à partir du nom du pays (si présent dans la liste étendue)
                 const matchedKey = Object.keys(phonePrefixes).find(key => key.toLowerCase() === country.toLowerCase());
                 if (matchedKey) {
                     prefixSpan.innerHTML = phonePrefixes[matchedKey];
                 } else {
-                    // Fallback : essayer d'extraire un +XX du pays si le nom contient un code comme "Congo (+242)"
                     const match = country.match(/\+(\d+)/);
                     if (match) {
                         prefixSpan.innerHTML = `+${match[1]}`;
                     } else {
-                        prefixSpan.innerHTML = "+229"; // Fallback générique
+                        prefixSpan.innerHTML = "+229";
                     }
                 }
             } else {
@@ -1190,7 +1625,6 @@
         }
 
         function populateCurrencies() {
-            // Utiliser les devises dynamiques récupérées depuis Firebase
             const currencySelect = document.getElementById('transferCurrency');
             if (!currencySelect) return;
             
@@ -1198,8 +1632,6 @@
             if (dynamicCurrencies.length > 0) {
                 currencies = dynamicCurrencies;
             }
-            
-            // Devises par défaut (fallback) si aucune devise n'est configurée dans le cloud
             if (currencies.length === 0) {
                 currencySelect.innerHTML = `
                     <option value="FCFA">FCFA (Franc CFA)</option>
@@ -1208,19 +1640,16 @@
                 return;
             }
             
-            // Construire les options à partir des devises du cloud
             let options = '';
             currencies.forEach(currency => {
                 const currencyName = typeof currency === 'object' ? currency.name : currency;
                 const currencySymbol = typeof currency === 'object' && currency.symbol ? currency.symbol : currencyName;
                 options += `<option value="${currencySymbol}">${currencyName} (${currencySymbol})</option>`;
             });
-            
             currencySelect.innerHTML = options;
         }
 
         function populateCountries() {
-            // Tentative de chargement depuis localStorage si pas encore dispo
             const config = JSON.parse(localStorage.getItem('ledger_config'));
             if (config && config.countries) {
                 populateCountriesFromConfig(config);
@@ -1279,7 +1708,6 @@
             if (selectBeneficiary) selectBeneficiary.innerHTML = beneficiaryOptions;
         }
 
-        // Fonction pour calculer les frais fixes en USD en fonction de la nouvelle grille
         function getFeeInUSD(amountInUSD) {
             if (amountInUSD >= 0.00 && amountInUSD <= 20.00) return 1.00;
             if (amountInUSD > 20.00 && amountInUSD <= 40.00) return 2.00;
@@ -1319,7 +1747,6 @@
             if (amountInUSD > 2700.00 && amountInUSD <= 2800.00) return 140.00;
             if (amountInUSD > 2800.00 && amountInUSD <= 2900.00) return 145.00;
             if (amountInUSD > 2900.00 && amountInUSD <= 3000.00) return 150.00;
-            
             return 0.00;
         }
 
@@ -1334,31 +1761,29 @@
             updateFees();
         }
 
+        // Réécriture intelligente pour présenter les dollars d'abord (CFA entre parenthèses)
         function updateFees() {
             const inputAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
             const currencySelect = document.getElementById('transferCurrency');
-            const selectedOption = currencySelect.options[currencySelect.selectedIndex];
             const currency = currencySelect.value;
-            const currencyName = selectedOption ? selectedOption.text : currency;
             
             if (inputAmount <= 0) {
-                document.getElementById('transferFees').value = '0 FCFA (0.00 USD)';
+                document.getElementById('transferFees').value = '0.00 USD (0 FCFA)';
                 document.getElementById('feePercentage').innerHTML = '0.00%';
-                document.getElementById('totalFCFA').innerHTML = '0 FCFA';
-                document.getElementById('totalUSD').innerHTML = '0 USD';
-                document.getElementById('netTransferDisplay').innerHTML = '0 FCFA';
+                document.getElementById('totalUSD').innerHTML = '0.00 USD';
+                document.getElementById('totalFCFA').innerHTML = '(0 FCFA)';
+                document.getElementById('netTransferDisplay').innerHTML = '0.00 USD';
+                document.getElementById('netTransferFCFADisplay').innerHTML = '(0 FCFA)';
                 return { fees: 0, totalFCFA: 0, totalUSD: 0, feePercent: 0, initialAmountFCFA: 0, initialAmountUSD: 0, feesUSD: 0 };
             }
 
             let amountUSD = 0;
             let amountFCFA = 0;
 
-            // Si la devise sélectionnée est FCFA ou USD (ou toute autre devise, on convertit en USD via le taux)
             if (currency === 'FCFA') {
                 amountFCFA = inputAmount;
                 amountUSD = amountFCFA / USD_RATE;
             } else {
-                // Pour USD ou toute autre devise, on considère que le montant saisi est en USD
                 amountUSD = inputAmount;
                 amountFCFA = amountUSD * USD_RATE;
             }
@@ -1367,7 +1792,6 @@
             let feesFCFA = 0;
             let computedFeePercent = 0;
 
-            // Logique adaptative : si un taux spécial manuel est appliqué, écraser le calcul forfaitaire standard
             if (specialFeePercentage !== null && specialFeePercentage > 0) {
                 computedFeePercent = specialFeePercentage;
                 feesFCFA = amountFCFA * (specialFeePercentage / 100);
@@ -1381,11 +1805,15 @@
             const totalFCFA = amountFCFA + feesFCFA;
             const totalUSD = totalFCFA / USD_RATE;
             
-            document.getElementById('transferFees').value = Math.round(feesFCFA).toLocaleString() + ' FCFA (' + feesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD)';
+            // Format d'affichage : DOLLARS (FCFA entre parenthèses)
+            document.getElementById('transferFees').value = feesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(feesFCFA).toLocaleString() + ' FCFA)';
             document.getElementById('feePercentage').innerHTML = computedFeePercent.toFixed(2) + '%';
-            document.getElementById('totalFCFA').innerHTML = Math.round(totalFCFA).toLocaleString() + ' FCFA';
+            
             document.getElementById('totalUSD').innerHTML = totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
-            document.getElementById('netTransferDisplay').innerHTML = Math.round(amountFCFA).toLocaleString() + ' FCFA';
+            document.getElementById('totalFCFA').innerHTML = '(' + Math.round(totalFCFA).toLocaleString() + ' FCFA)';
+            
+            document.getElementById('netTransferDisplay').innerHTML = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+            document.getElementById('netTransferFCFADisplay').innerHTML = '(' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
             
             return { 
                 fees: feesFCFA, 
@@ -1398,7 +1826,6 @@
             };
         }
 
-        // Fonctions d'ouverture et d'application de la modal de taux spécial
         function openSpecialRateModal() {
             const currentAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
             if (currentAmount <= 0) {
@@ -1463,13 +1890,33 @@
             return code;
         }
 
+        // Copie intégrale de toutes les références dans le presse-papier
         function copySecretCode() {
-            const code = document.getElementById('secretCode').innerText;
-            navigator.clipboard.writeText(code.replace(/\s/g, ''));
+            const code = document.getElementById('secretCode').innerText.replace(/\s/g, '');
+            const ref = document.getElementById('modalReference').innerText;
+            const datetime = document.getElementById('modalDateTime').innerText;
+            const sender = document.getElementById('modalSender').innerText;
+            const beneficiary = document.getElementById('modalBeneficiary').innerText;
+            const netAmt = document.getElementById('modalAmount').innerText;
+            const agency = document.getElementById('modalAgency').innerText;
+            const totalPaid = document.getElementById('modalTotalPaid').innerText;
+            
+            const textToCopy = `--- AFRI-LINK LEDGER RECEIPT ---\n` +
+                               `CODE DE RETRAIT: ${code}\n` +
+                               `REFERENCE: ${ref}\n` +
+                               `DATE/HEURE: ${datetime}\n` +
+                               `EXPEDITEUR: ${sender}\n` +
+                               `BENEFICIAIRE: ${beneficiary}\n` +
+                               `MONTANT NET: ${netAmt}\n` +
+                               `AGENCE RETRAIT: ${agency}\n` +
+                               `TOTAL ENCAISSE: ${totalPaid}\n` +
+                               `--------------------------------`;
+            
+            navigator.clipboard.writeText(textToCopy);
             
             const btn = window.event.target.closest('.btn-copy');
             const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-check me-2"></i>Copié !';
+            btn.innerHTML = '<i class="fa-solid fa-check me-2"></i>Récapitulatif Copié !';
             setTimeout(() => {
                 btn.innerHTML = originalHtml;
             }, 2000);
@@ -1533,9 +1980,6 @@
 
             bootstrap.Modal.getInstance(document.getElementById('historyFilterModal')).hide();
 
-            const tbody = document.getElementById('historyTableBody');
-            const printTbody = document.getElementById('printHistoryTableBody');
-            
             const monthLabel = document.getElementById('historyMonth').options[targetMonth].text;
             const computedTitle = `Envois : ${targetAgency}`;
             const computedSubtitle = `Période : ${monthLabel} ${targetYear} — ${filteredTransfers.length} opération(s) trouvée(s)`;
@@ -1547,33 +1991,8 @@
             document.getElementById('printDocSubtitle').innerText = computedSubtitle;
             document.getElementById('printGenerationDate').innerText = new Date().toLocaleString('fr-FR');
 
-            if (filteredTransfers.length === 0) {
-                const emptyRow = `<tr><td colspan="6" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun envoi trouvé pour cette période.</td></tr>`;
-                tbody.innerHTML = emptyRow;
-                printTbody.innerHTML = emptyRow;
-            } else {
-                const dynamicRows = filteredTransfers.map(t => {
-                    const statusBadge = t.status === 'En attente' 
-                        ? `<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>En attente</span>`
-                        : `<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span>`;
-                    
-                    const displayDate = t.date ? new Date(t.date).toLocaleDateString('fr-FR') : '--/--/----';
-                    
-                    return `
-                        <tr>
-                            <td>${displayDate}</td>
-                            <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
-                            <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-muted">${t.sender.phone || ''}</small></td>
-                            <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-success fw-bold">📍 ${t.beneficiary.agency}</small></td>
-                            <td class="text-end fw-bold">${parseFloat(t.amountFCFA).toLocaleString()} FCFA</td>
-                            <td class="text-center">${statusBadge}</td>
-                        </tr>
-                    `;
-                }).join('');
-                
-                tbody.innerHTML = dynamicRows;
-                printTbody.innerHTML = dynamicRows;
-            }
+            currentFilteredTransfers = filteredTransfers;
+            renderHistoryTable(filteredTransfers);
 
             setTimeout(() => {
                 const displayModal = new bootstrap.Modal(document.getElementById('historyDisplayModal'));
@@ -1590,6 +2009,9 @@
                 return;
             }
             
+            // Récupération de l'utilisateur connecté pour signature
+            const currentUser = JSON.parse(localStorage.getItem('current_user'));
+            
             const feeCalculations = updateFees();
             const secretCode = generateSecretCode();
             
@@ -1604,6 +2026,10 @@
             const currencyChoice = currencySelect.value;
             const currencyDisplayName = selectedCurrencyOption ? selectedCurrencyOption.text : currencyChoice;
             
+            const transferDateVal = document.getElementById('senderTransferDate').value;
+            const transferTimeVal = document.getElementById('senderTransferTime').value;
+            const transferRefVal = document.getElementById('senderTransferReference').value;
+
             const transferData = {
                 id: Date.now(),
                 date: new Date().toISOString(),
@@ -1620,15 +2046,21 @@
                 totalFCFA: feeCalculations.totalFCFA,
                 totalUSD: feeCalculations.totalUSD,
                 status: 'En attente',
+                // Signature de l'opérateur (utilisateur connecté)
+                operator: currentUser ? {
+                    name: currentUser.name,
+                    role: currentUser.role,
+                    desk: currentUser.desk || currentUser.guichet || 'N/A'
+                } : { name: 'Système', role: 'Inconnu', desk: 'N/A' },
                 sender: {
                     name: document.getElementById('senderName').value,
                     firstname: document.getElementById('senderFirstname').value,
                     country: document.getElementById('senderCountry').value,
                     agency: document.getElementById('senderAgency').options[document.getElementById('senderAgency').selectedIndex]?.text || '',
                     phone: senderFullPhone,
-                    transferDate: document.getElementById('senderTransferDate').value,
-                    transferTime: document.getElementById('senderTransferTime').value,
-                    transferReference: document.getElementById('senderTransferReference').value
+                    transferDate: transferDateVal,
+                    transferTime: transferTimeVal,
+                    transferReference: transferRefVal
                 },
                 beneficiary: {
                     name: document.getElementById('beneficiaryName').value,
@@ -1640,16 +2072,19 @@
                 }
             };
             
-            // Insertion chirurgicale et directe synchronisée sur Firebase Cloud Realtime Database
             const newTransferRef = push(ref(db, "transfers"));
             set(newTransferRef, transferData)
             .then(() => {
                 document.getElementById('secretCode').innerText = secretCode;
+                document.getElementById('modalReference').innerText = transferRefVal;
+                document.getElementById('modalDateTime').innerText = `${transferDateVal} à ${transferTimeVal}`;
                 document.getElementById('modalSender').innerHTML = `${transferData.sender.firstname} ${transferData.sender.name}`;
                 document.getElementById('modalBeneficiary').innerHTML = `${transferData.beneficiary.firstname} ${transferData.beneficiary.name}`;
-                document.getElementById('modalAmount').innerHTML = `${Math.round(transferData.amountFCFA).toLocaleString()} FCFA (frais : ${Math.round(transferData.feesFCFA).toLocaleString()} FCFA - ${transferData.feePercentage.toFixed(2)}%)`;
+                
+                // Rendu Dollars en premier dans la modal
+                document.getElementById('modalAmount').innerHTML = `${transferData.amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD (${Math.round(transferData.amountFCFA).toLocaleString()} FCFA)`;
                 document.getElementById('modalAgency').innerHTML = beneficiaryAgencyName;
-                document.getElementById('modalTotalPaid').innerHTML = `${Math.round(transferData.totalFCFA).toLocaleString()} FCFA (${transferData.totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD)`;
+                document.getElementById('modalTotalPaid').innerHTML = `${transferData.totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD (${Math.round(transferData.totalFCFA).toLocaleString()} FCFA)`;
                 
                 const modal = new bootstrap.Modal(document.getElementById('codeModal'));
                 modal.show();
@@ -1659,15 +2094,18 @@
             });
             
             this.reset();
-            specialFeePercentage = null; // Réinitialisation du taux spécial pour l'opération suivante
-            document.getElementById('transferFees').value = '0 FCFA (0.00 USD)';
+            specialFeePercentage = null;
+            document.getElementById('beneficiaryUnknownToggle').checked = false;
+            toggleBeneficiaryStatus();
+            
+            document.getElementById('transferFees').value = '0.00 USD (0 FCFA)';
             document.getElementById('feePercentage').innerHTML = '0.00%';
-            document.getElementById('totalFCFA').innerHTML = '0 FCFA';
-            document.getElementById('totalUSD').innerHTML = '0 USD';
-            document.getElementById('netTransferDisplay').innerHTML = '0 FCFA';
-            // Réinitialiser la date et l'heure courantes par défaut après reset
+            document.getElementById('totalUSD').innerHTML = '0.00 USD';
+            document.getElementById('totalFCFA').innerHTML = '(0 FCFA)';
+            document.getElementById('netTransferDisplay').innerHTML = '0.00 USD';
+            document.getElementById('netTransferFCFADisplay').innerHTML = '(0 FCFA)';
+            
             setDefaultDateTime();
-            // Réinitialiser la devise par défaut à la première option disponible
             const currencySelectReset = document.getElementById('transferCurrency');
             if (currencySelectReset.options.length > 0) {
                 currencySelectReset.selectedIndex = 0;
@@ -1677,7 +2115,6 @@
             updatePhonePrefix('beneficiaryCountry', 'beneficiaryPhonePrefix');
         };
 
-        // Enregistrement du Service Worker et gestion de l'installation intelligente
         function initPWAInstallationLogic() {
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
@@ -1717,15 +2154,8 @@
                     installContainer.style.display = 'none';
                 }
             });
-
-            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-                if (installContainer) {
-                    installContainer.style.display = 'none';
-                }
-            }
         }
 
-        // Fonction pour initialiser la date et l'heure courantes
         function setDefaultDateTime() {
             const now = new Date();
             const year = now.getFullYear();
@@ -1738,17 +2168,16 @@
             document.getElementById('senderTransferTime').value = `${hours}:${minutes}`;
         }
 
-        // Liaison globale des fonctions appelées en inline depuis le DOM HTML
         window.openHistoryFilterModal = openHistoryFilterModal;
         window.openSpecialRateModal = openSpecialRateModal;
         window.copySecretCode = copySecretCode;
         window.handleLogout = handleLogout;
+        window.deleteHistoryItem = deleteHistoryItem;
+        window.deleteAllHistory = deleteAllHistory;
 
         window.onload = function() { 
             applyRoleAccessControl();
             loadHeaderBrand();
-            // Le taux de change est désormais mis à jour dynamiquement via l'écouteur Firebase onValue (configRef)
-            // Les devises sont également chargées dynamiquement via le même écouteur
             populateCountries();
             populateAgencies();
             setDefaultDateTime();
