@@ -7,7 +7,7 @@
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#075E54">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link class="apple-touch-icon" href="logo.png">
     
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     
@@ -436,7 +436,6 @@
 </head>
 <body>
 
-    <!-- Loading overlay until cloud data is loaded -->
     <div id="loading-overlay">
         <div class="spinner-border spinner-border-custom mb-3" role="status">
             <span class="visually-hidden">Chargement...</span>
@@ -527,6 +526,18 @@
                                             <div class="phone-prefix" id="senderPhonePrefix">+229</div>
                                             <input type="tel" id="senderPhone" class="form-control phone-number-input" placeholder="XX XX XX XX" required>
                                         </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Date d'envoi</label>
+                                        <input type="date" id="senderTransferDate" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Heure d'envoi</label>
+                                        <input type="time" id="senderTransferTime" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold">Référence de l'envoi</label>
+                                        <input type="text" id="senderTransferReference" class="form-control" placeholder="Ex: REF-123456" required>
                                     </div>
                                 </div>
                             </div>
@@ -886,7 +897,53 @@
             "Burkina Faso": "+226",
             "Mali": "+223",
             "Niger": "+227",
-            "Gabon": "+241"
+            "Gabon": "+241",
+            "Congo": "+242",
+            "République démocratique du Congo": "+243",
+            "Guinée": "+224",
+            "Guinée-Bissau": "+245",
+            "Guinée équatoriale": "+240",
+            "Sao Tomé-et-Principe": "+239",
+            "Cap-Vert": "+238",
+            "Mauritanie": "+222",
+            "Soudan": "+249",
+            "Soudan du Sud": "+211",
+            "Érythrée": "+291",
+            "Éthiopie": "+251",
+            "Djibouti": "+253",
+            "Somalie": "+252",
+            "Kenya": "+254",
+            "Ouganda": "+256",
+            "Tanzanie": "+255",
+            "Rwanda": "+250",
+            "Burundi": "+257",
+            "Comores": "+269",
+            "Mayotte": "+262",
+            "Madagascar": "+261",
+            "Maurice": "+230",
+            "Seychelles": "+248",
+            "Zambie": "+260",
+            "Zimbabwe": "+263",
+            "Malawi": "+265",
+            "Mozambique": "+258",
+            "Angola": "+244",
+            "Namibie": "+264",
+            "Botswana": "+267",
+            "Afrique du Sud": "+27",
+            "Lesotho": "+266",
+            "Eswatini": "+268",
+            "Nigeria": "+234",
+            "Ghana": "+233",
+            "Libéria": "+231",
+            "Sierra Leone": "+232",
+            "Gambie": "+220",
+            "Sénégal": "+221",
+            "Mauritanie": "+222",
+            "Mali": "+223",
+            "Burkina Faso": "+226",
+            "Niger": "+227",
+            "Togo": "+228",
+            "Bénin": "+229"
         };
 
         // Synchronisation temps réel des statuts de connectivité
@@ -1114,11 +1171,18 @@
             if (country && phonePrefixes[country]) {
                 prefixSpan.innerHTML = phonePrefixes[country];
             } else if (country) {
-                const match = country.match(/\+(\d+)/);
-                if (match) {
-                    prefixSpan.innerHTML = `+${match[1]}`;
+                // Tentative de trouver un indicatif à partir du nom du pays (si présent dans la liste étendue)
+                const matchedKey = Object.keys(phonePrefixes).find(key => key.toLowerCase() === country.toLowerCase());
+                if (matchedKey) {
+                    prefixSpan.innerHTML = phonePrefixes[matchedKey];
                 } else {
-                    prefixSpan.innerHTML = "+229";
+                    // Fallback : essayer d'extraire un +XX du pays si le nom contient un code comme "Congo (+242)"
+                    const match = country.match(/\+(\d+)/);
+                    if (match) {
+                        prefixSpan.innerHTML = `+${match[1]}`;
+                    } else {
+                        prefixSpan.innerHTML = "+229"; // Fallback générique
+                    }
                 }
             } else {
                 prefixSpan.innerHTML = "+229";
@@ -1281,7 +1345,7 @@
                 document.getElementById('transferFees').value = '0 FCFA (0.00 USD)';
                 document.getElementById('feePercentage').innerHTML = '0.00%';
                 document.getElementById('totalFCFA').innerHTML = '0 FCFA';
-                document.getElementById('totalUSD').innerHTML = '0.00 USD';
+                document.getElementById('totalUSD').innerHTML = '0 USD';
                 document.getElementById('netTransferDisplay').innerHTML = '0 FCFA';
                 return { fees: 0, totalFCFA: 0, totalUSD: 0, feePercent: 0, initialAmountFCFA: 0, initialAmountUSD: 0, feesUSD: 0 };
             }
@@ -1561,7 +1625,10 @@
                     firstname: document.getElementById('senderFirstname').value,
                     country: document.getElementById('senderCountry').value,
                     agency: document.getElementById('senderAgency').options[document.getElementById('senderAgency').selectedIndex]?.text || '',
-                    phone: senderFullPhone
+                    phone: senderFullPhone,
+                    transferDate: document.getElementById('senderTransferDate').value,
+                    transferTime: document.getElementById('senderTransferTime').value,
+                    transferReference: document.getElementById('senderTransferReference').value
                 },
                 beneficiary: {
                     name: document.getElementById('beneficiaryName').value,
@@ -1598,6 +1665,8 @@
             document.getElementById('totalFCFA').innerHTML = '0 FCFA';
             document.getElementById('totalUSD').innerHTML = '0 USD';
             document.getElementById('netTransferDisplay').innerHTML = '0 FCFA';
+            // Réinitialiser la date et l'heure courantes par défaut après reset
+            setDefaultDateTime();
             // Réinitialiser la devise par défaut à la première option disponible
             const currencySelectReset = document.getElementById('transferCurrency');
             if (currencySelectReset.options.length > 0) {
@@ -1656,6 +1725,19 @@
             }
         }
 
+        // Fonction pour initialiser la date et l'heure courantes
+        function setDefaultDateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('senderTransferDate').value = `${year}-${month}-${day}`;
+            document.getElementById('senderTransferTime').value = `${hours}:${minutes}`;
+        }
+
         // Liaison globale des fonctions appelées en inline depuis le DOM HTML
         window.openHistoryFilterModal = openHistoryFilterModal;
         window.openSpecialRateModal = openSpecialRateModal;
@@ -1669,6 +1751,7 @@
             // Les devises sont également chargées dynamiquement via le même écouteur
             populateCountries();
             populateAgencies();
+            setDefaultDateTime();
             
             updatePhonePrefix('senderCountry', 'senderPhonePrefix');
             updatePhonePrefix('beneficiaryCountry', 'beneficiaryPhonePrefix');

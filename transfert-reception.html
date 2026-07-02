@@ -481,7 +481,6 @@
 </head>
 <body>
 
-    <!-- Loading overlay until cloud data is loaded -->
     <div id="loading-overlay">
         <div class="spinner-border spinner-border-custom mb-3" role="status">
             <span class="visually-hidden">Chargement...</span>
@@ -544,7 +543,7 @@
     <main class="container">
         <div class="page-header mb-4">
             <h1>Retrait d'Argent</h1>
-            <p class="text-muted">Vérifiez un code secret et effectuez le versement des fonds</p>
+            <p class="text-muted">Vérifiez un transfert et effectuez le versement des fonds</p>
         </div>
 
         <div class="row">
@@ -554,13 +553,21 @@
                         <form id="verificationForm">
                             <h5 class="form-section-title"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Authentification du Transfert</h5>
                             <div class="row g-3 align-items-end">
-                                <div class="col-md-8">
-                                    <label class="form-label small fw-bold">Code Secret Confidentiel</label>
-                                    <input type="text" id="searchSecretCode" class="form-control form-control-lg text-center font-monospace fw-bold" placeholder="EX: A1B2C3" style="letter-spacing: 4px;" required>
-                                </div>
                                 <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Méthode de recherche</label>
+                                    <select id="searchMethod" class="form-select" required>
+                                        <option value="code">Code Secret</option>
+                                        <option value="reference">Référence d'envoi</option>
+                                        <option value="datetime">Date et Heure d'envoi</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label small fw-bold" id="searchInputLabel">Code Secret Confidentiel</label>
+                                    <input type="text" id="searchInput" class="form-control form-control-lg text-center font-monospace fw-bold" placeholder="EX: A1B2C3" style="letter-spacing: 4px;" required>
+                                </div>
+                                <div class="col-md-12 mt-3">
                                     <button type="submit" class="btn btn-wa w-100 py-3">
-                                        <i class="fa-solid fa-magnifying-glass me-2"></i>Vérifier le code
+                                        <i class="fa-solid fa-magnifying-glass me-2"></i>Rechercher le transfert
                                     </button>
                                 </div>
                             </div>
@@ -641,6 +648,10 @@
                                     <div class="col-md-4 text-center">
                                         <small class="text-muted">Date de dépôt</small>
                                         <p class="fw-bold mb-0 text-secondary" id="depositDate">--/--/----</p>
+                                    </div>
+                                    <div class="col-md-12 text-center mt-2">
+                                        <small class="text-muted">Référence d'envoi</small>
+                                        <p class="fw-bold mb-0 text-info" id="transferReference">--</p>
                                     </div>
                                 </div>
                             </div>
@@ -782,6 +793,41 @@
                             <i class="fa-solid fa-copy me-2"></i>Copier l'alerte
                         </button>
                         <button class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 50px;">Fermer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="multipleTransfersModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content elegant-modal">
+                <div class="elegant-modal-header">
+                    <i class="fa-solid fa-list fa-2x mb-2"></i>
+                    <h4 class="mb-0">Plusieurs transferts trouvés</h4>
+                    <p class="mb-0 mt-1 opacity-75 text-white small">Sélectionnez le transfert correspondant</p>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover align-middle small">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Expéditeur</th>
+                                    <th>Bénéficiaire</th>
+                                    <th class="text-end">Montant</th>
+                                    <th>Date</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="multipleTransfersBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4">
+                        <button class="btn btn-close-modal px-4" data-bs-dismiss="modal">
+                            <i class="fa-solid fa-xmark me-2"></i>Fermer
+                        </button>
                     </div>
                 </div>
             </div>
@@ -963,6 +1009,375 @@
             checkFirstLoadComplete();
         });
 
+        // Gestion du changement de méthode de recherche
+        document.getElementById('searchMethod').addEventListener('change', function() {
+            const method = this.value;
+            const inputLabel = document.getElementById('searchInputLabel');
+            const searchInput = document.getElementById('searchInput');
+            
+            switch(method) {
+                case 'code':
+                    inputLabel.innerText = 'Code Secret Confidentiel';
+                    searchInput.placeholder = 'EX: A1B2C3';
+                    searchInput.style.letterSpacing = '4px';
+                    searchInput.type = 'text';
+                    searchInput.className = 'form-control form-control-lg text-center font-monospace fw-bold';
+                    searchInput.value = '';
+                    break;
+                case 'reference':
+                    inputLabel.innerText = 'Référence d\'envoi';
+                    searchInput.placeholder = 'EX: REF-123456';
+                    searchInput.style.letterSpacing = 'normal';
+                    searchInput.type = 'text';
+                    searchInput.className = 'form-control form-control-lg fw-bold';
+                    searchInput.value = '';
+                    break;
+                case 'datetime':
+                    inputLabel.innerText = 'Date et Heure d\'envoi';
+                    searchInput.placeholder = 'YYYY-MM-DDTHH:mm';
+                    searchInput.style.letterSpacing = 'normal';
+                    searchInput.type = 'datetime-local';
+                    searchInput.className = 'form-control form-control-lg fw-bold';
+                    searchInput.value = '';
+                    break;
+                default:
+                    break;
+            }
+        });
+
+        // Fonction de recherche de transferts
+        function findTransfersByMethod(method, inputValue) {
+            if (!inputValue || inputValue.trim() === '') return [];
+            
+            const searchTerm = inputValue.trim().toUpperCase();
+            
+            switch(method) {
+                case 'code':
+                    return transfers.filter(t => {
+                        if (!t.secretCode) return false;
+                        return t.secretCode.replace(/\s/g, '').toUpperCase() === searchTerm.replace(/\s/g, '');
+                    });
+                case 'reference':
+                    return transfers.filter(t => {
+                        if (!t.sender || !t.sender.transferReference) return false;
+                        return t.sender.transferReference.toUpperCase() === searchTerm;
+                    });
+                case 'datetime': {
+                    const searchDateTime = new Date(inputValue);
+                    if (isNaN(searchDateTime.getTime())) return [];
+                    // Recherche approximative par date (comparer les dates sans les secondes)
+                    const searchDateStr = searchDateTime.toISOString().slice(0, 16);
+                    return transfers.filter(t => {
+                        if (!t.date) return false;
+                        const tDate = new Date(t.date);
+                        if (isNaN(tDate.getTime())) return false;
+                        // Comparer jusqu'à la minute près
+                        const tDateStr = tDate.toISOString().slice(0, 16);
+                        return tDateStr === searchDateStr;
+                    });
+                }
+                default:
+                    return [];
+            }
+        }
+
+        document.getElementById('verificationForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const method = document.getElementById('searchMethod').value;
+            const inputValue = document.getElementById('searchInput').value;
+            
+            if (!inputValue || inputValue.trim() === '') {
+                alert('Veuillez saisir une valeur de recherche.');
+                return;
+            }
+            
+            const matchedTransfers = findTransfersByMethod(method, inputValue);
+            
+            if (matchedTransfers.length === 0) {
+                const fraudModal = new bootstrap.Modal(document.getElementById('fraudModal'));
+                fraudModal.show();
+                document.getElementById('detailsCard').classList.add('d-none');
+                currentActiveTransfer = null;
+                return;
+            }
+            
+            // Si un seul transfert trouvé, l'afficher directement
+            if (matchedTransfers.length === 1) {
+                displayTransferDetails(matchedTransfers[0]);
+                return;
+            }
+            
+            // Si plusieurs transferts trouvés, afficher la liste de sélection
+            const multipleModal = new bootstrap.Modal(document.getElementById('multipleTransfersModal'));
+            const tbody = document.getElementById('multipleTransfersBody');
+            
+            let rows = matchedTransfers.map(t => {
+                const amountFCFA = t.amountFCFA || t.amount || 0;
+                const displayDate = t.date ? new Date(t.date).toLocaleDateString('fr-FR') : '--/--/----';
+                const isWithdrawn = t.status === 'Retiré';
+                return `
+                    <tr>
+                        <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
+                        <td>${t.sender.firstname} ${t.sender.name}</td>
+                        <td>${t.beneficiary.firstname} ${t.beneficiary.name}</td>
+                        <td class="text-end fw-bold">${parseFloat(amountFCFA).toLocaleString()} FCFA</td>
+                        <td>${displayDate}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-wa px-3" onclick="selectTransfer('${t._fbKey}')" ${isWithdrawn ? 'disabled' : ''}>
+                                ${isWithdrawn ? 'Déjà retiré' : '<i class="fa-solid fa-check me-1"></i>Sélectionner'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tbody.innerHTML = rows;
+            multipleModal.show();
+        };
+
+        // Fonction globale pour sélectionner un transfert depuis la modal multiple
+        window.selectTransfer = function(fbKey) {
+            const matched = transfers.find(t => t._fbKey === fbKey);
+            if (matched) {
+                bootstrap.Modal.getInstance(document.getElementById('multipleTransfersModal')).hide();
+                displayTransferDetails(matched);
+            }
+        };
+
+        // Fonction pour afficher les détails d'un transfert
+        function displayTransferDetails(matchedTransfer) {
+            currentActiveTransfer = matchedTransfer;
+            
+            document.getElementById('senderName').value = matchedTransfer.sender.name;
+            document.getElementById('senderFirstname').value = matchedTransfer.sender.firstname;
+            document.getElementById('senderCountry').value = matchedTransfer.sender.country;
+            document.getElementById('senderAgency').value = matchedTransfer.sender.agency;
+            document.getElementById('senderPhone').value = matchedTransfer.sender.phone;
+
+            document.getElementById('beneficiaryName').value = matchedTransfer.beneficiary.name;
+            document.getElementById('beneficiaryFirstname').value = matchedTransfer.beneficiary.firstname;
+            document.getElementById('beneficiaryCountry').value = matchedTransfer.beneficiary.country;
+            document.getElementById('beneficiaryAgency').value = matchedTransfer.beneficiary.agency;
+            document.getElementById('beneficiaryPhone').value = matchedTransfer.beneficiary.phone;
+
+            const amountFCFA = matchedTransfer.amountFCFA || matchedTransfer.amount || 0;
+            const feesFCFA = matchedTransfer.feesFCFA !== undefined ? matchedTransfer.feesFCFA : (matchedTransfer.fees || 0);
+            const totalUSD = matchedTransfer.totalUSD || (amountFCFA / USD_RATE);
+
+            document.getElementById('netTransferDisplay').innerText = parseFloat(amountFCFA).toLocaleString() + ' FCFA';
+            document.getElementById('transferFees').innerText = parseFloat(feesFCFA).toLocaleString() + ' FCFA';
+            document.getElementById('totalUSD').innerText = parseFloat(totalUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+            document.getElementById('depositDate').innerText = matchedTransfer.date ? new Date(matchedTransfer.date).toLocaleDateString('fr-FR') : '';
+            document.getElementById('transferReference').innerText = matchedTransfer.sender.transferReference || '--';
+
+            const btnWithdraw = document.getElementById('btnWithdraw');
+            if (matchedTransfer.status === 'Retiré') {
+                btnWithdraw.innerText = "FONDS DÉJÀ RETIRÉS";
+                btnWithdraw.disabled = true;
+                btnWithdraw.classList.remove('btn-danger');
+                btnWithdraw.classList.add('btn-secondary');
+            } else {
+                btnWithdraw.innerText = "RETIRER LES FONDS";
+                btnWithdraw.disabled = false;
+                btnWithdraw.classList.remove('btn-secondary');
+                btnWithdraw.classList.add('btn-danger');
+            }
+
+            document.getElementById('detailsCard').classList.remove('d-none');
+        }
+
+        function promptWithdrawalConfirmation() {
+            document.getElementById('agentSecurityCode').value = '';
+            const securityModal = new bootstrap.Modal(document.getElementById('securityModal'));
+            securityModal.show();
+        }
+
+        function executeWithdrawal() {
+            const codeInput = document.getElementById('agentSecurityCode').value;
+            if (codeInput !== "1234") {
+                alert("Code d'autorisation agent incorrect !");
+                return;
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('securityModal')).hide();
+
+            if (currentActiveTransfer) {
+                const amountFCFA = currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0;
+                const feesFCFA = currentActiveTransfer.feesFCFA !== undefined ? currentActiveTransfer.feesFCFA : (currentActiveTransfer.fees || 0);
+                const requiredAmount = parseFloat(amountFCFA) + parseFloat(feesFCFA);
+
+                const validApprovs = ledgerSupply.filter(a => a.status === 'Validé');
+                const liq = validApprovs.filter(a => a.type === 'liquide').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+                const virt = validApprovs.filter(a => a.type === 'virtuel').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+                const totalApprov = liq + virt;
+                const totalEnvois = ledgerTransfersList.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+                const soldeFlux = totalApprov - totalEnvois;
+
+                if (soldeFlux < requiredAmount) {
+                    const missingAmount = requiredAmount - soldeFlux;
+                    document.getElementById('missingAmountDisplay').innerText = missingAmount.toLocaleString();
+                    const insufficientFundsModal = new bootstrap.Modal(document.getElementById('insufficientFundsModal'));
+                    insufficientFundsModal.show();
+                    return;
+                }
+                
+                let indexInArray = transfers.findIndex(t => t.secretCode === currentActiveTransfer.secretCode);
+                
+                if (indexInArray !== -1) {
+                    const matched = transfers[indexInArray];
+                    const withdrawalDate = new Date().toLocaleString('fr-FR');
+                    
+                    const itemPath = matched._fbKey !== undefined ? `transfers/${matched._fbKey}` : `transfers/${indexInArray}`;
+                    
+                    const updates = {};
+                    updates[`${itemPath}/status`] = 'Retiré';
+                    updates[`${itemPath}/withdrawalDate`] = withdrawalDate;
+                    
+                    update(ref(db), updates).then(() => {
+                        const amountToDisplay = matched.amountFCFA || matched.amount || 0;
+                        document.getElementById('successOverlayMessage').innerText = `Le décaissement de ${parseFloat(amountToDisplay).toLocaleString()} FCFA a été validé avec succès.`;
+                        const successOverlay = document.getElementById('successOverlay');
+                        successOverlay.classList.add('active');
+                        
+                        setTimeout(function() {
+                            successOverlay.classList.remove('active');
+                            document.getElementById('verificationForm').reset();
+                            document.getElementById('detailsCard').classList.add('d-none');
+                            currentActiveTransfer = null;
+                            // Réinitialiser le champ de recherche
+                            document.getElementById('searchInput').value = '';
+                        }, 2000);
+                    }).catch(err => {
+                        console.error("Échec de mise à jour Firebase:", err);
+                        alert("Erreur réseau: impossible d'enregistrer le retrait sur la base cloud.");
+                    });
+                }
+            }
+        }
+
+        function copyInsufficientFundsAlert() {
+            const textToCopy = document.getElementById('insufficientFundsMessage').innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert("L'alerte de solde a bien été copiée dans le presse-papiers.");
+            }).catch(err => {
+                console.error("Erreur lors de la copie de l'alerte :", err);
+            });
+        }
+
+        function toggleHistoryTable() {
+            const card = document.getElementById('historyCard');
+            const btn = document.getElementById('btnToggleHistory');
+            const clearBtn = document.getElementById('btnClearHistory');
+            if (card.classList.contains('d-none')) {
+                card.classList.remove('d-none');
+                btn.innerHTML = '<i class="fa-solid fa-eye-slash me-1"></i> Masquer l\'historique';
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
+            } else {
+                card.classList.add('d-none');
+                btn.innerHTML = '<i class="fa-solid fa-eye me-1"></i> Afficher l\'historique';
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
+        }
+
+        // Fonction pour construire l'historique des retraits
+        function buildHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            const printTbody = document.getElementById('printHistoryTableBody');
+            const printGenNode = document.getElementById('printGenerationDate');
+            const clearBtn = document.getElementById('btnClearHistory');
+            if (printGenNode) printGenNode.innerText = new Date().toLocaleString('fr-FR');
+
+            const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
+
+            if (withdrawnTransfers.length === 0) {
+                const emptyRow = `<tr><td colspan="6" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
+                if (tbody) tbody.innerHTML = emptyRow;
+                if (printTbody) printTbody.innerHTML = emptyRow;
+                if (clearBtn) clearBtn.style.display = 'none';
+            } else {
+                const rows = withdrawnTransfers.map(t => {
+                    let rawDate = t.withdrawalDate || t.date || '--';
+                    let displayDate = rawDate;
+                    if (typeof rawDate === 'string' && rawDate.includes(' ')) {
+                        displayDate = rawDate.split(' ')[0];
+                    } else if (typeof rawDate === 'string' && rawDate.includes('T')) {
+                        displayDate = rawDate.split('T')[0];
+                    }
+
+                    const finalAmount = t.amountFCFA || t.amount || 0;
+
+                    return `
+                        <tr>
+                            <td>${displayDate}</td>
+                            <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
+                            <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-muted">${t.beneficiary.phone || ''}</small></td>
+                            <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-success fw-bold">📍 ${t.sender.agency}</small></td>
+                            <td class="text-end fw-bold text-danger">${parseFloat(finalAmount).toLocaleString()} FCFA</td>
+                            <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span></td>
+                        </tr>
+                    `;
+                }).join('');
+                if (tbody) tbody.innerHTML = rows;
+                if (printTbody) printTbody.innerHTML = rows;
+                if (clearBtn && withdrawnTransfers.length > 0) {
+                    clearBtn.style.display = 'inline-flex';
+                }
+            }
+        }
+
+        // Fonction pour vider l'historique des retraits
+        window.clearWithdrawalHistory = function() {
+            if (confirm("Êtes-vous absolument sûr de vouloir supprimer TOUS les retraits de l'historique ? Cette action est irréversible.")) {
+                const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
+                
+                if (withdrawnTransfers.length === 0) {
+                    alert("Aucun retrait à supprimer dans l'historique.");
+                    return;
+                }
+
+                // Demander confirmation supplémentaire avec code de sécurité
+                const authCode = prompt("Veuillez saisir le code de confirmation pour supprimer l'historique des retraits :");
+                if (authCode !== "1234") {
+                    alert("Code de confirmation incorrect. Opération annulée.");
+                    return;
+                }
+
+                // Supprimer chaque retrait de Firebase
+                const deletePromises = withdrawnTransfers.map(t => {
+                    const itemPath = t._fbKey !== undefined ? `transfers/${t._fbKey}` : null;
+                    if (itemPath) {
+                        return remove(ref(db, itemPath));
+                    }
+                    return Promise.resolve();
+                });
+
+                Promise.all(deletePromises).then(() => {
+                    alert(`Historique vidé avec succès (${withdrawnTransfers.length} retrait(s) supprimé(s)).`);
+                    buildHistoryTable();
+                }).catch(err => {
+                    console.error("Erreur lors de la suppression des retraits:", err);
+                    alert("Une erreur est survenue lors de la suppression. Veuillez réessayer.");
+                });
+            }
+        };
+
+        window.promptWithdrawalConfirmation = promptWithdrawalConfirmation;
+        window.executeWithdrawal = executeWithdrawal;
+        window.copyInsufficientFundsAlert = copyInsufficientFundsAlert;
+        window.toggleHistoryTable = toggleHistoryTable;
+        window.handleLogout = handleLogout;
+        window.buildHistoryTable = buildHistoryTable;
+        window.selectTransfer = selectTransfer;
+
+        const cachedTransfers = localStorage.getItem('ledger_transfers_cache');
+        if (cachedTransfers) {
+            try {
+                transfers = JSON.parse(cachedTransfers);
+                buildHistoryTable();
+            } catch(e) { console.warn("Cache parsing error", e); }
+        }
+
         function applyRoleAccessControl() {
             const currentUser = JSON.parse(localStorage.getItem('current_user'));
             if (!currentUser) return;
@@ -1062,246 +1477,6 @@
                 if (headerName) headerName.innerText = companyData.name;
                 if (printCompName) printCompName.innerText = companyData.name;
             }
-        }
-
-        document.getElementById('verificationForm').onsubmit = function(e) {
-            e.preventDefault();
-            const inputCode = document.getElementById('searchSecretCode').value.trim().toUpperCase();
-            
-            const matchedTransfer = transfers.find(t => t.secretCode && t.secretCode.replace(/\s/g, '').toUpperCase() === inputCode.replace(/\s/g, ''));
-
-            if (!matchedTransfer) {
-                const fraudModal = new bootstrap.Modal(document.getElementById('fraudModal'));
-                fraudModal.show();
-                document.getElementById('detailsCard').classList.add('d-none');
-                currentActiveTransfer = null;
-                return;
-            }
-
-            currentActiveTransfer = matchedTransfer;
-            
-            document.getElementById('senderName').value = matchedTransfer.sender.name;
-            document.getElementById('senderFirstname').value = matchedTransfer.sender.firstname;
-            document.getElementById('senderCountry').value = matchedTransfer.sender.country;
-            document.getElementById('senderAgency').value = matchedTransfer.sender.agency;
-            document.getElementById('senderPhone').value = matchedTransfer.sender.phone;
-
-            document.getElementById('beneficiaryName').value = matchedTransfer.beneficiary.name;
-            document.getElementById('beneficiaryFirstname').value = matchedTransfer.beneficiary.firstname;
-            document.getElementById('beneficiaryCountry').value = matchedTransfer.beneficiary.country;
-            document.getElementById('beneficiaryAgency').value = matchedTransfer.beneficiary.agency;
-            document.getElementById('beneficiaryPhone').value = matchedTransfer.beneficiary.phone;
-
-            const amountFCFA = matchedTransfer.amountFCFA || matchedTransfer.amount || 0;
-            const feesFCFA = matchedTransfer.feesFCFA !== undefined ? matchedTransfer.feesFCFA : (matchedTransfer.fees || 0);
-            const totalUSD = matchedTransfer.totalUSD || (amountFCFA / USD_RATE);
-
-            document.getElementById('netTransferDisplay').innerText = parseFloat(amountFCFA).toLocaleString() + ' FCFA';
-            document.getElementById('transferFees').innerText = parseFloat(feesFCFA).toLocaleString() + ' FCFA';
-            document.getElementById('totalUSD').innerText = parseFloat(totalUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
-            document.getElementById('depositDate').innerText = matchedTransfer.date ? new Date(matchedTransfer.date).toLocaleDateString('fr-FR') : '';
-
-            const btnWithdraw = document.getElementById('btnWithdraw');
-            if (matchedTransfer.status === 'Retiré') {
-                btnWithdraw.innerText = "FONDS DÉJÀ RETIRÉS";
-                btnWithdraw.disabled = true;
-                btnWithdraw.classList.remove('btn-danger');
-                btnWithdraw.classList.add('btn-secondary');
-            } else {
-                btnWithdraw.innerText = "RETIRER LES FONDS";
-                btnWithdraw.disabled = false;
-                btnWithdraw.classList.remove('btn-secondary');
-                btnWithdraw.classList.add('btn-danger');
-            }
-
-            document.getElementById('detailsCard').classList.remove('d-none');
-        };
-
-        function promptWithdrawalConfirmation() {
-            document.getElementById('agentSecurityCode').value = '';
-            const securityModal = new bootstrap.Modal(document.getElementById('securityModal'));
-            securityModal.show();
-        }
-
-        function executeWithdrawal() {
-            const codeInput = document.getElementById('agentSecurityCode').value;
-            if (codeInput !== "1234") {
-                alert("Code d'autorisation agent incorrect !");
-                return;
-            }
-
-            bootstrap.Modal.getInstance(document.getElementById('securityModal')).hide();
-
-            if (currentActiveTransfer) {
-                const amountFCFA = currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0;
-                const feesFCFA = currentActiveTransfer.feesFCFA !== undefined ? currentActiveTransfer.feesFCFA : (currentActiveTransfer.fees || 0);
-                const requiredAmount = parseFloat(amountFCFA) + parseFloat(feesFCFA);
-
-                const validApprovs = ledgerSupply.filter(a => a.status === 'Validé');
-                const liq = validApprovs.filter(a => a.type === 'liquide').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
-                const virt = validApprovs.filter(a => a.type === 'virtuel').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
-                const totalApprov = liq + virt;
-                const totalEnvois = ledgerTransfersList.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-                const soldeFlux = totalApprov - totalEnvois;
-
-                if (soldeFlux < requiredAmount) {
-                    const missingAmount = requiredAmount - soldeFlux;
-                    document.getElementById('missingAmountDisplay').innerText = missingAmount.toLocaleString();
-                    const insufficientFundsModal = new bootstrap.Modal(document.getElementById('insufficientFundsModal'));
-                    insufficientFundsModal.show();
-                    return;
-                }
-                
-                let indexInArray = transfers.findIndex(t => t.secretCode === currentActiveTransfer.secretCode);
-                
-                if (indexInArray !== -1) {
-                    const matched = transfers[indexInArray];
-                    const withdrawalDate = new Date().toLocaleString('fr-FR');
-                    
-                    const itemPath = matched._fbKey !== undefined ? `transfers/${matched._fbKey}` : `transfers/${indexInArray}`;
-                    
-                    const updates = {};
-                    updates[`${itemPath}/status`] = 'Retiré';
-                    updates[`${itemPath}/withdrawalDate`] = withdrawalDate;
-                    
-                    update(ref(db), updates).then(() => {
-                        const amountToDisplay = matched.amountFCFA || matched.amount || 0;
-                        document.getElementById('successOverlayMessage').innerText = `Le décaissement de ${parseFloat(amountToDisplay).toLocaleString()} FCFA a été validé avec succès.`;
-                        const successOverlay = document.getElementById('successOverlay');
-                        successOverlay.classList.add('active');
-                        
-                        setTimeout(function() {
-                            successOverlay.classList.remove('active');
-                            document.getElementById('verificationForm').reset();
-                            document.getElementById('detailsCard').classList.add('d-none');
-                            currentActiveTransfer = null;
-                        }, 2000);
-                    }).catch(err => {
-                        console.error("Échec de mise à jour Firebase:", err);
-                        alert("Erreur réseau: impossible d'enregistrer le retrait sur la base cloud.");
-                    });
-                }
-            }
-        }
-
-        function copyInsufficientFundsAlert() {
-            const textToCopy = document.getElementById('insufficientFundsMessage').innerText;
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                alert("L'alerte de solde a bien été copiée dans le presse-papiers.");
-            }).catch(err => {
-                console.error("Erreur lors de la copie de l'alerte :", err);
-            });
-        }
-
-        function toggleHistoryTable() {
-            const card = document.getElementById('historyCard');
-            const btn = document.getElementById('btnToggleHistory');
-            const clearBtn = document.getElementById('btnClearHistory');
-            if (card.classList.contains('d-none')) {
-                card.classList.remove('d-none');
-                btn.innerHTML = '<i class="fa-solid fa-eye-slash me-1"></i> Masquer l\'historique';
-                if (clearBtn) clearBtn.style.display = 'inline-flex';
-            } else {
-                card.classList.add('d-none');
-                btn.innerHTML = '<i class="fa-solid fa-eye me-1"></i> Afficher l\'historique';
-                if (clearBtn) clearBtn.style.display = 'none';
-            }
-        }
-
-        function buildHistoryTable() {
-            const tbody = document.getElementById('historyTableBody');
-            const printTbody = document.getElementById('printHistoryTableBody');
-            const printGenNode = document.getElementById('printGenerationDate');
-            const clearBtn = document.getElementById('btnClearHistory');
-            if (printGenNode) printGenNode.innerText = new Date().toLocaleString('fr-FR');
-
-            const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
-
-            if (withdrawnTransfers.length === 0) {
-                const emptyRow = `<tr><td colspan="6" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
-                if (tbody) tbody.innerHTML = emptyRow;
-                if (printTbody) printTbody.innerHTML = emptyRow;
-                if (clearBtn) clearBtn.style.display = 'none';
-            } else {
-                const rows = withdrawnTransfers.map(t => {
-                    let rawDate = t.withdrawalDate || t.date || '--';
-                    let displayDate = rawDate;
-                    if (typeof rawDate === 'string' && rawDate.includes(' ')) {
-                        displayDate = rawDate.split(' ')[0];
-                    } else if (typeof rawDate === 'string' && rawDate.includes('T')) {
-                        displayDate = rawDate.split('T')[0];
-                    }
-
-                    const finalAmount = t.amountFCFA || t.amount || 0;
-
-                    return `
-                        <tr>
-                            <td>${displayDate}</td>
-                            <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
-                            <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-muted">${t.beneficiary.phone || ''}</small></td>
-                            <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-success fw-bold">📍 ${t.sender.agency}</small></td>
-                            <td class="text-end fw-bold text-danger">${parseFloat(finalAmount).toLocaleString()} FCFA</td>
-                            <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span></td>
-                        </tr>
-                    `;
-                }).join('');
-                if (tbody) tbody.innerHTML = rows;
-                if (printTbody) printTbody.innerHTML = rows;
-                if (clearBtn && withdrawnTransfers.length > 0) {
-                    clearBtn.style.display = 'inline-flex';
-                }
-            }
-        }
-
-        // Fonction pour vider l'historique des retraits
-        window.clearWithdrawalHistory = function() {
-            if (confirm("Êtes-vous absolument sûr de vouloir supprimer TOUS les retraits de l'historique ? Cette action est irréversible.")) {
-                const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
-                
-                if (withdrawnTransfers.length === 0) {
-                    alert("Aucun retrait à supprimer dans l'historique.");
-                    return;
-                }
-
-                // Demander confirmation supplémentaire avec code de sécurité
-                const authCode = prompt("Veuillez saisir le code de confirmation pour supprimer l'historique des retraits :");
-                if (authCode !== "1234") {
-                    alert("Code de confirmation incorrect. Opération annulée.");
-                    return;
-                }
-
-                // Supprimer chaque retrait de Firebase
-                const deletePromises = withdrawnTransfers.map(t => {
-                    const itemPath = t._fbKey !== undefined ? `transfers/${t._fbKey}` : null;
-                    if (itemPath) {
-                        return remove(ref(db, itemPath));
-                    }
-                    return Promise.resolve();
-                });
-
-                Promise.all(deletePromises).then(() => {
-                    alert(`Historique vidé avec succès (${withdrawnTransfers.length} retrait(s) supprimé(s)).`);
-                    buildHistoryTable();
-                }).catch(err => {
-                    console.error("Erreur lors de la suppression des retraits:", err);
-                    alert("Une erreur est survenue lors de la suppression. Veuillez réessayer.");
-                });
-            }
-        };
-
-        window.promptWithdrawalConfirmation = promptWithdrawalConfirmation;
-        window.executeWithdrawal = executeWithdrawal;
-        window.copyInsufficientFundsAlert = copyInsufficientFundsAlert;
-        window.toggleHistoryTable = toggleHistoryTable;
-        window.handleLogout = handleLogout;
-        window.buildHistoryTable = buildHistoryTable;
-
-        const cachedTransfers = localStorage.getItem('ledger_transfers_cache');
-        if (cachedTransfers) {
-            try {
-                transfers = JSON.parse(cachedTransfers);
-                buildHistoryTable();
-            } catch(e) { console.warn("Cache parsing error", e); }
         }
 
         applyRoleAccessControl();
