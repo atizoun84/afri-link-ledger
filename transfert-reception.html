@@ -1711,7 +1711,7 @@
                     const transferRef = sender.transferReference || '--';
 
                     const finalAmount = t.amountFCFA || t.amount || 0;
-                    const finalAmountUSD = t.amountUSD || (finalAmount / USD_RATE);
+                    const finalAmountUSD = finalAmount / USD_RATE;
                     
                     // Récupération du nom de l'opérateur de retrait
                     const withdrawalOperatorName = t.withdrawalOperator?.name || 'N/A';
@@ -1725,7 +1725,7 @@
                             <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
                             <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-muted">${t.beneficiary.phone || ''}</small></td>
                             <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-success fw-bold">📍 ${t.sender.agency}</small></td>
-                            <td class="text-end fw-bold text-danger">${parseFloat(finalAmount).toLocaleString()} FCFA</td>
+                            <td class="text-end fw-bold text-danger">${finalAmountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD<br><small class="text-muted">(${parseFloat(finalAmount).toLocaleString()} FCFA)</small></td>
                             <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span></td>
                             <td><small class="fw-bold text-primary">${withdrawalOperatorName}</small></td>
                         </tr>
