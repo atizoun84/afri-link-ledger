@@ -825,8 +825,8 @@
                                         <p class="fw-bold mb-0 text-primary" id="totalUSD">0 USD</p>
                                     </div>
                                     <div class="col-md-4 text-center">
-                                        <small class="text-muted">Heure de dépôt</small>
-                                        <p class="fw-bold mb-0 text-secondary" id="depositTime">--:--</p>
+                                        <small class="text-muted">Date et Heure d'envoi</small>
+                                        <p class="fw-bold mb-0 text-secondary" id="depositTime">--/--/---- --:--</p>
                                     </div>
                                     <div class="col-md-12 text-center mt-2">
                                         <small class="text-muted">Référence d'envoi</small>
@@ -1424,7 +1424,8 @@
             applyUnknownStyle('beneficiaryFirstname', matchedTransfer.beneficiary.firstname);
             applyUnknownStyle('beneficiaryCountry', matchedTransfer.beneficiary.country);
             applyUnknownStyle('beneficiaryAgency', matchedTransfer.beneficiary.agency);
-            applyUnknownStyle('beneficiaryPhone', matchedTransfer.beneficiary.phone);
+            // Le téléphone du bénéficiaire est toujours éditable même si les champs sont en lecture seule
+            applyUnknownStyle('beneficiaryPhone', matchedTransfer.beneficiary.phone, true);
 
             // Calcul des montants en dollars et FCFA
             const amountFCFA = matchedTransfer.amountFCFA || matchedTransfer.amount || 0;
@@ -1447,12 +1448,22 @@
             document.getElementById('totalUSD').innerText = 
                 totalUSDWithFees.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
 
-            // Date et heure de dépôt
+            // Afficher la date et l'heure d'envoi complète
             const depositDate = matchedTransfer.date ? new Date(matchedTransfer.date) : null;
             if (depositDate && !isNaN(depositDate.getTime())) {
-                document.getElementById('depositTime').innerText = depositDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+                // Affichage formaté : date et heure d'envoi
+                const formattedDate = depositDate.toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const formattedTime = depositDate.toLocaleTimeString('fr-FR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                document.getElementById('depositTime').innerText = `${formattedDate} ${formattedTime}`;
             } else {
-                document.getElementById('depositTime').innerText = '--:--';
+                document.getElementById('depositTime').innerText = '--/--/---- --:--';
             }
             
             document.getElementById('transferReference').innerText = matchedTransfer.sender.transferReference || '--';
@@ -1474,16 +1485,21 @@
         }
 
         // Fonction pour appliquer le style "Inconnu" sur un champ
-        function applyUnknownStyle(elementId, value) {
+        // Ajout du paramètre forceEditable pour rendre le champ modifiable même si la valeur n'est pas "Inconnu"
+        function applyUnknownStyle(elementId, value, forceEditable = false) {
             const element = document.getElementById(elementId);
             if (!element) return;
             
             const isUnknown = !value || value.toLowerCase() === 'inconnu' || value.trim() === '';
             
             // Ajouter la classe pour le style
-            if (isUnknown) {
-                element.classList.add('is-unknown');
+            if (isUnknown || forceEditable) {
                 element.classList.add('editable-unknown');
+                if (isUnknown) {
+                    element.classList.add('is-unknown');
+                } else {
+                    element.classList.remove('is-unknown');
+                }
                 // Rendre modifiable
                 element.removeAttribute('readonly');
                 element.disabled = false;
@@ -1491,32 +1507,30 @@
                 
                 // Ajouter un événement de clic pour éditer
                 element.onclick = function(e) {
-                    if (this.classList.contains('is-unknown')) {
-                        const currentValue = this.value;
-                        const newValue = prompt('Veuillez renseigner les informations du bénéficiaire :', currentValue);
-                        if (newValue !== null && newValue.trim() !== '') {
-                            this.value = newValue.trim();
-                            this.classList.remove('is-unknown');
-                            // Mettre à jour dans l'objet transfert
-                            if (currentActiveTransfer) {
-                                const fieldMap = {
-                                    'senderName': ['sender', 'name'],
-                                    'senderFirstname': ['sender', 'firstname'],
-                                    'senderCountry': ['sender', 'country'],
-                                    'senderAgency': ['sender', 'agency'],
-                                    'senderPhone': ['sender', 'phone'],
-                                    'beneficiaryName': ['beneficiary', 'name'],
-                                    'beneficiaryFirstname': ['beneficiary', 'firstname'],
-                                    'beneficiaryCountry': ['beneficiary', 'country'],
-                                    'beneficiaryAgency': ['beneficiary', 'agency'],
-                                    'beneficiaryPhone': ['beneficiary', 'phone']
-                                };
-                                const mapping = fieldMap[elementId];
-                                if (mapping) {
-                                    const [objKey, fieldKey] = mapping;
-                                    if (currentActiveTransfer[objKey]) {
-                                        currentActiveTransfer[objKey][fieldKey] = newValue.trim();
-                                    }
+                    const currentValue = this.value;
+                    const newValue = prompt('Veuillez renseigner les informations :', currentValue);
+                    if (newValue !== null && newValue.trim() !== '') {
+                        this.value = newValue.trim();
+                        this.classList.remove('is-unknown');
+                        // Mettre à jour dans l'objet transfert
+                        if (currentActiveTransfer) {
+                            const fieldMap = {
+                                'senderName': ['sender', 'name'],
+                                'senderFirstname': ['sender', 'firstname'],
+                                'senderCountry': ['sender', 'country'],
+                                'senderAgency': ['sender', 'agency'],
+                                'senderPhone': ['sender', 'phone'],
+                                'beneficiaryName': ['beneficiary', 'name'],
+                                'beneficiaryFirstname': ['beneficiary', 'firstname'],
+                                'beneficiaryCountry': ['beneficiary', 'country'],
+                                'beneficiaryAgency': ['beneficiary', 'agency'],
+                                'beneficiaryPhone': ['beneficiary', 'phone']
+                            };
+                            const mapping = fieldMap[elementId];
+                            if (mapping) {
+                                const [objKey, fieldKey] = mapping;
+                                if (currentActiveTransfer[objKey]) {
+                                    currentActiveTransfer[objKey][fieldKey] = newValue.trim();
                                 }
                             }
                         }
@@ -1532,9 +1546,11 @@
         }
 
         function promptWithdrawalConfirmation() {
-            // Vérifier si des champs "Inconnu" sont encore présents
+            // Vérifier si des champs "Inconnu" sont encore présents (sauf le téléphone du bénéficiaire qui peut être édité)
             const unknownFields = document.querySelectorAll('.is-unknown');
-            if (unknownFields.length > 0) {
+            // Filtrer pour exclure le téléphone du bénéficiaire qui peut être édité
+            const filteredUnknown = Array.from(unknownFields).filter(el => el.id !== 'beneficiaryPhone');
+            if (filteredUnknown.length > 0) {
                 alert('Veuillez renseigner toutes les informations manquantes (champs en rouge "Inconnu") avant de procéder au retrait.');
                 return;
             }

@@ -667,6 +667,19 @@
             background-color: var(--wa-dark);
             transform: translateY(-2px);
         }
+        .btn-special-rate-calc {
+            background-color: #ffc107;
+            color: #212529;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s;
+        }
+        .btn-special-rate-calc:hover {
+            background-color: #e0a800;
+            transform: translateY(-2px);
+        }
     </style>
     
     <script>
@@ -948,8 +961,11 @@
                         </div>
                         <div class="d-flex gap-3 mt-3">
                             <button type="button" class="btn btn-close-modal flex-grow-1" data-bs-dismiss="modal">Fermer</button>
+                            <button type="button" class="btn btn-special-rate-calc flex-grow-1" onclick="openSpecialRateFromCalculator()">
+                                <i class="fa-solid fa-percentage me-2"></i>Taux Spécial
+                            </button>
                             <button type="button" class="btn btn-copy-result flex-grow-1" onclick="copyCalculatorResult()">
-                                <i class="fa-regular fa-copy me-2"></i>Copier le résultat
+                                <i class="fa-regular fa-copy me-2"></i>Copier
                             </button>
                         </div>
                     </form>
@@ -1982,6 +1998,31 @@
             specModal.show();
         }
 
+        // Fonction pour ouvrir le taux spécial depuis la calculatrice
+        window.openSpecialRateFromCalculator = function() {
+            const calcAmount = parseFloat(document.getElementById('calcTotalAmount').value) || 0;
+            if (calcAmount <= 0) {
+                alert("Veuillez d'abord saisir un montant dans la calculatrice avant d'appliquer un taux spécial.");
+                return;
+            }
+            // Récupérer le montant du formulaire principal
+            const mainAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
+            if (mainAmount <= 0) {
+                // Si le montant principal n'est pas saisi, on le définit à partir du montant net calculé
+                const netDisplay = document.getElementById('calcDisplayNet').innerHTML;
+                const netValue = parseFloat(netDisplay.replace(/[^0-9.]/g, ''));
+                if (!isNaN(netValue) && netValue > 0) {
+                    document.getElementById('transferAmount').value = netValue;
+                    updateFees();
+                }
+            }
+            // Fermer la calculatrice et ouvrir le modal taux spécial
+            bootstrap.Modal.getInstance(document.getElementById('calculatorModal')).hide();
+            document.getElementById('specialRateInput').value = specialFeePercentage !== null ? specialFeePercentage : '';
+            const specModal = new bootstrap.Modal(document.getElementById('specialRateModal'));
+            specModal.show();
+        };
+
         document.getElementById('specialRateForm').onsubmit = function(e) {
             e.preventDefault();
             const inputVal = parseFloat(document.getElementById('specialRateInput').value);
@@ -1992,6 +2033,11 @@
             }
             updateFees();
             bootstrap.Modal.getInstance(document.getElementById('specialRateModal')).hide();
+            // Si la calculatrice est ouverte, mettre à jour ses résultats
+            const calcModal = document.getElementById('calculatorModal');
+            if (calcModal.classList.contains('show')) {
+                calculateFromTotal();
+            }
         };
 
         document.getElementById('senderCountry').addEventListener('change', function() {
