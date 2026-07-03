@@ -642,6 +642,7 @@
                                         <th>Bénéficiaire / Agence Créditrice</th>
                                         <th class="text-end">Montant Principal</th>
                                         <th class="text-end">Frais / Com.</th>
+                                        <th>Utilisateur agissant</th>
                                         <th class="text-center">Statut</th>
                                     </tr>
                                 </thead>
@@ -721,7 +722,8 @@
                     <th style="padding: 8px; border: 1px solid #dee2e6;">Provenance / Débit</th>
                     <th style="padding: 8px; border: 1px solid #dee2e6;">Destination / Crédit</th>
                     <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Montant Principal</th>
-                    <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Frais</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Frais / Com.</th>
+                    <th style="padding: 8px; border: 1px solid #dee2e6;">Utilisateur agissant</th>
                     <th style="padding: 8px; border: 1px solid #dee2e6; text-align: center;">Statut</th>
                 </tr>
             </thead>
@@ -729,8 +731,35 @@
                 </tbody>
         </table>
         
+        <div id="printSummarySection" style="margin-top: 40px; border-top: 2px solid #128C7E; padding-top: 20px;">
+            <h4 style="font-family: 'Playfair Display', serif; color: #075E54;">Récapitulatif du Rapport d'Audit</h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #0d6efd;">
+                    <strong style="display: block; font-size: 0.9rem; color: #0d6efd;">📊 Envois</strong>
+                    <div style="font-size: 0.85rem;">Total Brut : <span id="printTotalEnvoisBrut">0 USD</span></div>
+                    <div style="font-size: 0.85rem;">Total avec Frais : <span id="printTotalEnvoisAvecFrais">0 USD</span></div>
+                    <div style="font-size: 0.85rem;">Marge collectée : <span id="printBeneficeEnvois">0 USD</span></div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545;">
+                    <strong style="display: block; font-size: 0.9rem; color: #dc3545;">💳 Retraits</strong>
+                    <div style="font-size: 0.85rem;">Total Retraits : <span id="printTotalRetraits">0 USD</span></div>
+                    <div style="font-size: 0.85rem;">Gains générés : <span id="printGainsRetraits">0 USD</span></div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #198754;">
+                    <strong style="display: block; font-size: 0.9rem; color: #198754;">💰 Trésorerie</strong>
+                    <div style="font-size: 0.85rem;">Approvisionnements : <span id="printTotalApprov">0 USD</span></div>
+                    <div style="font-size: 0.85rem;">Retraits Gains : <span id="printRetraitsGains">0 USD</span></div>
+                    <div style="font-size: 0.85rem;">Solde Net Caisse : <span id="printSoldeNet">0 USD</span></div>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #444; background: #e9ecef; padding: 15px; border-radius: 8px;">
+                <div>📌 Solde Gains Disponible : <span id="printSoldeGainsDispo" style="font-weight: bold;">0 USD</span></div>
+                <div>📅 Rapport généré le : <span id="printGenerationDate"></span></div>
+            </div>
+        </div>
+        
         <div style="margin-top: 50px; display: flex; justify-content: space-between; font-size: 0.85rem; color: #444; border-top: 1px dashed #ccc; padding-top: 15px;">
-            <div>Document comptable généré le : <span id="printGenerationDate"></span></div>
+            <div>Document comptable généré le : <span id="printGenerationDate2"></span></div>
             <div style="text-align: right; font-weight: bold;">Signature de la Direction Financière / Cachet Central</div>
         </div>
     </div>
@@ -1316,15 +1345,29 @@
             modal.show();
         }
 
+        function getActingUser(entry) {
+            // Récupérer l'utilisateur agissant. Priorité aux champs dédiés, sinon on utilise l'utilisateur courant.
+            if (entry.userName) return entry.userName;
+            if (entry.actingUser) return entry.actingUser;
+            if (entry.user) return entry.user;
+            // Pour les envois, on peut utiliser le senderName
+            if (entry.senderName) return entry.senderName;
+            // Fallback : l'utilisateur actuellement connecté
+            if (currentUser && currentUser.name) return currentUser.name;
+            return 'N/A';
+        }
+
         function buildAccountingTable() {
             const tbody = document.getElementById('accountingTableBody');
             const printTbody = document.getElementById('printAccountingTableBody');
             const gainsTbody = document.getElementById('gainsHistoryTableBody');
             const printGenNode = document.getElementById('printGenerationDate');
+            const printGenNode2 = document.getElementById('printGenerationDate2');
             
             if(!tbody || !printTbody || !gainsTbody) return;
 
             if (printGenNode) printGenNode.innerText = new Date().toLocaleString('fr-FR');
+            if (printGenNode2) printGenNode2.innerText = new Date().toLocaleString('fr-FR');
 
             const filterType = document.getElementById('filterType') ? document.getElementById('filterType').value : 'ALL';
             const filterSearch = document.getElementById('filterSearch') ? document.getElementById('filterSearch').value.trim().toLowerCase() : '';
@@ -1348,6 +1391,8 @@
                     let amount = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
                     let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
 
+                    const actingUser = getActingUser(t);
+
                     unifiedLedger.push({
                         date: t.date || '--/--/----',
                         type: 'ENVOI',
@@ -1357,7 +1402,10 @@
                         creditor: `${recipientDisplay} (🏁 ${targetLocation})`,
                         amount: amount,
                         fees: fees,
-                        status: t.status || 'En attente'
+                        status: t.status || 'En attente',
+                        actingUser: actingUser,
+                        isEnvoi: true,
+                        t: t
                     });
                 }
 
@@ -1372,6 +1420,8 @@
                         // Le gain total sur le retrait = frais d'envoi + frais de retrait
                         let totalGainRetrait = fees + wGain;
 
+                        const actingUser = getActingUser(t);
+
                         unifiedLedger.push({
                             date: wDate,
                             type: 'RETRAIT',
@@ -1381,7 +1431,10 @@
                             creditor: `${recipientDisplay} (📍 ${targetLocation})`,
                             amount: amount,
                             fees: totalGainRetrait, 
-                            status: 'Validé'
+                            status: 'Validé',
+                            actingUser: actingUser,
+                            isRetrait: true,
+                            t: t
                         });
                     }
                 }
@@ -1389,6 +1442,7 @@
 
             approvsList.forEach(a => {
                 if (isDateInPeriod(a.date, window.currentTimeFilter)) {
+                    const actingUser = a.userName || a.actingUser || a.user || (currentUser ? currentUser.name : 'N/A');
                     unifiedLedger.push({
                         date: a.date || '--/--/----',
                         type: 'APPROV',
@@ -1398,13 +1452,15 @@
                         childCreditor: '',
                         amount: parseFloat(a.amount) || 0,
                         fees: 0,
-                        status: a.status || 'En attente'
+                        status: a.status || 'En attente',
+                        actingUser: actingUser
                     });
                 }
             });
 
             gainsWithdrawalsList.forEach(gw => {
                 if (isDateInPeriod(gw.date, window.currentTimeFilter)) {
+                    const actingUser = gw.userName || gw.actingUser || gw.beneficiary || (currentUser ? currentUser.name : 'N/A');
                     unifiedLedger.push({
                         date: gw.date,
                         type: 'RETRAIT_GAIN',
@@ -1414,7 +1470,8 @@
                         childCreditor: '',
                         amount: parseFloat(gw.amount) || 0,
                         fees: 0,
-                        status: gw.status
+                        status: gw.status,
+                        actingUser: actingUser
                     });
                 }
             });
@@ -1426,20 +1483,21 @@
                 
                 if (filterSearch !== '') {
                     const childText = item.childCreditor ? item.childCreditor.toLowerCase() : '';
-                    const matchText = (item.code + ' ' + item.debitor + ' ' + item.creditor + ' ' + item.type + ' ' + childText).toLowerCase();
+                    const matchText = (item.code + ' ' + item.debitor + ' ' + item.creditor + ' ' + item.type + ' ' + childText + ' ' + (item.actingUser || '')).toLowerCase();
                     if (!matchText.includes(filterSearch)) return false;
                 }
                 return true;
             });
 
             if (filteredLedger.length === 0) {
-                const emptyRow = `<tr><td colspan="8" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucune écriture comptable ne correspond aux critères.</td></tr>`;
+                const emptyRow = `<tr><td colspan="9" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucune écriture comptable ne correspond aux critères.</td></tr>`;
                 tbody.innerHTML = emptyRow;
                 printTbody.innerHTML = emptyRow;
             } else {
                 const rows = filteredLedger.map(item => {
                     let typeBadge = '';
                     let amountColor = 'text-dark';
+                    let actingUserDisplay = item.actingUser || 'N/A';
 
                     if (item.type === 'ENVOI') {
                         typeBadge = '<span class="badge bg-primary"><i class="fa-solid fa-paper-plane me-1"></i>Envoi</span>';
@@ -1459,6 +1517,17 @@
                         ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> ${item.status}</span>`
                         : `<span class="badge bg-secondary"><i class="fa-solid fa-clock"></i> ${item.status}</span>`;
 
+                    // Gestion des frais : pour un envoi, afficher "déjà"
+                    let feesDisplay;
+                    if (item.type === 'ENVOI') {
+                        feesDisplay = 'Déjà';
+                    } else if (item.type === 'RETRAIT' && item.t && item.t.withdrawalFees) {
+                        // Pour un retrait, afficher les frais de retrait (commissions perçues)
+                        feesDisplay = formatAmount(parseFloat(item.t.withdrawalFees) || 0);
+                    } else {
+                        feesDisplay = item.fees > 0 ? formatAmount(item.fees) : '-';
+                    }
+
                     return `
                         <tr>
                             <td>${item.date}</td>
@@ -1467,7 +1536,8 @@
                             <td><small>${item.debitor}</small></td>
                             <td><small>${item.creditor}</small></td>
                             <td class="text-end fw-bold ${amountColor}">${formatAmount(item.amount)}</td>
-                            <td class="text-end text-muted">${item.fees > 0 ? formatAmount(item.fees) : '-'}</td>
+                            <td class="text-end text-muted">${feesDisplay}</td>
+                            <td><small>${actingUserDisplay}</small></td>
                             <td class="text-center">${statusBadge}</td>
                         </tr>
                     `;
@@ -1483,6 +1553,7 @@
                 gainsTbody.innerHTML = gainsWithdrawalsList.map(gw => {
                     const usd = parseFloat(gw.amount) / window.USD_RATE;
                     const formattedAmount = usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(parseFloat(gw.amount)).toLocaleString() + ' FCFA)';
+                    const actingUser = gw.userName || gw.actingUser || gw.beneficiary || (currentUser ? currentUser.name : 'N/A');
                     return `
                         <tr>
                             <td>${gw.date}</td>
@@ -1495,6 +1566,27 @@
                     `;
                 }).join('');
             }
+
+            // Mise à jour du récapitulatif d'impression
+            updatePrintSummary(filteredLedger);
+        }
+
+        function updatePrintSummary(filteredLedger) {
+            // Récupération des totaux depuis les KPI pour le récapitulatif d'impression
+            const getTextContent = (id) => {
+                const el = document.getElementById(id);
+                return el ? el.innerText : '0 USD';
+            };
+
+            document.getElementById('printTotalEnvoisBrut').innerText = getTextContent('kpiTotalEnvoisBrut');
+            document.getElementById('printTotalEnvoisAvecFrais').innerText = getTextContent('kpiTotalEnvois');
+            document.getElementById('printBeneficeEnvois').innerText = getTextContent('kpiBeneficeEnvois');
+            document.getElementById('printTotalRetraits').innerText = getTextContent('kpiTotalRetraits');
+            document.getElementById('printGainsRetraits').innerText = getTextContent('kpiGainsRetraits');
+            document.getElementById('printTotalApprov').innerText = getTextContent('kpiTotalApprov');
+            document.getElementById('printRetraitsGains').innerText = getTextContent('kpiTotalRetraitsGains');
+            document.getElementById('printSoldeNet').innerText = getTextContent('kpiSoldeNet');
+            document.getElementById('printSoldeGainsDispo').innerText = getTextContent('kpiSoldeGainsDispo');
         }
 
         window.onload = function() { 
