@@ -609,6 +609,23 @@
                 print-color-adjust: exact;
             }
         }
+
+        /* --- Style pour les cellules "Inconnu" modifiables --- */
+        .editable-unknown {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .editable-unknown:hover {
+            background-color: #fff3cd;
+        }
+        .editable-unknown.is-unknown {
+            color: #dc3545;
+            font-style: italic;
+        }
+        .editable-unknown:not(.is-unknown) {
+            color: #212529;
+            font-style: normal;
+        }
     </style>
     
     <script>
@@ -796,7 +813,7 @@
                             <div class="total-info mt-3">
                                 <div class="row align-items-center">
                                     <div class="col-md-12 mb-3 p-3 bg-white rounded shadow-sm text-center border-start border-danger border-4">
-                                        <small class="text-muted text-uppercase fw-bold tracking-wider">Montant Net à payer au Destinataire (FCFA)</small>
+                                        <small class="text-muted text-uppercase fw-bold tracking-wider">Montant Net à payer au Destinataire</small>
                                         <p class="mb-0 text-danger fw-black" id="netTransferDisplay" style="font-size: 2.25rem; font-weight: 900; letter-spacing: -0.5px;">0 FCFA</p>
                                     </div>
                                     <div class="col-md-4 text-center">
@@ -808,8 +825,8 @@
                                         <p class="fw-bold mb-0 text-primary" id="totalUSD">0 USD</p>
                                     </div>
                                     <div class="col-md-4 text-center">
-                                        <small class="text-muted">Date de dépôt</small>
-                                        <p class="fw-bold mb-0 text-secondary" id="depositDate">--/--/----</p>
+                                        <small class="text-muted">Heure de dépôt</small>
+                                        <p class="fw-bold mb-0 text-secondary" id="depositTime">--:--</p>
                                     </div>
                                     <div class="col-md-12 text-center mt-2">
                                         <small class="text-muted">Référence d'envoi</small>
@@ -1382,26 +1399,58 @@
         function displayTransferDetails(matchedTransfer) {
             currentActiveTransfer = matchedTransfer;
             
-            document.getElementById('senderName').value = matchedTransfer.sender.name;
-            document.getElementById('senderFirstname').value = matchedTransfer.sender.firstname;
-            document.getElementById('senderCountry').value = matchedTransfer.sender.country;
-            document.getElementById('senderAgency').value = matchedTransfer.sender.agency;
-            document.getElementById('senderPhone').value = matchedTransfer.sender.phone;
+            // Remplir les champs expéditeur
+            document.getElementById('senderName').value = matchedTransfer.sender.name || 'Inconnu';
+            document.getElementById('senderFirstname').value = matchedTransfer.sender.firstname || 'Inconnu';
+            document.getElementById('senderCountry').value = matchedTransfer.sender.country || 'Inconnu';
+            document.getElementById('senderAgency').value = matchedTransfer.sender.agency || 'Inconnu';
+            document.getElementById('senderPhone').value = matchedTransfer.sender.phone || 'Inconnu';
 
-            document.getElementById('beneficiaryName').value = matchedTransfer.beneficiary.name;
-            document.getElementById('beneficiaryFirstname').value = matchedTransfer.beneficiary.firstname;
-            document.getElementById('beneficiaryCountry').value = matchedTransfer.beneficiary.country;
-            document.getElementById('beneficiaryAgency').value = matchedTransfer.beneficiary.agency;
-            document.getElementById('beneficiaryPhone').value = matchedTransfer.beneficiary.phone;
+            // Remplir les champs bénéficiaire
+            document.getElementById('beneficiaryName').value = matchedTransfer.beneficiary.name || 'Inconnu';
+            document.getElementById('beneficiaryFirstname').value = matchedTransfer.beneficiary.firstname || 'Inconnu';
+            document.getElementById('beneficiaryCountry').value = matchedTransfer.beneficiary.country || 'Inconnu';
+            document.getElementById('beneficiaryAgency').value = matchedTransfer.beneficiary.agency || 'Inconnu';
+            document.getElementById('beneficiaryPhone').value = matchedTransfer.beneficiary.phone || 'Inconnu';
 
+            // Appliquer le style "Inconnu" sur les champs concernés
+            applyUnknownStyle('senderName', matchedTransfer.sender.name);
+            applyUnknownStyle('senderFirstname', matchedTransfer.sender.firstname);
+            applyUnknownStyle('senderCountry', matchedTransfer.sender.country);
+            applyUnknownStyle('senderAgency', matchedTransfer.sender.agency);
+            applyUnknownStyle('senderPhone', matchedTransfer.sender.phone);
+            applyUnknownStyle('beneficiaryName', matchedTransfer.beneficiary.name);
+            applyUnknownStyle('beneficiaryFirstname', matchedTransfer.beneficiary.firstname);
+            applyUnknownStyle('beneficiaryCountry', matchedTransfer.beneficiary.country);
+            applyUnknownStyle('beneficiaryAgency', matchedTransfer.beneficiary.agency);
+            applyUnknownStyle('beneficiaryPhone', matchedTransfer.beneficiary.phone);
+
+            // Calcul des montants en dollars et FCFA
             const amountFCFA = matchedTransfer.amountFCFA || matchedTransfer.amount || 0;
             const feesFCFA = matchedTransfer.feesFCFA !== undefined ? matchedTransfer.feesFCFA : (matchedTransfer.fees || 0);
             const totalUSD = matchedTransfer.totalUSD || (amountFCFA / USD_RATE);
+            const feesUSD = matchedTransfer.feesUSD || (feesFCFA / USD_RATE);
 
-            document.getElementById('netTransferDisplay').innerText = parseFloat(amountFCFA).toLocaleString() + ' FCFA';
-            document.getElementById('transferFees').innerText = parseFloat(feesFCFA).toLocaleString() + ' FCFA';
-            document.getElementById('totalUSD').innerText = parseFloat(totalUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
-            document.getElementById('depositDate').innerText = matchedTransfer.date ? new Date(matchedTransfer.date).toLocaleDateString('fr-FR') : '';
+            // Affichage en dollars avec FCFA entre parenthèses
+            document.getElementById('netTransferDisplay').innerHTML = 
+                parseFloat(totalUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
+                parseFloat(amountFCFA).toLocaleString() + ' FCFA)';
+            
+            document.getElementById('transferFees').innerHTML = 
+                parseFloat(feesUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
+                parseFloat(feesFCFA).toLocaleString() + ' FCFA)';
+            
+            document.getElementById('totalUSD').innerText = 
+                parseFloat(totalUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+
+            // Date et heure de dépôt
+            const depositDate = matchedTransfer.date ? new Date(matchedTransfer.date) : null;
+            if (depositDate && !isNaN(depositDate.getTime())) {
+                document.getElementById('depositTime').innerText = depositDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+            } else {
+                document.getElementById('depositTime').innerText = '--:--';
+            }
+            
             document.getElementById('transferReference').innerText = matchedTransfer.sender.transferReference || '--';
 
             const btnWithdraw = document.getElementById('btnWithdraw');
@@ -1420,7 +1469,72 @@
             document.getElementById('detailsCard').classList.remove('d-none');
         }
 
+        // Fonction pour appliquer le style "Inconnu" sur un champ
+        function applyUnknownStyle(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const isUnknown = !value || value.toLowerCase() === 'inconnu' || value.trim() === '';
+            
+            // Ajouter la classe pour le style
+            if (isUnknown) {
+                element.classList.add('is-unknown');
+                element.classList.add('editable-unknown');
+                // Rendre modifiable
+                element.removeAttribute('readonly');
+                element.disabled = false;
+                element.style.cursor = 'pointer';
+                
+                // Ajouter un événement de clic pour éditer
+                element.onclick = function(e) {
+                    if (this.classList.contains('is-unknown')) {
+                        const currentValue = this.value;
+                        const newValue = prompt('Veuillez renseigner les informations du bénéficiaire :', currentValue);
+                        if (newValue !== null && newValue.trim() !== '') {
+                            this.value = newValue.trim();
+                            this.classList.remove('is-unknown');
+                            // Mettre à jour dans l'objet transfert
+                            if (currentActiveTransfer) {
+                                const fieldMap = {
+                                    'senderName': ['sender', 'name'],
+                                    'senderFirstname': ['sender', 'firstname'],
+                                    'senderCountry': ['sender', 'country'],
+                                    'senderAgency': ['sender', 'agency'],
+                                    'senderPhone': ['sender', 'phone'],
+                                    'beneficiaryName': ['beneficiary', 'name'],
+                                    'beneficiaryFirstname': ['beneficiary', 'firstname'],
+                                    'beneficiaryCountry': ['beneficiary', 'country'],
+                                    'beneficiaryAgency': ['beneficiary', 'agency'],
+                                    'beneficiaryPhone': ['beneficiary', 'phone']
+                                };
+                                const mapping = fieldMap[elementId];
+                                if (mapping) {
+                                    const [objKey, fieldKey] = mapping;
+                                    if (currentActiveTransfer[objKey]) {
+                                        currentActiveTransfer[objKey][fieldKey] = newValue.trim();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+            } else {
+                element.classList.remove('is-unknown');
+                element.classList.remove('editable-unknown');
+                element.readOnly = true;
+                element.disabled = true;
+                element.onclick = null;
+            }
+        }
+
         function promptWithdrawalConfirmation() {
+            // Vérifier si des champs "Inconnu" sont encore présents
+            const unknownFields = document.querySelectorAll('.is-unknown');
+            if (unknownFields.length > 0) {
+                alert('Veuillez renseigner toutes les informations manquantes (champs en rouge "Inconnu") avant de procéder au retrait.');
+                return;
+            }
+            
             document.getElementById('agentSecurityCode').value = '';
             const securityModal = new bootstrap.Modal(document.getElementById('securityModal'));
             securityModal.show();
@@ -1475,6 +1589,26 @@
                         role: currentUser.role,
                         desk: currentUser.desk || currentUser.guichet || 'N/A'
                     } : { name: 'Système', role: 'Inconnu', desk: 'N/A' };
+                    
+                    // Mettre à jour les informations du bénéficiaire si elles ont été modifiées
+                    const beneficiaryFields = ['beneficiaryName', 'beneficiaryFirstname', 'beneficiaryCountry', 'beneficiaryAgency', 'beneficiaryPhone'];
+                    const fieldMap = {
+                        'beneficiaryName': 'name',
+                        'beneficiaryFirstname': 'firstname',
+                        'beneficiaryCountry': 'country',
+                        'beneficiaryAgency': 'agency',
+                        'beneficiaryPhone': 'phone'
+                    };
+                    
+                    beneficiaryFields.forEach(fieldId => {
+                        const el = document.getElementById(fieldId);
+                        if (el && !el.classList.contains('is-unknown') && el.value) {
+                            const fieldName = fieldMap[fieldId];
+                            if (fieldName) {
+                                updates[`${itemPath}/beneficiary/${fieldName}`] = el.value;
+                            }
+                        }
+                    });
                     
                     update(ref(db), updates).then(() => {
                         const amountToDisplay = matched.amountFCFA || matched.amount || 0;
@@ -1557,6 +1691,7 @@
                     const transferRef = sender.transferReference || '--';
 
                     const finalAmount = t.amountFCFA || t.amount || 0;
+                    const finalAmountUSD = t.amountUSD || (finalAmount / USD_RATE);
                     
                     // Récupération du nom de l'opérateur de retrait
                     const withdrawalOperatorName = t.withdrawalOperator?.name || 'N/A';
