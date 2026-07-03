@@ -1138,8 +1138,9 @@
                 if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = USD_RATE;
                 
                 if (currentActiveTransfer && document.getElementById('detailsCard') && !document.getElementById('detailsCard').classList.contains('d-none')) {
-                    const usdAmount = currentActiveTransfer.totalUSD ? parseFloat(currentActiveTransfer.totalUSD) : (parseFloat(currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0) / USD_RATE);
-                    document.getElementById('totalUSD').innerText = usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+                    const amountFCFA = currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0;
+                    const netUSD = amountFCFA / USD_RATE;
+                    document.getElementById('totalUSD').innerText = netUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
                 }
             }
             configReceived = true;
@@ -1428,20 +1429,23 @@
             // Calcul des montants en dollars et FCFA
             const amountFCFA = matchedTransfer.amountFCFA || matchedTransfer.amount || 0;
             const feesFCFA = matchedTransfer.feesFCFA !== undefined ? matchedTransfer.feesFCFA : (matchedTransfer.fees || 0);
-            const totalUSD = matchedTransfer.totalUSD || (amountFCFA / USD_RATE);
-            const feesUSD = matchedTransfer.feesUSD || (feesFCFA / USD_RATE);
+            // Le montant net en USD est basé sur le montant FCFA sans les frais
+            const netUSD = amountFCFA / USD_RATE;
+            const feesUSD = feesFCFA / USD_RATE;
+            const totalUSDWithFees = (amountFCFA + feesFCFA) / USD_RATE;
 
-            // Affichage en dollars avec FCFA entre parenthèses
+            // Affichage du montant net en USD avec FCFA entre parenthèses
             document.getElementById('netTransferDisplay').innerHTML = 
-                parseFloat(totalUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
+                netUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
                 parseFloat(amountFCFA).toLocaleString() + ' FCFA)';
             
             document.getElementById('transferFees').innerHTML = 
-                parseFloat(feesUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
+                feesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
                 parseFloat(feesFCFA).toLocaleString() + ' FCFA)';
             
+            // Affichage du total en USD (montant + frais)
             document.getElementById('totalUSD').innerText = 
-                parseFloat(totalUSD).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+                totalUSDWithFees.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
 
             // Date et heure de dépôt
             const depositDate = matchedTransfer.date ? new Date(matchedTransfer.date) : null;
