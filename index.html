@@ -450,7 +450,7 @@
                                     <i class="fa-solid fa-arrow-right-arrow-left fa-lg text-secondary"></i>
                                 </div>
                                 <div class="col-5">
-                                    <span class="fs-2 fw-black text-danger" id="homeDollarRateDisplay">--</span>
+                                    <span class="fs-2" id="homeDollarRateDisplay">--</span>
                                     <div class="text-muted small fw-bold">Franc CFA (XOF/XAF)</div>
                                 </div>
                             </div>
@@ -692,7 +692,7 @@
 
         // --- CHARGEMENT ET RENDU DES STATISTIQUES D'ACCUEIL ---
         function loadHomeDashboardData() {
-            // Safely get array lengths
+            // Safely get array lengths from ledger_config
             const countriesCount = Array.isArray(ledgerConfig.countries) ? ledgerConfig.countries.length : 
                                    (ledgerConfig.countries ? Object.keys(ledgerConfig.countries).length : 0);
             const desksCount = Array.isArray(ledgerConfig.desks) ? ledgerConfig.desks.length : 
@@ -707,9 +707,21 @@
             document.getElementById('statAgents').innerText = agentsCount;
             document.getElementById('statCurrencies').innerText = currenciesCount;
 
+            // 1. Gestion et affichage dynamique sécurisé du taux dollarRateConfig.value
+            const rateDisplay = document.getElementById('homeDollarRateDisplay');
             const dollarRateValue = (ledgerConfig.dollarRateConfig && ledgerConfig.dollarRateConfig.value) || ledgerConfig.dollarRate || "Non défini";
-            document.getElementById('homeDollarRateDisplay').innerText = dollarRateValue;
+            
+            if (rateDisplay) {
+                rateDisplay.innerText = dollarRateValue;
+                if (ledgerConfig.dollarRateConfig && ledgerConfig.dollarRateConfig.isLocked) {
+                    rateDisplay.className = "fs-2 fw-black text-danger";
+                    rateDisplay.innerHTML = `<i class="fa-solid fa-lock me-1" style="font-size: 1.4rem;"></i> ${dollarRateValue}`;
+                } else {
+                    rateDisplay.className = "fs-2 fw-bold text-dark";
+                }
+            }
 
+            // 3. Gestion de l'affichage du nom de l'entreprise depuis company.name quand isLocked est true
             const headerName = document.getElementById('headerCompanyName');
             if (ledgerConfig.company && ledgerConfig.company.isLocked && ledgerConfig.company.name) {
                 headerName.innerText = ledgerConfig.company.name;
@@ -893,8 +905,6 @@
         }
 
         // Initialisation de la vue d'accueil et Logique PWA
-        // applyRoleAccessControl is already called inside onValue and cache
-
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then(() => console.log('Service Worker enregistré avec succès.'))

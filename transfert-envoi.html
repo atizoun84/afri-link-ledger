@@ -1234,6 +1234,7 @@
         let configReceived = false;
         let transfersReceived = false;
         let supplyReceived = false;
+        let balancesReceived = false;
 
         // Mémoire tampon temps réel locale alimentée par Firebase pour l'historique et les codes
         let cacheTransfers = [];
@@ -1313,6 +1314,37 @@
                 indicator.className = "fb-status-indicator fb-status-offline";
                 statusText.innerText = "Hors ligne";
             }
+        });
+
+        // --- Fonctions de gestion des soldes des guichets ---
+        let ledgerBalances = {};
+
+        // Fonction pour récupérer le solde d'un guichet
+        function getDeskBalance(deskId) {
+            if (!deskId) return 0;
+            return ledgerBalances[deskId] || 0;
+        }
+
+        // Fonction pour mettre à jour le solde d'un guichet
+        function updateDeskBalance(deskId, newBalance) {
+            if (!deskId) return;
+            const balances = { ...ledgerBalances };
+            balances[deskId] = Math.max(0, newBalance);
+            ledgerBalances = balances;
+            localStorage.setItem('ledger_balances', JSON.stringify(balances));
+            
+            // Synchroniser avec Firebase
+            const balancesRef = ref(db, 'ledger_balances');
+            set(balancesRef, balances);
+        }
+
+        // Écoute des soldes depuis Firebase
+        onValue(ref(db, 'ledger_balances'), (snapshot) => {
+            const data = snapshot.val() || {};
+            ledgerBalances = data;
+            localStorage.setItem('ledger_balances', JSON.stringify(data));
+            balancesReceived = true;
+            checkFirstLoadComplete();
         });
 
         // Écoute dynamique du nœud des transferts pour rafraîchir le cache local instantanément
@@ -1398,7 +1430,7 @@
         });
 
         function checkFirstLoadComplete() {
-            if (isFirstLoad && configReceived && transfersReceived && supplyReceived) {
+            if (isFirstLoad && configReceived && transfersReceived && supplyReceived && balancesReceived) {
                 isFirstLoad = false;
                 if (loadingOverlay) {
                     loadingOverlay.style.opacity = '0';
@@ -1431,12 +1463,23 @@
             const totalApprovUSD = totalApprovFCFA / USD_RATE;
             
             // Total des envois (tous, y compris ceux en attente)
-            const totalEnvoisFCFA = cacheTransfers.reduce((sum, t) => sum + (parseFloat(t.amountFCFA) || 0), 0);
-            const totalEnvoisUSD = totalEnvoisFCFA / USD_RATE;
+            // Utilisation de amountUSD comme source de vérité pour les envois
+            const totalEnvoisUSD = cacheTransfers.reduce((sum, t) => {
+                // Compatibilité : si amountUSD existe, l'utiliser, sinon le calculer à partir du FCFA
+                if (t.amountUSD) {
+                    return sum + parseFloat(t.amountUSD);
+                } else if (t.amountFCFA) {
+                    // Calculer amountUSD à partir du FCFA et du taux utilisé (ou 600 par défaut)
+                    const rateUsed = t.rateUsed || 600;
+                    return sum + (parseFloat(t.amountFCFA) / rateUsed);
+                }
+                return sum;
+            }, 0);
+            const totalEnvoisFCFA = totalEnvoisUSD * USD_RATE;
             
             // Solde du flux = approvisionnements validés - total des envois
-            const soldeFluxFCFA = totalApprovFCFA - totalEnvoisFCFA;
-            const soldeFluxUSD = soldeFluxFCFA / USD_RATE;
+            const soldeFluxUSD = totalApprovUSD - totalEnvoisUSD;
+            const soldeFluxFCFA = soldeFluxUSD * USD_RATE;
             
             // Nombre d'envois en attente (non retirés)
             const pendingTransfers = cacheTransfers.filter(t => t.status === 'En attente');
@@ -1456,7 +1499,7 @@
             
             const soldeEl = document.getElementById('supplySoldeFlux');
             soldeEl.innerText = formatAmount(soldeFluxUSD, soldeFluxFCFA);
-            soldeEl.className = 'supply-value' + (soldeFluxFCFA < 0 ? ' red' : ' blue');
+            soldeEl.className = 'supply-value' + (soldeFluxUSD < 0 ? ' red' : ' blue');
             
             document.getElementById('supplyValidCount').innerText = validCount;
             document.getElementById('supplyPendingCount').innerText = pendingCount;
@@ -1578,7 +1621,20 @@
                     : `<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span>`;
                 
                 const displayDate = t.date ? new Date(t.date).toLocaleDateString('fr-FR') : '--/--/----';
-                const amtUSD = t.amountUSD ? parseFloat(t.amountUSD).toFixed(2) : (parseFloat(t.amountFCFA) / USD_RATE).toFixed(2);
+                
+                // Utiliser amountUSD comme source pour l'affichage en dollars
+                let amtUSD = 0;
+                let amtFCFA = 0;
+                if (t.amountUSD) {
+                    amtUSD = parseFloat(t.amountUSD);
+                    amtFCFA = amtUSD * USD_RATE;
+                } else if (t.amountFCFA) {
+                    // Compatibilité avec les anciennes données
+                    const rateUsed = t.rateUsed || 600;
+                    amtUSD = parseFloat(t.amountFCFA) / rateUsed;
+                    amtFCFA = amtUSD * USD_RATE;
+                }
+                
                 const fbKey = t.fbKey || '';
                 
                 // Récupération du nom de l'opérateur (utilisateur agissant)
@@ -1590,7 +1646,7 @@
                         <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
                         <td>${t.sender?.firstname || ''} ${t.sender?.name || ''}<br><small class="text-muted">${t.sender?.phone || ''}</small></td>
                         <td>${t.beneficiary?.firstname || ''} ${t.beneficiary?.name || ''}<br><small class="text-success fw-bold">📍 ${t.beneficiary?.agency || ''}</small></td>
-                        <td class="text-end fw-bold">${amtUSD} USD<br><small class="text-muted">(${parseFloat(t.amountFCFA).toLocaleString()} CFA)</small></td>
+                        <td class="text-end fw-bold">${amtUSD.toFixed(2)} USD<br><small class="text-muted">(${Math.round(amtFCFA).toLocaleString()} CFA)</small></td>
                         <td class="text-center">${statusBadge}</td>
                         <td><small class="fw-bold text-primary">${operatorName}</small></td>
                         <td class="text-center">
@@ -1942,9 +1998,13 @@
             let amountFCFA = 0;
 
             if (currency === 'FCFA') {
+                // Le montant saisi est en FCFA
                 amountFCFA = inputAmount;
+                // Calcul du USD à partir du FCFA pour l'affichage et les calculs de frais
+                // MAIS attention : amountUSD est calculé, pas la source
                 amountUSD = amountFCFA / USD_RATE;
             } else {
+                // Le montant saisi est en USD - C'EST LA SOURCE
                 amountUSD = inputAmount;
                 amountFCFA = amountUSD * USD_RATE;
             }
@@ -1955,8 +2015,8 @@
 
             if (specialFeePercentage !== null && specialFeePercentage > 0) {
                 computedFeePercent = specialFeePercentage;
-                feesFCFA = amountFCFA * (specialFeePercentage / 100);
-                feesUSD = feesFCFA / USD_RATE;
+                feesUSD = amountUSD * (specialFeePercentage / 100);
+                feesFCFA = feesUSD * USD_RATE;
             } else {
                 feesUSD = getFeeInUSD(amountUSD);
                 feesFCFA = feesUSD * USD_RATE;
@@ -1964,7 +2024,7 @@
             }
             
             const totalFCFA = amountFCFA + feesFCFA;
-            const totalUSD = totalFCFA / USD_RATE;
+            const totalUSD = amountUSD + feesUSD;
             
             // Format d'affichage : DOLLARS (FCFA entre parenthèses)
             document.getElementById('transferFees').value = feesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(feesFCFA).toLocaleString() + ' FCFA)';
@@ -2221,6 +2281,23 @@
             const transferTimeVal = document.getElementById('senderTransferTime').value;
             const transferRefVal = document.getElementById('senderTransferReference').value;
 
+            // IMPORTANT: amountUSD est la source de vérité
+            // Si la devise saisie est FCFA, amountUSD est calculé à partir du FCFA pour l'instant
+            // Mais on stocke le montant en USD comme source pour les calculs futurs
+            let amountUSD = feeCalculations.initialAmountUSD;
+            let amountFCFA = feeCalculations.initialAmountFCFA;
+            
+            // Si la devise saisie est USD, amountUSD est la source directe
+            if (currencyChoice === 'USD') {
+                amountUSD = rawAmount;
+                amountFCFA = amountUSD * USD_RATE;
+            } else {
+                // Si FCFA, on garde amountUSD calculé pour référence, mais on stocke aussi le FCFA
+                // Mais pour la cohérence, on va utiliser amountUSD comme source
+                // On recalcule le FCFA à partir du USD pour être sûr
+                amountFCFA = amountUSD * USD_RATE;
+            }
+
             const transferData = {
                 id: Date.now(),
                 date: new Date().toISOString(),
@@ -2229,13 +2306,15 @@
                 currency: currencyChoice,
                 currencyDisplayName: currencyDisplayName,
                 rate: USD_RATE,
-                amountFCFA: feeCalculations.initialAmountFCFA,
-                amountUSD: feeCalculations.initialAmountUSD,
-                feesFCFA: feeCalculations.fees,
+                // amountUSD est la SOURCE DE VÉRITÉ
+                amountUSD: amountUSD,
+                // amountFCFA est CALCULÉ à partir du USD
+                amountFCFA: amountFCFA,
                 feesUSD: feeCalculations.feesUSD,
+                feesFCFA: feeCalculations.feesUSD * USD_RATE,
                 feePercentage: feeCalculations.feePercent,
-                totalFCFA: feeCalculations.totalFCFA,
-                totalUSD: feeCalculations.totalUSD,
+                totalUSD: amountUSD + feeCalculations.feesUSD,
+                totalFCFA: (amountUSD + feeCalculations.feesUSD) * USD_RATE,
                 status: 'En attente',
                 // Signature de l'opérateur (utilisateur connecté)
                 operator: currentUser ? {
@@ -2251,7 +2330,9 @@
                     phone: senderFullPhone,
                     transferDate: transferDateVal,
                     transferTime: transferTimeVal,
-                    transferReference: transferRefVal
+                    transferReference: transferRefVal,
+                    // Ajout de l'ID de l'agence pour le suivi des soldes
+                    agencyId: document.getElementById('senderAgency').value
                 },
                 beneficiary: {
                     name: document.getElementById('beneficiaryName').value,
@@ -2272,7 +2353,7 @@
                 document.getElementById('modalSender').innerHTML = `${transferData.sender.firstname} ${transferData.sender.name}`;
                 document.getElementById('modalBeneficiary').innerHTML = `${transferData.beneficiary.firstname} ${transferData.beneficiary.name}`;
                 
-                // Rendu Dollars en premier dans la modal
+                // Rendu Dollars en premier dans la modal (source en USD)
                 document.getElementById('modalAmount').innerHTML = `${transferData.amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD (${Math.round(transferData.amountFCFA).toLocaleString()} FCFA)`;
                 document.getElementById('modalAgency').innerHTML = beneficiaryAgencyName;
                 document.getElementById('modalTotalPaid').innerHTML = `${transferData.totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD (${Math.round(transferData.totalFCFA).toLocaleString()} FCFA)`;
@@ -2417,10 +2498,11 @@
             if (specialFeePercentage !== null && specialFeePercentage > 0) {
                 // Si taux spécial, calcul direct
                 feePercent = specialFeePercentage;
-                netFCFA = totalFCFA / (1 + feePercent / 100);
-                feesFCFA = totalFCFA - netFCFA;
-                netUSD = netFCFA / USD_RATE;
-                feesUSD = feesFCFA / USD_RATE;
+                // Le montant net en USD est la source
+                netUSD = totalUSD / (1 + feePercent / 100);
+                feesUSD = totalUSD - netUSD;
+                netFCFA = netUSD * USD_RATE;
+                feesFCFA = feesUSD * USD_RATE;
             } else {
                 // Grille tarifaire standard
                 // Approximation par itération
@@ -2463,7 +2545,7 @@
                 feePercent = (feesFCFA / totalFCFA) * 100;
             }
 
-            // Affichage
+            // Affichage - Le montant net USD est la valeur source
             const formatCurrency = (usd, fcfa) => {
                 return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
             };

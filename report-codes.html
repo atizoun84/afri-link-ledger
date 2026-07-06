@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comptabilité Globale | AFRI-LINK LEDGER</title>
     
+    <link class="apple-touch-icon" href="logo.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#075E54">
-    <link class="apple-touch-icon" href="logo.png">
     
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@300;400;600&family=Montserrat:wght@800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     
@@ -419,11 +419,39 @@
                 max-width: 100%;
             }
         }
+
+        /* --- Styles pour la plaquette des guichets --- */
+        .desk-summary-card {
+            border-radius: 15px;
+            border: none;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        .desk-summary-card:hover {
+            transform: translateY(-3px);
+        }
+        .desk-summary-card .desk-name {
+            font-weight: 700;
+            color: var(--wa-dark);
+            font-size: 1.1rem;
+        }
+        .desk-summary-card .stat-item {
+            font-size: 0.85rem;
+            padding: 2px 0;
+        }
+        .desk-summary-card .stat-value {
+            font-weight: 600;
+        }
+        .desk-summary-card .stat-label {
+            color: #666;
+        }
+        .desk-balance-positive { color: #28a745; }
+        .desk-balance-negative { color: #dc3545; }
+        .desk-balance-neutral { color: #6c757d; }
     </style>
 </head>
 <body>
 
-    <!-- Loading overlay until cloud data is loaded -->
     <div id="loading-overlay">
         <div class="spinner-border spinner-border-custom mb-3" role="status">
             <span class="visually-hidden">Chargement...</span>
@@ -484,7 +512,6 @@
             <p class="text-muted">Consultez l'historique complet et croisé de vos mouvements financiers (Envois, Retraits, Approvisionnements)</p>
         </div>
 
-        <!-- Filtres de date améliorés -->
         <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
             <button class="btn btn-sm btn-wa px-3 filter-time-btn active" id="timeFilterAll" onclick="setTimeFilter('ALL')"><i class="fa-solid fa-globe me-1"></i>Tout voir</button>
             <div class="d-flex align-items-center gap-2">
@@ -494,6 +521,12 @@
                 <input type="date" id="filterDateEnd" class="form-control form-control-sm date-filter-input" onchange="updateDateFilter()">
                 <button class="btn btn-sm btn-outline-secondary" onclick="clearDateFilter()"><i class="fa-solid fa-times"></i></button>
             </div>
+        </div>
+
+        <div class="mb-4">
+            <h5 class="form-section-title"><i class="fa-solid fa-store me-2 text-primary"></i>État Financier par Guichet</h5>
+            <div class="row g-3" id="deskSummaryContainer">
+                </div>
         </div>
 
         <div class="row g-3 mb-4">
@@ -802,9 +835,10 @@
         let approvsReceived = false;
         let gainsReceived = false;
         let configReceived = false;
+        let balancesReceived = false;
 
         function checkFirstLoadComplete() {
-            if (isFirstLoad && transfersReceived && approvsReceived && gainsReceived && configReceived) {
+            if (isFirstLoad && transfersReceived && approvsReceived && gainsReceived && configReceived && balancesReceived) {
                 isFirstLoad = false;
                 if (loadingOverlay) {
                     loadingOverlay.style.opacity = '0';
@@ -824,6 +858,20 @@
         window.currentDateEnd = null;
         window.currentTimeFilter = 'ALL';
         window.cachedSoldeGainsDispo = 0;
+        window.ledgerBalances = {};
+
+        // Variables d'échange natives pour conserver les KPIs d'impression en USD
+        window.kpiSourcesUSD = {
+            totalEnvoisBrut: 0,
+            totalEnvoisAvecFrais: 0,
+            totalFeesCollectes: 0,
+            totalRetraits: 0,
+            totalGainsRetraits: 0,
+            totalApprov: 0,
+            totalRetraitsGains: 0,
+            soldeNet: 0,
+            soldeGainsDispo: 0
+        };
 
         // Écoute de l'état de connexion à Firebase
         const connectedRef = ref(db, ".info/connected");
@@ -837,6 +885,16 @@
                 icon.className = "fa-solid fa-circle status-offline small";
                 text.innerText = "Hors ligne";
             }
+        });
+
+        // Synchronisation des soldes des guichets depuis Firebase
+        onValue(ref(db, 'ledger_balances'), (snapshot) => {
+            const data = snapshot.val() || {};
+            window.ledgerBalances = data;
+            localStorage.setItem('ledger_balances', JSON.stringify(data));
+            balancesReceived = true;
+            checkFirstLoadComplete();
+            checkAndRefreshUI();
         });
 
         // Synchronisation en temps réel des configurations de l'application
@@ -888,6 +946,7 @@
         function checkAndRefreshUI() {
             computeFinancialKPIs();
             buildAccountingTable();
+            buildDeskSummary();
         }
 
         // ---- CORRECTION : Écoute du bon chemin "transfers" et non "ledger_transfers" ----
@@ -923,15 +982,17 @@
         const cachedTransfers = localStorage.getItem('ledger_transfers_cache');
         const cachedApprovs = localStorage.getItem('ledger_supply_cache');
         const cachedGains = localStorage.getItem('ledger_profits_cache');
+        const cachedBalances = localStorage.getItem('ledger_balances');
         if (cachedTransfers) window.transfers = JSON.parse(cachedTransfers);
         if (cachedApprovs) window.approvs = JSON.parse(cachedApprovs);
         if (cachedGains) window.gainsWithdrawals = JSON.parse(cachedGains);
+        if (cachedBalances) window.ledgerBalances = JSON.parse(cachedBalances);
 
         // Liaison des fonctions de modification au contexte global Window pour compatibilité HTML Inline
         window.executeGainWithdrawal = function(event) {
             event.preventDefault();
             const beneficiary = document.getElementById('withdrawGainBeneficiary').value.trim();
-            const amount = parseFloat(document.getElementById('withdrawGainAmount').value) || 0;
+            const amountFCFA = parseFloat(document.getElementById('withdrawGainAmount').value) || 0;
             const comment = document.getElementById('withdrawGainComment').value.trim();
             const authCode = document.getElementById('withdrawGainAuthCode').value.trim();
 
@@ -939,11 +1000,14 @@
                 alert("Action Refusée : Code d'autorisation incorrect.");
                 return;
             }
-            if (amount <= 0) {
+            if (amountFCFA <= 0) {
                 alert("Le montant doit être supérieur à 0.");
                 return;
             }
-            if (amount > window.cachedSoldeGainsDispo) {
+            
+            // Conversion en USD pour vérification de la balance immuable
+            const amountUSD = amountFCFA / window.USD_RATE;
+            if (amountUSD > window.cachedSoldeGainsDispo) {
                 alert("Action Refusée : Le solde disponible des gains est insuffisant pour couvrir ce retrait d'ajustement.");
                 return;
             }
@@ -954,7 +1018,8 @@
                 date: new Date().toLocaleString('fr-FR'),
                 type: 'RETRAIT_GAIN',
                 beneficiary: beneficiary,
-                amount: amount,
+                amount: amountFCFA, // Conserver le champ amount historique pour le noeud de profits
+                amountUSD: amountUSD,
                 comment: comment,
                 status: 'Validé'
             };
@@ -980,13 +1045,15 @@
                     remove(ref(db, 'ledger_config')),
                     remove(ref(db, 'transfers')),
                     remove(ref(db, 'ledger_supply')),
-                    remove(ref(db, 'ledger_profits'))
+                    remove(ref(db, 'ledger_profits')),
+                    remove(ref(db, 'ledger_balances'))
                 ]).then(() => {
                     // Nettoyer également les caches locaux
                     localStorage.removeItem('ledger_config');
                     localStorage.removeItem('ledger_transfers_cache');
                     localStorage.removeItem('ledger_supply_cache');
                     localStorage.removeItem('ledger_profits_cache');
+                    localStorage.removeItem('ledger_balances');
                     sessionStorage.clear();
                     location.reload();
                 }).catch((err) => {
@@ -994,6 +1061,28 @@
                     alert("Échec partiel de la réinitialisation cloud.");
                 });
             }
+        };
+
+        // Fonctions de gestion des soldes des guichets
+        window.getDeskBalance = function(deskId) {
+            if (!deskId) return 0;
+            return window.ledgerBalances[deskId] || 0;
+        };
+
+        window.updateDeskBalance = function(deskId, newBalance) {
+            if (!deskId) return;
+            const balances = { ...window.ledgerBalances };
+            balances[deskId] = Math.max(0, newBalance);
+            window.ledgerBalances = balances;
+            localStorage.setItem('ledger_balances', JSON.stringify(balances));
+            
+            // Synchroniser avec Firebase
+            if (window.fbDatabase) {
+                const balancesRef = ref(window.fbDatabase, 'ledger_balances');
+                set(balancesRef, balances);
+            }
+            // Rafraîchir l'affichage
+            buildDeskSummary();
         };
     </script>
 
@@ -1215,94 +1304,145 @@
         }
 
         function computeFinancialKPIs() {
-            let totalEnvoisBrut = 0;
-            let totalEnvoisAvecFrais = 0;
-            let totalFeesCollectes = 0;
+            // Sources de données immuables en USD
+            let totalEnvoisBrutUSD = 0;
+            let totalEnvoisAvecFraisUSD = 0;
+            let totalFeesCollectesUSD = 0;
             
-            let totalRetraits = 0;
-            let totalGainsRetraits = 0;
+            let totalRetraitsUSD = 0;
+            let totalGainsRetraitsUSD = 0;
             
-            let totalApprov = 0;
-            let totalRetraitsGains = 0;
+            let totalApprovUSD = 0;
+            let totalRetraitsGainsUSD = 0;
 
-            let sommeTotalFcaEncaisses = 0;
-            let sommeAmountFcaRetires = 0;
+            // Variables globales en USD (toutes périodes) pour la balance de caisse nette
+            let globalTotalEncaissesUSD = 0;
+            let globalTotalRetiresUSD = 0;
+            let globalTotalApprovUSD = 0;
+            let globalTotalRetraitsGainsUSD = 0;
 
             const transfersList = window.transfers || [];
             const approvsList = window.approvs || [];
             const gainsWithdrawalsList = window.gainsWithdrawals || [];
 
             transfersList.forEach(t => {
-                let amount = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
-                let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
-                let totalEncaisse = parseFloat(t.totalFCFA) || (amount + fees);
+                // Extraction source immuable USD + Rétrocompatibilité
+                let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
+                if (rateUsed <= 0) rateUsed = 600;
 
-                sommeTotalFcaEncaisses += totalEncaisse;
-                if (t.status === 'Retiré') {
-                    sommeAmountFcaRetires += amount;
+                let amtUSD = 0;
+                let feeUSD = 0;
+
+                if (t.amountUSD !== undefined) {
+                    amtUSD = parseFloat(t.amountUSD) || 0;
+                } else {
+                    let amtFCFA = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
+                    amtUSD = amtFCFA / rateUsed;
                 }
 
+                if (t.feesUSD !== undefined) {
+                    feeUSD = parseFloat(t.feesUSD) || 0;
+                } else {
+                    let feeFCFA = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
+                    feeUSD = feeFCFA / rateUsed;
+                }
+
+                let totalUSD = amtUSD + feeUSD;
+
+                // Flux global de caisse (indépendant du filtre temporel)
+                globalTotalEncaissesUSD += totalUSD;
+                if (t.status === 'Retiré') {
+                    globalTotalRetiresUSD += amtUSD;
+                }
+
+                // Filtrage temporel pour KPIs de la page
                 if (isDateInPeriod(t.date, window.currentTimeFilter)) {
-                    totalEnvoisBrut += amount;
-                    totalEnvoisAvecFrais += totalEncaisse;
-                    // Les frais ne sont collectés (comptabilisés comme gain) qu'au retrait
-                    // Donc dans la période courante, on ne les ajoute pas encore
+                    totalEnvoisBrutUSD += amtUSD;
+                    totalEnvoisAvecFraisUSD += totalUSD;
                 }
 
                 if (t.status === 'Retiré') {
                     let wDate = t.withdrawalDate || t.date;
                     if (isDateInPeriod(wDate, window.currentTimeFilter)) {
-                        totalRetraits += amount;
-                        // Les gains sur retrait sont constitués des frais d'envoi ET des frais de retrait
-                        let gainRetraitUnitaire = t.withdrawalFees ? parseFloat(t.withdrawalFees) : 0;
-                        totalGainsRetraits += (fees + gainRetraitUnitaire);
-                        // On ajoute les frais à la collecte uniquement lors du retrait
-                        totalFeesCollectes += fees;
+                        totalRetraitsUSD += amtUSD;
+                        
+                        let wGainUSD = 0;
+                        if (t.withdrawalFeesUSD !== undefined) {
+                            wGainUSD = parseFloat(t.withdrawalFeesUSD) || 0;
+                        } else if (t.withdrawalFees !== undefined) {
+                            wGainUSD = parseFloat(t.withdrawalFees) / rateUsed;
+                        }
+                        
+                        totalGainsRetraitsUSD += (feeUSD + wGainUSD);
+                        totalFeesCollectesUSD += feeUSD;
                     }
                 }
             });
 
+            // Approvisionnements (Saisis en USD maintenant)
             approvsList.forEach(a => {
-                let appAmt = parseFloat(a.amount) || 0;
+                let appAmtUSD = parseFloat(a.amountUSD) || 0;
+
                 if (a.status === 'Validé') {
+                    globalTotalApprovUSD += appAmtUSD;
                     if (isDateInPeriod(a.date, window.currentTimeFilter)) {
-                        totalApprov += appAmt;
+                        totalApprovUSD += appAmtUSD;
                     }
                 }
             });
 
+            // Retraits de gains d'entreprise
             gainsWithdrawalsList.forEach(gw => {
-                let gwAmt = parseFloat(gw.amount) || 0;
+                let gwAmtUSD = 0;
+                if (gw.amountUSD !== undefined) {
+                    gwAmtUSD = parseFloat(gw.amountUSD) || 0;
+                } else {
+                    let gwAmtFCFA = parseFloat(gw.amount) || 0;
+                    gwAmtUSD = gwAmtFCFA / window.USD_RATE;
+                }
+
+                globalTotalRetraitsGainsUSD += gwAmtUSD;
                 if (isDateInPeriod(gw.date, window.currentTimeFilter)) {
-                    totalRetraitsGains += gwAmt;
+                    totalRetraitsGainsUSD += gwAmtUSD;
                 }
             });
 
-            // Calcul global (toutes périodes confondues) pour le solde des gains disponibles
-            let globalGainsRetraits = 0;
-            let globalRetraitsGainsEffectues = 0;
-
+            // Calcul global pour le solde immuable des gains disponibles
+            let globalGainsRetraitsUSD = 0;
             transfersList.forEach(t => {
                 if (t.status === 'Retiré') {
-                    let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
-                    let wGain = t.withdrawalFees ? parseFloat(t.withdrawalFees) : 0;
-                    globalGainsRetraits += (fees + wGain);
+                    let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
+                    if (rateUsed <= 0) rateUsed = 600;
+
+                    let feeUSD = t.feesUSD !== undefined ? (parseFloat(t.feesUSD) || 0) : ((parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0) / rateUsed);
+                    let wGainUSD = t.withdrawalFeesUSD !== undefined ? (parseFloat(t.withdrawalFeesUSD) || 0) : ((parseFloat(t.withdrawalFees) || 0) / rateUsed);
+                    
+                    globalGainsRetraitsUSD += (feeUSD + wGainUSD);
                 }
             });
-            gainsWithdrawalsList.forEach(gw => { globalRetraitsGainsEffectues += (parseFloat(gw.amount) || 0); });
             
-            // Les gains disponibles retirables sont uniquement les gains issus des retraits opérés
-            window.cachedSoldeGainsDispo = globalGainsRetraits - globalRetraitsGainsEffectues;
+            window.cachedSoldeGainsDispo = globalGainsRetraitsUSD - globalTotalRetraitsGainsUSD;
 
-            // Solde net en caisse global
-            let globalSommeApprov = 0;
-            approvsList.forEach(a => { if(a.status === 'Validé') globalSommeApprov += (parseFloat(a.amount) || 0); });
-            let soldeNetCaisseGlobale = (globalSommeApprov + sommeTotalFcaEncaisses) - (sommeAmountFcaRetires + globalRetraitsGainsEffectues);
+            // Solde net global de trésorerie en caisse en USD
+            let soldeNetCaisseGlobaleUSD = (globalTotalApprovUSD + globalTotalEncaissesUSD) - (globalTotalRetiresUSD + globalTotalRetraitsGainsUSD);
 
-            // Fonction pour formater les montants en USD (FCFA entre parenthèses)
-            const formatAmount = (fcfa) => {
-                const usd = fcfa / window.USD_RATE;
-                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            // Remplissage de l'objet de cache d'impression (Sources natives en USD)
+            window.kpiSourcesUSD = {
+                totalEnvoisBrut: totalEnvoisBrutUSD,
+                totalEnvoisAvecFrais: totalEnvoisAvecFraisUSD,
+                totalFeesCollectes: totalFeesCollectesUSD,
+                totalRetraits: totalRetraitsUSD,
+                totalGainsRetraits: totalGainsRetraitsUSD,
+                totalApprov: totalApprovUSD,
+                totalRetraitsGains: totalRetraitsGainsUSD,
+                soldeNet: soldeNetCaisseGlobaleUSD,
+                soldeGainsDispo: window.cachedSoldeGainsDispo
+            };
+
+            // Fonction de formatage d'affichage : USD fixe source et FCFA calculé par multiplication direct du taux actuel
+            const displayFormat = (usdValue) => {
+                const fcfaCalculated = usdValue * window.USD_RATE;
+                return usdValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfaCalculated).toLocaleString() + ' FCFA)';
             };
 
             const kpiTotalEnvoisBrutElem = document.getElementById('kpiTotalEnvoisBrut');
@@ -1315,22 +1455,22 @@
             const kpiTotalRetraitsGainsElem = document.getElementById('kpiTotalRetraitsGains');
             const kpiSoldeNetElem = document.getElementById('kpiSoldeNet');
 
-            if (kpiTotalEnvoisBrutElem) kpiTotalEnvoisBrutElem.innerText = formatAmount(totalEnvoisBrut);
-            if (kpiTotalEnvoisElem) kpiTotalEnvoisElem.innerText = formatAmount(totalEnvoisAvecFrais);
-            if (kpiBeneficeEnvoisElem) kpiBeneficeEnvoisElem.innerText = formatAmount(totalFeesCollectes);
-            if (kpiTotalRetraitsElem) kpiTotalRetraitsElem.innerText = formatAmount(totalRetraits);
-            if (kpiGainsRetraitsElem) kpiGainsRetraitsElem.innerText = formatAmount(totalGainsRetraits);
-            if (kpiSoldeGainsDispoElem) kpiSoldeGainsDispoElem.innerText = formatAmount(window.cachedSoldeGainsDispo);
-            if (kpiTotalApprovElem) kpiTotalApprovElem.innerText = formatAmount(totalApprov);
-            if (kpiTotalRetraitsGainsElem) kpiTotalRetraitsGainsElem.innerText = formatAmount(totalRetraitsGains);
-            if (kpiSoldeNetElem) kpiSoldeNetElem.innerText = formatAmount(soldeNetCaisseGlobale);
+            if (kpiTotalEnvoisBrutElem) kpiTotalEnvoisBrutElem.innerText = displayFormat(totalEnvoisBrutUSD);
+            if (kpiTotalEnvoisElem) kpiTotalEnvoisElem.innerText = displayFormat(totalEnvoisAvecFraisUSD);
+            if (kpiBeneficeEnvoisElem) kpiBeneficeEnvoisElem.innerText = displayFormat(totalFeesCollectesUSD);
+            if (kpiTotalRetraitsElem) kpiTotalRetraitsElem.innerText = displayFormat(totalRetraitsUSD);
+            if (kpiGainsRetraitsElem) kpiGainsRetraitsElem.innerText = displayFormat(totalGainsRetraitsUSD);
+            if (kpiSoldeGainsDispoElem) kpiSoldeGainsDispoElem.innerText = displayFormat(window.cachedSoldeGainsDispo);
+            if (kpiTotalApprovElem) kpiTotalApprovElem.innerText = displayFormat(totalApprovUSD);
+            if (kpiTotalRetraitsGainsElem) kpiTotalRetraitsGainsElem.innerText = displayFormat(totalRetraitsGainsUSD);
+            if (kpiSoldeNetElem) kpiSoldeNetElem.innerText = displayFormat(soldeNetCaisseGlobaleUSD);
         }
 
         function openGainWithdrawalModal() {
             const modalSoldeGainsElem = document.getElementById('modalSoldeGains');
             if (modalSoldeGainsElem) {
-                const usd = window.cachedSoldeGainsDispo / window.USD_RATE;
-                modalSoldeGainsElem.innerText = usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(window.cachedSoldeGainsDispo).toLocaleString() + ' FCFA)';
+                const fcfaCalculated = window.cachedSoldeGainsDispo * window.USD_RATE;
+                modalSoldeGainsElem.innerText = window.cachedSoldeGainsDispo.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfaCalculated).toLocaleString() + ' FCFA)';
             }
             const beneficiaryInput = document.getElementById('withdrawGainBeneficiary');
             const amountInput = document.getElementById('withdrawGainAmount');
@@ -1346,13 +1486,10 @@
         }
 
         function getActingUser(entry) {
-            // Récupérer l'utilisateur agissant. Priorité aux champs dédiés, sinon on utilise l'utilisateur courant.
             if (entry.userName) return entry.userName;
             if (entry.actingUser) return entry.actingUser;
             if (entry.user) return entry.user;
-            // Pour les envois, on peut utiliser le senderName
             if (entry.senderName) return entry.senderName;
-            // Fallback : l'utilisateur actuellement connecté
             if (currentUser && currentUser.name) return currentUser.name;
             return 'N/A';
         }
@@ -1377,21 +1514,34 @@
             const approvsList = window.approvs || [];
             const gainsWithdrawalsList = window.gainsWithdrawals || [];
 
-            // Fonction pour formater les montants en USD (FCFA entre parenthèses)
-            const formatAmount = (fcfa) => {
-                const usd = fcfa / window.USD_RATE;
+            const formatAmount = (usd) => {
+                const fcfa = usd * window.USD_RATE;
                 return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
             };
 
             transfersList.forEach(t => {
+                let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
+                if (rateUsed <= 0) rateUsed = 600;
+
+                let amtUSD = 0;
+                let feeUSD = 0;
+
+                if (t.amountUSD !== undefined) {
+                    amtUSD = parseFloat(t.amountUSD) || 0;
+                } else {
+                    amtUSD = (parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0) / rateUsed;
+                }
+
+                if (t.feesUSD !== undefined) {
+                    feeUSD = parseFloat(t.feesUSD) || 0;
+                } else {
+                    feeUSD = (parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0) / rateUsed;
+                }
+
                 if (isDateInPeriod(t.date, window.currentTimeFilter)) {
                     const senderDisplay = t.senderName ? t.senderName : (t.sender ? `${t.sender.firstname} ${t.sender.name}` : 'N/A');
                     const recipientDisplay = t.recipientName ? t.recipientName : (t.beneficiary ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A');
-                    const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.country : 'N/A');
-                    let amount = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
-                    let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
-
-                    const actingUser = getActingUser(t);
+                    const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.agency : 'N/A');
 
                     unifiedLedger.push({
                         date: t.date || '--/--/----',
@@ -1400,10 +1550,10 @@
                         debitor: `${senderDisplay}`,
                         childCreditor: recipientDisplay,
                         creditor: `${recipientDisplay} (🏁 ${targetLocation})`,
-                        amount: amount,
-                        fees: fees,
+                        amountUSD: amtUSD,
+                        feesUSD: feeUSD,
                         status: t.status || 'En attente',
-                        actingUser: actingUser,
+                        actingUser: getActingUser(t),
                         isEnvoi: true,
                         t: t
                     });
@@ -1413,14 +1563,16 @@
                     let wDate = t.withdrawalDate || t.date || '--/--/----';
                     if (isDateInPeriod(wDate, window.currentTimeFilter)) {
                         const recipientDisplay = t.recipientName ? t.recipientName : (t.beneficiary ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A');
-                        const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.country : 'N/A');
-                        let amount = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
-                        let fees = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
-                        let wGain = t.withdrawalFees ? parseFloat(t.withdrawalFees) : 0;
-                        // Le gain total sur le retrait = frais d'envoi + frais de retrait
-                        let totalGainRetrait = fees + wGain;
-
-                        const actingUser = getActingUser(t);
+                        const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.agency : 'N/A');
+                        
+                        let wGainUSD = 0;
+                        if (t.withdrawalFeesUSD !== undefined) {
+                            wGainUSD = parseFloat(t.withdrawalFeesUSD) || 0;
+                        } else if (t.withdrawalFees !== undefined) {
+                            wGainUSD = parseFloat(t.withdrawalFees) / rateUsed;
+                        }
+                        
+                        let totalGainRetraitUSD = feeUSD + wGainUSD;
 
                         unifiedLedger.push({
                             date: wDate,
@@ -1429,10 +1581,10 @@
                             debitor: `Caisse Centrale AFRI-LINK`,
                             childCreditor: recipientDisplay,
                             creditor: `${recipientDisplay} (📍 ${targetLocation})`,
-                            amount: amount,
-                            fees: totalGainRetrait, 
+                            amountUSD: amtUSD,
+                            feesUSD: totalGainRetraitUSD, 
                             status: 'Validé',
-                            actingUser: actingUser,
+                            actingUser: getActingUser(t),
                             isRetrait: true,
                             t: t
                         });
@@ -1440,27 +1592,42 @@
                 }
             });
 
+            // Approvisionnements - Maintenant en USD source
             approvsList.forEach(a => {
                 if (isDateInPeriod(a.date, window.currentTimeFilter)) {
                     const actingUser = a.userName || a.actingUser || a.user || (currentUser ? currentUser.name : 'N/A');
+                    let deskName = a.deskName || 'Guichet Général';
+                    
+                    let appAmtUSD = parseFloat(a.amountUSD) || 0;
+
                     unifiedLedger.push({
                         date: a.date || '--/--/----',
                         type: 'APPROV',
                         code: a.id ? `APP-${a.id}` : 'APPROV',
-                        debitor: a.source || 'Trésorerie Centrale',
-                        creditor: `Guichet : ${a.deskName || 'Générale'}`,
-                        childCreditor: '',
-                        amount: parseFloat(a.amount) || 0,
-                        fees: 0,
+                        debitor: `Approvisionnement`,
+                        creditor: `Guichet : ${deskName}`,
+                        childCreditor: `Guichet ${deskName}`,
+                        amountUSD: appAmtUSD,
+                        feesUSD: 0,
                         status: a.status || 'En attente',
-                        actingUser: actingUser
+                        actingUser: actingUser,
+                        isApprov: true
                     });
                 }
             });
 
+            // Retraits de Gains
             gainsWithdrawalsList.forEach(gw => {
                 if (isDateInPeriod(gw.date, window.currentTimeFilter)) {
                     const actingUser = gw.userName || gw.actingUser || gw.beneficiary || (currentUser ? currentUser.name : 'N/A');
+                    
+                    let gwAmtUSD = 0;
+                    if (gw.amountUSD !== undefined) {
+                        gwAmtUSD = parseFloat(gw.amountUSD) || 0;
+                    } else {
+                        gwAmtUSD = (parseFloat(gw.amount) || 0) / window.USD_RATE;
+                    }
+
                     unifiedLedger.push({
                         date: gw.date,
                         type: 'RETRAIT_GAIN',
@@ -1468,8 +1635,8 @@
                         debitor: 'Compte de Profits d\'Entreprise',
                         creditor: (gw.beneficiary ? `[Bénéficiaire: ${gw.beneficiary}] ` : '') + (gw.comment || 'Ajustement comptable de caisse'),
                         childCreditor: '',
-                        amount: parseFloat(gw.amount) || 0,
-                        fees: 0,
+                        amountUSD: gwAmtUSD,
+                        feesUSD: 0,
                         status: gw.status,
                         actingUser: actingUser
                     });
@@ -1497,7 +1664,6 @@
                 const rows = filteredLedger.map(item => {
                     let typeBadge = '';
                     let amountColor = 'text-dark';
-                    let actingUserDisplay = item.actingUser || 'N/A';
 
                     if (item.type === 'ENVOI') {
                         typeBadge = '<span class="badge bg-primary"><i class="fa-solid fa-paper-plane me-1"></i>Envoi</span>';
@@ -1517,15 +1683,15 @@
                         ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> ${item.status}</span>`
                         : `<span class="badge bg-secondary"><i class="fa-solid fa-clock"></i> ${item.status}</span>`;
 
-                    // Gestion des frais : pour un envoi, afficher "déjà"
                     let feesDisplay;
                     if (item.type === 'ENVOI') {
                         feesDisplay = 'Déjà';
-                    } else if (item.type === 'RETRAIT' && item.t && item.t.withdrawalFees) {
-                        // Pour un retrait, afficher les frais de retrait (commissions perçues)
-                        feesDisplay = formatAmount(parseFloat(item.t.withdrawalFees) || 0);
+                    } else if (item.type === 'RETRAIT' && item.t) {
+                        let rateUsed = parseFloat(item.t.rate) || parseFloat(item.t.dollarRate) || window.USD_RATE || 600;
+                        let wGainUSD = item.t.withdrawalFeesUSD !== undefined ? (parseFloat(item.t.withdrawalFeesUSD) || 0) : ((parseFloat(item.t.withdrawalFees) || 0) / rateUsed);
+                        feesDisplay = formatAmount(wGainUSD);
                     } else {
-                        feesDisplay = item.fees > 0 ? formatAmount(item.fees) : '-';
+                        feesDisplay = item.feesUSD > 0 ? formatAmount(item.feesUSD) : '-';
                     }
 
                     return `
@@ -1535,9 +1701,9 @@
                             <td class="fw-bold font-monospace">${item.code}</td>
                             <td><small>${item.debitor}</small></td>
                             <td><small>${item.creditor}</small></td>
-                            <td class="text-end fw-bold ${amountColor}">${formatAmount(item.amount)}</td>
+                            <td class="text-end fw-bold ${amountColor}">${formatAmount(item.amountUSD)}</td>
                             <td class="text-end text-muted">${feesDisplay}</td>
-                            <td><small>${actingUserDisplay}</small></td>
+                            <td><small>${item.actingUser || 'N/A'}</small></td>
                             <td class="text-center">${statusBadge}</td>
                         </tr>
                     `;
@@ -1551,8 +1717,8 @@
                 gainsTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Aucun prélèvement enregistré sur le compte de profits.</td></tr>`;
             } else {
                 gainsTbody.innerHTML = gainsWithdrawalsList.map(gw => {
-                    const usd = parseFloat(gw.amount) / window.USD_RATE;
-                    const formattedAmount = usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(parseFloat(gw.amount)).toLocaleString() + ' FCFA)';
+                    let gwAmtUSD = gw.amountUSD !== undefined ? (parseFloat(gw.amountUSD) || 0) : ((parseFloat(gw.amount) || 0) / window.USD_RATE);
+                    const formattedAmount = formatAmount(gwAmtUSD);
                     const actingUser = gw.userName || gw.actingUser || gw.beneficiary || (currentUser ? currentUser.name : 'N/A');
                     return `
                         <tr>
@@ -1567,30 +1733,209 @@
                 }).join('');
             }
 
-            // Mise à jour du récapitulatif d'impression
-            updatePrintSummary(filteredLedger);
+            updatePrintSummary();
         }
 
-        function updatePrintSummary(filteredLedger) {
-            // Récupération des totaux depuis les KPI pour le récapitulatif d'impression
-            const getTextContent = (id) => {
-                const el = document.getElementById(id);
-                return el ? el.innerText : '0 USD';
+        function updatePrintSummary() {
+            // Utilisation directe des valeurs sources stockées en USD
+            const printFormat = (usdValue) => {
+                const fcfaCalculated = usdValue * window.USD_RATE;
+                return usdValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfaCalculated).toLocaleString() + ' FCFA)';
             };
 
-            document.getElementById('printTotalEnvoisBrut').innerText = getTextContent('kpiTotalEnvoisBrut');
-            document.getElementById('printTotalEnvoisAvecFrais').innerText = getTextContent('kpiTotalEnvois');
-            document.getElementById('printBeneficeEnvois').innerText = getTextContent('kpiBeneficeEnvois');
-            document.getElementById('printTotalRetraits').innerText = getTextContent('kpiTotalRetraits');
-            document.getElementById('printGainsRetraits').innerText = getTextContent('kpiGainsRetraits');
-            document.getElementById('printTotalApprov').innerText = getTextContent('kpiTotalApprov');
-            document.getElementById('printRetraitsGains').innerText = getTextContent('kpiTotalRetraitsGains');
-            document.getElementById('printSoldeNet').innerText = getTextContent('kpiSoldeNet');
-            document.getElementById('printSoldeGainsDispo').innerText = getTextContent('kpiSoldeGainsDispo');
+            document.getElementById('printTotalEnvoisBrut').innerText = printFormat(window.kpiSourcesUSD.totalEnvoisBrut);
+            document.getElementById('printTotalEnvoisAvecFrais').innerText = printFormat(window.kpiSourcesUSD.totalEnvoisAvecFrais);
+            document.getElementById('printBeneficeEnvois').innerText = printFormat(window.kpiSourcesUSD.totalFeesCollectes);
+            document.getElementById('printTotalRetraits').innerText = printFormat(window.kpiSourcesUSD.totalRetraits);
+            document.getElementById('printGainsRetraits').innerText = printFormat(window.kpiSourcesUSD.totalGainsRetraits);
+            document.getElementById('printTotalApprov').innerText = printFormat(window.kpiSourcesUSD.totalApprov);
+            document.getElementById('printRetraitsGains').innerText = printFormat(window.kpiSourcesUSD.totalRetraitsGains);
+            document.getElementById('printSoldeNet').innerText = printFormat(window.kpiSourcesUSD.soldeNet);
+            document.getElementById('printSoldeGainsDispo').innerText = printFormat(window.kpiSourcesUSD.soldeGainsDispo);
+        }
+
+        // --- Fonction : Construction de la plaquette des guichets ---
+        function buildDeskSummary() {
+            const container = document.getElementById('deskSummaryContainer');
+            if (!container) return;
+
+            let desks = [];
+            try {
+                const config = JSON.parse(localStorage.getItem('ledger_config') || '{}');
+                if (config.desks && Array.isArray(config.desks)) {
+                    desks = config.desks;
+                } else if (window.ledgerConfig && window.ledgerConfig.desks) {
+                    desks = window.ledgerConfig.desks;
+                }
+            } catch (e) {
+                console.warn("Impossible de charger la configuration des guichets");
+            }
+
+            if (!desks || desks.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12 text-center text-muted py-3">
+                        <i class="fa-solid fa-store me-2"></i>Aucun guichet configuré. Veuillez ajouter des guichets dans la page Configuration.
+                    </div>
+                `;
+                return;
+            }
+
+            const transfersList = window.transfers || [];
+            const approvsList = window.approvs || [];
+
+            let deskCards = desks.map(desk => {
+                const deskId = desk.id;
+                const deskName = desk.name || 'Guichet sans nom';
+                const fullDeskName = desk.country ? `${deskName} (${desk.country})` : deskName;
+
+                // 1. Approvisionnements validés pour ce guichet - SOURCE USD
+                const approvsForDesk = approvsList.filter(a => {
+                    if (!a || a.status !== 'Validé') return false;
+                    const matchId = a.deskId && a.deskId === deskId;
+                    const matchName = a.deskName && a.deskName === deskName;
+                    const matchFullName = a.deskName && a.deskName === fullDeskName;
+                    const matchDesk = a.desk && (a.desk === deskName || a.desk === fullDeskName);
+                    const containsName = a.deskName && a.deskName.includes(deskName);
+                    return matchId || matchName || matchFullName || matchDesk || containsName;
+                });
+                const totalApprovUSD = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amountUSD) || 0), 0);
+
+                // 2. ENVOIS : Sorties de fonds (Source native USD)
+                const transfersSent = transfersList.filter(t => {
+                    if (!t) return false;
+                    const senderAgency = t.sender?.agency || t.senderAgency || '';
+                    const matchSender = senderAgency.includes(deskName) || senderAgency.includes(fullDeskName);
+                    const matchSenderId = t.senderDeskId && t.senderDeskId === deskId;
+                    const matchSenderName = t.senderDeskName && (t.senderDeskName === deskName || t.senderDeskName === fullDeskName);
+                    return matchSender || matchSenderId || matchSenderName;
+                });
+                
+                const totalEnvoisEmisUSD = transfersSent.reduce((sum, t) => {
+                    if (t.amountUSD !== undefined) return sum + (parseFloat(t.amountUSD) || 0);
+                    let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
+                    return sum + ((parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0) / rateUsed);
+                }, 0);
+
+                // 3. RETRAITS : Entrées de fonds (Source native USD)
+                const transfersReceived = transfersList.filter(t => {
+                    if (!t || t.status !== 'Retiré') return false;
+                    const beneficiaryAgency = t.beneficiary?.agency || t.targetDeskName || t.deskName || '';
+                    const matchBeneficiary = beneficiaryAgency.includes(deskName) || beneficiaryAgency.includes(fullDeskName);
+                    const matchTargetId = t.targetDeskId && t.targetDeskId === deskId;
+                    const matchTargetName = t.targetDeskName && (t.targetDeskName === deskName || t.targetDeskName === fullDeskName);
+                    const matchDeskName = t.deskName && (t.deskName === deskName || t.deskName === fullDeskName);
+                    return matchBeneficiary || matchTargetId || matchTargetName || matchDeskName;
+                });
+                
+                const totalRetraitsRecusUSD = transfersReceived.reduce((sum, t) => {
+                    if (t.amountUSD !== undefined) return sum + (parseFloat(t.amountUSD) || 0);
+                    let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
+                    return sum + ((parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0) / rateUsed);
+                }, 0);
+
+                // Frais perçus en USD
+                let totalFeesCollectedUSD = 0;
+                transfersReceived.forEach(t => {
+                    let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
+                    let feeUSD = t.feesUSD !== undefined ? (parseFloat(t.feesUSD) || 0) : ((parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0) / rateUsed);
+                    let wGainUSD = t.withdrawalFeesUSD !== undefined ? (parseFloat(t.withdrawalFeesUSD) || 0) : ((parseFloat(t.withdrawalFees) || 0) / rateUsed);
+                    totalFeesCollectedUSD += (feeUSD + wGainUSD);
+                });
+
+                // --- CORRECTION : Solde = totalApprovUSD - totalEnvoisEmisUSD + totalRetraitsRecusUSD ---
+                const soldeCalculeUSD = totalApprovUSD - totalEnvoisEmisUSD + totalRetraitsRecusUSD;
+
+                // Pour la carte, on utilise le solde calculé comme source de vérité
+                const realBalanceUSD = soldeCalculeUSD;
+
+                const formatAmount = (usdValue) => {
+                    const fcfaCalculated = usdValue * window.USD_RATE;
+                    return usdValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfaCalculated).toLocaleString() + ' FCFA)';
+                };
+
+                let balanceClass = 'desk-balance-neutral';
+                if (realBalanceUSD > 0) balanceClass = 'desk-balance-positive';
+                else if (realBalanceUSD < 0) balanceClass = 'desk-balance-negative';
+
+                return {
+                    id: deskId,
+                    name: deskName,
+                    fullName: fullDeskName,
+                    balanceClass: balanceClass,
+                    totalApprovFormatted: formatAmount(totalApprovUSD),
+                    totalEnvoisFormatted: formatAmount(totalEnvoisEmisUSD),
+                    totalRetraitsFormatted: formatAmount(totalRetraitsRecusUSD),
+                    totalFeesFormatted: formatAmount(totalFeesCollectedUSD),
+                    soldeFormatted: formatAmount(realBalanceUSD),
+                    approvCount: approvsForDesk.length,
+                    sentCount: transfersSent.length,
+                    receivedCount: transfersReceived.length,
+                    solde: realBalanceUSD,
+                    totalApprovUSD: totalApprovUSD,
+                    totalEnvoisEmisUSD: totalEnvoisEmisUSD,
+                    totalRetraitsRecusUSD: totalRetraitsRecusUSD
+                };
+            });
+
+            deskCards.sort((a, b) => b.solde - a.solde);
+
+            let html = '';
+            deskCards.forEach(desk => {
+                html += `
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card desk-summary-card shadow-sm h-100 p-3 border-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="desk-name">${desk.name}</div>
+                                <span class="badge bg-light text-dark border"><i class="fa-solid fa-store me-1"></i>${desk.id || 'N/A'}</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label"><i class="fa-solid fa-wallet me-1 text-warning"></i>Approv.</span>
+                                <span class="stat-value">${desk.totalApprovFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label"><i class="fa-solid fa-paper-plane me-1 text-danger"></i>Envois émis</span>
+                                <span class="stat-value text-danger">-${desk.totalEnvoisFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label"><i class="fa-solid fa-hand-holding-dollar me-1 text-success"></i>Retraits reçus</span>
+                                <span class="stat-value text-success">+${desk.totalRetraitsFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label"><i class="fa-solid fa-coins me-1 text-primary"></i>Frais perçus</span>
+                                <span class="stat-value">${desk.totalFeesFormatted}</span>
+                            </div>
+                            <hr class="my-1">
+                            <div class="stat-item d-flex justify-content-between fw-bold">
+                                <span class="stat-label">📊 Solde Réel</span>
+                                <span class="stat-value ${desk.balanceClass}">${desk.soldeFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between small text-muted mt-1">
+                                <span>${desk.approvCount} approv.</span>
+                                <span>${desk.sentCount} envois</span>
+                                <span>${desk.receivedCount} retraits</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+            // Mise à jour du solde réel dans le nœud ledger_balances pour chaque guichet
+            deskCards.forEach(desk => {
+                const deskId = desk.id;
+                if (deskId && window.updateDeskBalance) {
+                    // Convertir le solde en FCFA pour le stockage
+                    const soldeFCFA = desk.solde * window.USD_RATE;
+                    window.updateDeskBalance(deskId, soldeFCFA);
+                }
+            });
         }
 
         window.onload = function() { 
             applyRoleAccessControl();
+            setTimeout(() => buildDeskSummary(), 500);
         };
 
         // --- LOGIQUE PWA & BOUTON D'INSTALLATION INTELLIGENT ---

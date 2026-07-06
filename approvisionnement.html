@@ -542,25 +542,8 @@
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label small fw-bold d-block">Devises du dépôt</label>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="checkXOF" checked onchange="toggleCurrencyField('XOF')">
-                                    <label class="form-check-label small" for="checkXOF">Franc CFA (XOF)</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="checkUSD" onchange="toggleCurrencyField('USD')">
-                                    <label class="form-check-label small" for="checkUSD">Dollar (USD)</label>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3" id="groupXOF">
-                                <label class="form-label small fw-bold">Montant (FCFA)</label>
-                                <input type="number" id="approvAmountXOF" class="form-control form-control-lg fw-bold" placeholder="0">
-                            </div>
-
-                            <div class="mb-4" id="groupUSD" style="display: none;">
                                 <label class="form-label small fw-bold">Montant (USD)</label>
-                                <input type="number" id="approvAmountUSD" class="form-control form-control-lg fw-bold text-success" placeholder="0">
+                                <input type="number" id="approvAmountUSD" class="form-control form-control-lg fw-bold text-success" placeholder="0" required>
                             </div>
 
                             <button type="submit" class="btn btn-wa w-100 py-3">
@@ -803,8 +786,44 @@
             checkFirstLoadComplete();
         });
 
+        // --- Écoute en temps réel des soldes des guichets (ledger_balances) ---
+        let balancesReceived = false;
+        let ledgerBalances = {};
+        onValue(ref(db, 'ledger_balances'), (snapshot) => {
+            const data = snapshot.val() || {};
+            ledgerBalances = data;
+            localStorage.setItem('ledger_balances', JSON.stringify(data));
+            balancesReceived = true;
+            checkFirstLoadComplete();
+        });
+
+        // Fonction pour récupérer le solde d'un guichet
+        function getDeskBalance(deskId) {
+            if (!deskId) return 0;
+            return ledgerBalances[deskId] || 0;
+        }
+
+        // Fonction pour mettre à jour le solde d'un guichet
+        function updateDeskBalance(deskId, newBalance) {
+            if (!deskId) return;
+            const balances = { ...ledgerBalances };
+            balances[deskId] = Math.max(0, newBalance);
+            ledgerBalances = balances;
+            localStorage.setItem('ledger_balances', JSON.stringify(balances));
+            
+            // Synchroniser avec Firebase
+            if (window.fbDatabase) {
+                const balancesRef = ref(window.fbDatabase, 'ledger_balances');
+                set(balancesRef, balances);
+            }
+        }
+
+        // Exposer les fonctions au niveau global
+        window.getDeskBalance = getDeskBalance;
+        window.updateDeskBalance = updateDeskBalance;
+
         function checkFirstLoadComplete() {
-            if (isFirstLoad && configReceived && supplyReceived && sourcesReceived && transfersReceived) {
+            if (isFirstLoad && configReceived && supplyReceived && sourcesReceived && transfersReceived && balancesReceived) {
                 isFirstLoad = false;
                 if (loadingOverlay) {
                     loadingOverlay.style.opacity = '0';
@@ -876,22 +895,6 @@
         window.approvisionnements = [];
         window.sources = ["Poche Personnel", "Compte Bancaire", "Transfert Inter-Agence"];
         window.transfers = [];
-
-        // Fonction pour activer/désactiver dynamiquement l'affichage des champs de montant
-        function toggleCurrencyField(currency) {
-            const checkBox = document.getElementById('check' + currency);
-            const inputGroup = document.getElementById('group' + currency);
-            const inputField = document.getElementById('approvAmount' + currency);
-            
-            if (checkBox.checked) {
-                inputGroup.style.display = 'block';
-                inputField.setAttribute('required', 'required');
-            } else {
-                inputGroup.style.display = 'none';
-                inputField.removeAttribute('required');
-                inputField.value = '';
-            }
-        }
 
         // Fonction pour afficher/masquer la table de suivi
         function toggleTableVisibility() {
@@ -991,20 +994,24 @@
 
         function updateDashboard() {
             const valid = window.approvisionnements.filter(a => a.status === 'Validé');
-            const liq = valid.filter(a => a.type === 'liquide').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
-            const virt = valid.filter(a => a.type === 'virtuel').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+            
+            // Les approvisionnements sont maintenant en USD (amountUSD)
+            const liqUSD = valid.filter(a => a.type === 'liquide').reduce((sum, a) => sum + parseFloat(a.amountUSD || 0), 0);
+            const virtUSD = valid.filter(a => a.type === 'virtuel').reduce((sum, a) => sum + parseFloat(a.amountUSD || 0), 0);
+            
+            // Pour l'affichage en FCFA (avec le taux actuel)
+            const liqFCFA = liqUSD * window.dollarRate;
+            const virtFCFA = virtUSD * window.dollarRate;
             
             const totalLiquideElem = document.getElementById('totalLiquide');
             const totalVirtuelElem = document.getElementById('totalVirtuel');
             
             // Affichage en USD (FCFA entre parenthèses)
             if (totalLiquideElem) {
-                const liqUSD = liq / window.dollarRate;
-                totalLiquideElem.innerText = liqUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(liq).toLocaleString() + ' FCFA)';
+                totalLiquideElem.innerText = liqUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(liqFCFA).toLocaleString() + ' FCFA)';
             }
             if (totalVirtuelElem) {
-                const virtUSD = virt / window.dollarRate;
-                totalVirtuelElem.innerText = virtUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(virt).toLocaleString() + ' FCFA)';
+                totalVirtuelElem.innerText = virtUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(virtFCFA).toLocaleString() + ' FCFA)';
             }
             
             // Mise à jour de la plaquette
@@ -1013,20 +1020,29 @@
 
         // --- Mise à jour de la plaquette flottante du flux d'approvisionnement ---
         function updateSupplyPlaquette() {
-            // Calcul des approvisionnements validés
+            // Calcul des approvisionnements validés (en USD maintenant)
             const validSupply = window.approvisionnements.filter(item => item.status === 'Validé');
             const pendingSupply = window.approvisionnements.filter(item => item.status === 'En attente');
             
-            const totalApprovFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-            const totalApprovUSD = totalApprovFCFA / window.dollarRate;
+            const totalApprovUSD = validSupply.reduce((sum, item) => sum + (parseFloat(item.amountUSD) || 0), 0);
+            const totalApprovFCFA = totalApprovUSD * window.dollarRate;
             
             // Total des envois (tous, y compris ceux en attente)
-            const totalEnvoisFCFA = window.transfers.reduce((sum, t) => sum + (parseFloat(t.amountFCFA) || 0), 0);
-            const totalEnvoisUSD = totalEnvoisFCFA / window.dollarRate;
+            // Utilisation de amountUSD comme source de vérité pour les envois
+            const totalEnvoisUSD = window.transfers.reduce((sum, t) => {
+                if (t.amountUSD) {
+                    return sum + parseFloat(t.amountUSD);
+                } else if (t.amountFCFA) {
+                    const rateUsed = t.rateUsed || 600;
+                    return sum + (parseFloat(t.amountFCFA) / rateUsed);
+                }
+                return sum;
+            }, 0);
+            const totalEnvoisFCFA = totalEnvoisUSD * window.dollarRate;
             
             // Solde du flux = approvisionnements validés - total des envois
-            const soldeFluxFCFA = totalApprovFCFA - totalEnvoisFCFA;
-            const soldeFluxUSD = soldeFluxFCFA / window.dollarRate;
+            const soldeFluxUSD = totalApprovUSD - totalEnvoisUSD;
+            const soldeFluxFCFA = soldeFluxUSD * window.dollarRate;
             
             // Nombre d'envois en attente (non retirés)
             const pendingTransfers = window.transfers.filter(t => t.status === 'En attente');
@@ -1046,7 +1062,7 @@
             
             const soldeEl = document.getElementById('supplySoldeFlux');
             soldeEl.innerText = formatAmount(soldeFluxUSD, soldeFluxFCFA);
-            soldeEl.className = 'supply-value' + (soldeFluxFCFA < 0 ? ' red' : ' blue');
+            soldeEl.className = 'supply-value' + (soldeFluxUSD < 0 ? ' red' : ' blue');
             
             document.getElementById('supplyValidCount').innerText = validCount;
             document.getElementById('supplyPendingCount').innerText = pendingCount;
@@ -1057,27 +1073,11 @@
         document.getElementById('approvForm').onsubmit = function(e) {
             e.preventDefault();
             
-            const isXOF = document.getElementById('checkXOF').checked;
-            const isUSD = document.getElementById('checkUSD').checked;
+            const amtUSD = parseFloat(document.getElementById('approvAmountUSD').value) || 0;
             
-            if (!isXOF && !isUSD) {
-                alert("Veuillez sélectionner au moins une devise (CFA ou Dollar).");
+            if (amtUSD <= 0) {
+                alert("Veuillez saisir un montant valide en USD.");
                 return;
-            }
-
-            let calculatedAmountXOF = 0;
-            let displayDetails = "";
-
-            if (isXOF) {
-                const amtXOF = parseFloat(document.getElementById('approvAmountXOF').value) || 0;
-                calculatedAmountXOF += amtXOF;
-                displayDetails += amtXOF.toLocaleString() + " FCFA";
-            }
-            if (isUSD) {
-                const amtUSD = parseFloat(document.getElementById('approvAmountUSD').value) || 0;
-                calculatedAmountXOF += (amtUSD * window.dollarRate);
-                if (displayDetails !== "") displayDetails += " + ";
-                displayDetails += amtUSD.toLocaleString() + " USD";
             }
 
             const newApprov = {
@@ -1087,8 +1087,13 @@
                 deskName: document.getElementById('targetDesk').options[document.getElementById('targetDesk').selectedIndex].text,
                 type: document.getElementById('fundType').value,
                 source: document.getElementById('fundSource').value,
-                amount: calculatedAmountXOF,
-                currencyDetails: displayDetails,
+                // amountUSD est la SOURCE DE VÉRITÉ
+                amountUSD: amtUSD,
+                // amountFCFA est calculé à partir du USD * taux actuel
+                amountFCFA: amtUSD * window.dollarRate,
+                // Pour compatibilité avec l'affichage existant
+                amount: amtUSD * window.dollarRate,
+                currencyDetails: amtUSD.toLocaleString() + ' USD',
                 status: 'En attente'
             };
 
@@ -1100,24 +1105,25 @@
                 });
             }
             this.reset();
-            // Réinitialisation de l'affichage par défaut
-            document.getElementById('checkXOF').checked = true;
-            document.getElementById('checkUSD').checked = false;
-            toggleCurrencyField('XOF');
-            toggleCurrencyField('USD');
         };
 
         function renderTable() {
             const tbody = document.getElementById('approvTableBody');
             if(!tbody) return;
-            tbody.innerHTML = window.approvisionnements.map(a => `
+            tbody.innerHTML = window.approvisionnements.map(a => {
+                // Affichage en USD (FCFA entre parenthèses)
+                const usd = parseFloat(a.amountUSD || 0);
+                const fcfa = usd * window.dollarRate;
+                const displayAmount = usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+                
+                return `
                 <tr>
                     <td class="small">${a.date}</td>
                     <td class="fw-bold">${a.deskName}</td>
                     <td><span class="badge ${a.type === 'liquide' ? 'bg-warning text-dark' : 'bg-info'}">${a.type}</span></td>
                     <td class="small">${a.source}</td>
                     <td class="fw-bold text-success">
-                        ${a.currencyDetails ? a.currencyDetails : parseFloat(a.amount).toLocaleString() + ' FCFA'}
+                        ${displayAmount}
                     </td>
                     <td class="text-center"><span class="status-badge ${a.status === 'Validé' ? 'bg-success text-white' : 'bg-secondary text-white'}">${a.status}</span></td>
                     <td class="text-end">
@@ -1129,7 +1135,7 @@
                         </div>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         function validateApprov(fbKey) {
@@ -1141,9 +1147,25 @@
             if (codeInput === null) return;
             
             if (expectedCode && codeInput === expectedCode.toString()) {
+                // --- Mise à jour du statut de l'approvisionnement ---
                 if (window.fbDatabase) {
+                    // Récupérer l'approvisionnement avant modification pour vérifier son statut
+                    const approv = window.approvisionnements.find(a => a.fbKey === fbKey);
+                    const wasAlreadyValidated = approv && approv.status === 'Validé';
+                    
                     const statusRef = window.fbRef(window.fbDatabase, `ledger_supply/${fbKey}/status`);
                     window.fbSet(statusRef, 'Validé').then(() => {
+                        // --- Ajouter le montant au solde du guichet seulement si ce n'était pas déjà validé ---
+                        if (approv && !wasAlreadyValidated) {
+                            const deskId = approv.deskId;
+                            if (deskId) {
+                                const currentBalance = window.getDeskBalance ? window.getDeskBalance(deskId) : 0;
+                                const newBalance = currentBalance + parseFloat(approv.amountFCFA || approv.amount || 0);
+                                if (window.updateDeskBalance) {
+                                    window.updateDeskBalance(deskId, newBalance);
+                                }
+                            }
+                        }
                         showSuccess("Approvisionnement validé !");
                     });
                 }
@@ -1156,6 +1178,23 @@
             if(!fbKey || fbKey === 'undefined') return;
             if(confirm("Confirmer la suppression définitive de cet enregistrement ?")) {
                 if (window.fbDatabase) {
+                    // --- Récupérer l'approvisionnement avant de le supprimer pour soustraire son montant ---
+                    const approv = window.approvisionnements.find(a => a.fbKey === fbKey);
+                    
+                    if (approv && approv.status === 'Validé') {
+                        const deskId = approv.deskId;
+                        if (deskId) {
+                            // Soustraire le montant du solde du guichet
+                            const currentBalance = window.getDeskBalance ? window.getDeskBalance(deskId) : 0;
+                            const amountToSubtract = parseFloat(approv.amountFCFA || approv.amount || 0);
+                            const newBalance = Math.max(0, currentBalance - amountToSubtract);
+                            if (window.updateDeskBalance) {
+                                window.updateDeskBalance(deskId, newBalance);
+                            }
+                        }
+                    }
+                    
+                    // Puis supprimer l'enregistrement
                     const recordRef = window.fbRef(window.fbDatabase, `ledger_supply/${fbKey}`);
                     window.fbRemove(recordRef).then(() => {
                         showSuccess("Enregistrement supprimé");
@@ -1174,9 +1213,19 @@
                     const senderName = t.sender && t.sender.firstname && t.sender.name ? `${t.sender.firstname} ${t.sender.name}` : 'N/A';
                     const recipientName = t.beneficiary && t.beneficiary.firstname && t.beneficiary.name ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A';
                     
-                    // Affichage en USD (FCFA entre parenthèses)
-                    const amountFCFA = parseFloat(t.amountFCFA || t.amount || 0);
-                    const amountUSD = amountFCFA / window.dollarRate;
+                    // Utilisation de la donnée USD source (amountUSD) pour l'affichage en dollars
+                    let amountUSD = 0;
+                    let amountFCFA = 0;
+                    
+                    if (t.amountUSD) {
+                        amountUSD = parseFloat(t.amountUSD);
+                        amountFCFA = amountUSD * window.dollarRate;
+                    } else if (t.amountFCFA) {
+                        const rateUsed = t.rateUsed || 600;
+                        amountUSD = parseFloat(t.amountFCFA) / rateUsed;
+                        amountFCFA = amountUSD * window.dollarRate;
+                    }
+                    
                     const amountDisplay = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
                     
                     const codeDisplay = t.secretCode || 'N/A';
@@ -1203,21 +1252,32 @@
             const targetDeskName = (t.beneficiary && t.beneficiary.agency) || 'Non spécifié';
             const targetCountry = (t.beneficiary && t.beneficiary.country) || 'Non spécifié';
             
-            const amountToPay = t.amountFCFA || t.amount || 0;
-            const finalCurrency = t.currencyDisplayName || 'FCFA';
             const senderName = t.sender && t.sender.firstname && t.sender.name ? `${t.sender.firstname} ${t.sender.name}` : 'N/A';
             const senderPhone = (t.sender && t.sender.phone) || 'N/A';
             const recipientName = t.beneficiary && t.beneficiary.firstname && t.beneficiary.name ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A';
             const recipientPhone = (t.beneficiary && t.beneficiary.phone) || 'N/A';
             const dateDisplay = t.date ? new Date(t.date).toLocaleString('fr-FR') : 'N/A';
 
-            // Affichage des montants en USD (FCFA entre parenthèses)
-            const amountFCFA = parseFloat(t.amountFCFA || t.amount || 0);
-            const amountUSD = amountFCFA / window.dollarRate;
-            const amountDisplay = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
+            // Utilisation de la donnée USD source (amountUSD) pour l'affichage en dollars
+            let amountUSD = 0;
+            let amountFCFA = 0;
+            let totalUSD = 0;
+            let totalFCFA = 0;
             
-            const totalFCFA = parseFloat(t.totalFCFA || amountFCFA);
-            const totalUSD = totalFCFA / window.dollarRate;
+            if (t.amountUSD) {
+                amountUSD = parseFloat(t.amountUSD);
+                amountFCFA = amountUSD * window.dollarRate;
+                totalUSD = parseFloat(t.totalUSD) || amountUSD;
+                totalFCFA = totalUSD * window.dollarRate;
+            } else if (t.amountFCFA) {
+                const rateUsed = t.rateUsed || 600;
+                amountUSD = parseFloat(t.amountFCFA) / rateUsed;
+                amountFCFA = amountUSD * window.dollarRate;
+                totalUSD = parseFloat(t.totalUSD) || amountUSD;
+                totalFCFA = totalUSD * window.dollarRate;
+            }
+            
+            const amountDisplay = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
             const totalDisplay = totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(totalFCFA).toLocaleString() + ' FCFA)';
 
             const content = document.getElementById('transferDetailContent');
@@ -1309,21 +1369,31 @@
             
             const targetDeskName = (t.beneficiary && t.beneficiary.agency) || 'Non spécifié';
             const targetCountry = (t.beneficiary && t.beneficiary.country) || 'Non spécifié';
-            const amountToPay = t.amountFCFA || t.amount || 0;
-            const finalCurrency = t.currencyDisplayName || 'FCFA';
             const senderName = t.sender && t.sender.firstname && t.sender.name ? `${t.sender.firstname} ${t.sender.name}` : 'N/A';
             const senderPhone = (t.sender && t.sender.phone) || 'N/A';
             const recipientName = t.beneficiary && t.beneficiary.firstname && t.beneficiary.name ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A';
             const recipientPhone = (t.beneficiary && t.beneficiary.phone) || 'N/A';
             const dateDisplay = t.date ? new Date(t.date).toLocaleString('fr-FR') : 'N/A';
 
-            // Affichage des montants en USD (FCFA entre parenthèses)
-            const amountFCFA = parseFloat(t.amountFCFA || t.amount || 0);
-            const amountUSD = amountFCFA / window.dollarRate;
-            const amountDisplay = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
+            let amountUSD = 0;
+            let amountFCFA = 0;
+            let totalUSD = 0;
+            let totalFCFA = 0;
             
-            const totalFCFA = parseFloat(t.totalFCFA || amountFCFA);
-            const totalUSD = totalFCFA / window.dollarRate;
+            if (t.amountUSD) {
+                amountUSD = parseFloat(t.amountUSD);
+                amountFCFA = amountUSD * window.dollarRate;
+                totalUSD = parseFloat(t.totalUSD) || amountUSD;
+                totalFCFA = totalUSD * window.dollarRate;
+            } else if (t.amountFCFA) {
+                const rateUsed = t.rateUsed || 600;
+                amountUSD = parseFloat(t.amountFCFA) / rateUsed;
+                amountFCFA = amountUSD * window.dollarRate;
+                totalUSD = parseFloat(t.totalUSD) || amountUSD;
+                totalFCFA = totalUSD * window.dollarRate;
+            }
+            
+            const amountDisplay = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(amountFCFA).toLocaleString() + ' FCFA)';
             const totalDisplay = totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(totalFCFA).toLocaleString() + ' FCFA)';
 
             const textToCopy = `--- AFRI-LINK LEDGER : DETAIL TRANSACTION ---
@@ -1402,9 +1472,6 @@ CODE SECRET : ${t.secretCode || 'N/A'}
             loadHeaderBrand();
             populateDesks();
             renderSources();
-            
-            toggleCurrencyField('XOF');
-            toggleCurrencyField('USD');
             
             renderTable();
             updateDashboard();

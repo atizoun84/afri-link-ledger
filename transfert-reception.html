@@ -205,19 +205,20 @@
             z-index: 1050;
             background: rgba(255, 255, 255, 0.97);
             backdrop-filter: blur(15px);
-            padding: 12px 24px;
-            border-radius: 20px;
+            padding: 8px 16px;
+            border-radius: 16px;
             box-shadow: 0 8px 25px rgba(0,0,0,0.12);
             border: 1.5px solid var(--wa-medium);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-width: 280px;
+            min-width: 200px;
             max-width: 95%;
             transition: all 0.3s ease;
             text-align: center;
-            line-height: 1.4;
+            line-height: 1.3;
+            font-size: 0.75rem;
         }
 
         .floating-supply-box .supply-line {
@@ -225,21 +226,21 @@
             flex-wrap: wrap;
             align-items: center;
             justify-content: center;
-            gap: 5px 15px;
+            gap: 3px 10px;
             width: 100%;
         }
 
         .floating-supply-box .supply-label {
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             font-weight: 600;
             text-transform: uppercase;
             color: #777;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             white-space: nowrap;
         }
 
         .floating-supply-box .supply-value {
-            font-size: 1rem;
+            font-size: 0.8rem;
             font-weight: 700;
             white-space: nowrap;
         }
@@ -253,6 +254,9 @@
         .floating-supply-box .supply-value.green {
             color: #28a745;
         }
+        .floating-supply-box .supply-value.gold {
+            color: #d4a017;
+        }
         .floating-supply-box .separator {
             color: #adb5bd;
             font-weight: 300;
@@ -260,31 +264,65 @@
         }
 
         .floating-supply-box .supply-sub-line {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             color: #555;
             margin-top: 2px;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 0 15px;
+            gap: 0 12px;
+        }
+
+        .floating-supply-box .supply-sub-line .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .floating-supply-box .desk-selector {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--wa-dark);
+            background: rgba(7, 94, 84, 0.08);
+            border: 1px solid rgba(7, 94, 84, 0.15);
+            border-radius: 8px;
+            padding: 2px 8px;
+            cursor: pointer;
+            margin-bottom: 3px;
+            width: 100%;
+            text-align: center;
+        }
+        .floating-supply-box .desk-selector select {
+            border: none;
+            background: transparent;
+            font-weight: 600;
+            color: var(--wa-dark);
+            font-size: 0.7rem;
+            cursor: pointer;
+            padding: 2px 4px;
+            width: 100%;
+            text-align: center;
+        }
+        .floating-supply-box .desk-selector select:focus {
+            outline: none;
         }
 
         /* Bouton pour rétracter/déplier */
         .floating-supply-box .toggle-supply-btn {
             position: absolute;
-            top: -10px;
-            right: -10px;
+            top: -8px;
+            right: -8px;
             background: var(--wa-medium);
             color: white;
             border: 2px solid white;
             border-radius: 50%;
-            width: 28px;
-            height: 28px;
+            width: 22px;
+            height: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.65rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             transition: all 0.3s ease;
             z-index: 1051;
@@ -296,14 +334,15 @@
         }
 
         .floating-supply-box.collapsed {
-            padding: 6px 20px;
+            padding: 4px 14px;
             min-width: unset;
             width: auto;
             border-radius: 100px;
         }
 
         .floating-supply-box.collapsed .supply-line,
-        .floating-supply-box.collapsed .supply-sub-line {
+        .floating-supply-box.collapsed .supply-sub-line,
+        .floating-supply-box.collapsed .desk-selector {
             display: none;
         }
 
@@ -315,25 +354,26 @@
 
         /* Ajustement du contenu pour éviter le chevauchement */
         .content-wrapper {
-            margin-top: 70px;
+            margin-top: 65px;
         }
 
         @media (max-width: 576px) {
             .floating-supply-box {
-                top: 70px;
-                padding: 10px 15px;
+                top: 65px;
+                padding: 6px 12px;
                 min-width: unset;
                 width: 95%;
-                border-radius: 15px;
-            }
-            .floating-supply-box .supply-value {
-                font-size: 0.9rem;
-            }
-            .floating-supply-box .supply-label {
+                border-radius: 12px;
                 font-size: 0.65rem;
             }
+            .floating-supply-box .supply-value {
+                font-size: 0.7rem;
+            }
+            .floating-supply-box .supply-label {
+                font-size: 0.55rem;
+            }
             .content-wrapper {
-                margin-top: 95px;
+                margin-top: 85px;
             }
         }
 
@@ -698,24 +738,30 @@
         </nav>
     </header>
 
-    <!-- Plaquette Flottante du Flux d'Approvisionnement avec bouton de rétractation -->
+    <!-- Plaquette Flottante du Flux d'Approvisionnement avec sélecteur de guichet -->
     <div class="floating-supply-box" id="floatingSupplyBox">
         <button class="toggle-supply-btn" id="toggleSupplyBtn" onclick="toggleSupplyBox()" title="Rétracter/Déplier">
             <i class="fa-solid fa-chevron-up" id="supplyToggleIcon"></i>
         </button>
+        <div class="desk-selector" id="deskSelectorContainer">
+            <select id="deskSelector" onchange="onDeskChange()">
+                <option value="global">🌍 Tous les guichets</option>
+            </select>
+        </div>
         <div class="supply-line" id="supplyLineContent">
             <span class="supply-label"><i class="fa-solid fa-scale-balanced me-1 text-success"></i>Flux :</span>
-            <span class="supply-value blue" id="supplyTotalApprov">0 USD (0 FCFA)</span>
+            <span class="supply-value blue" id="supplyTotalApprov">0 USD</span>
             <span class="separator">/</span>
-            <span class="supply-value red" id="supplyTotalEnvois">0 USD (0 FCFA)</span>
+            <span class="supply-value red" id="supplyTotalEnvois">0 USD</span>
             <span class="separator">|</span>
             <span class="supply-label"><i class="fa-solid fa-coins me-1 text-warning"></i>Solde :</span>
-            <span class="supply-value" id="supplySoldeFlux">0 USD (0 FCFA)</span>
+            <span class="supply-value" id="supplySoldeFlux">0 USD</span>
         </div>
         <div class="supply-sub-line" id="supplySubLineContent">
-            <span><span class="text-muted">✅ Retirés</span> <strong id="supplyValidCount">0</strong></span>
-            <span><span class="text-muted">⏳ En attente de retrait</span> <strong id="supplyPendingCount">0</strong></span>
-            <span><span class="text-muted">📦 Envois</span> <strong id="supplyTransferCount">0</strong></span>
+            <span class="stat-item"><span class="text-success">✅</span> <strong id="supplyValidCount">0</strong></span>
+            <span class="stat-item"><span class="text-warning">⏳</span> <strong id="supplyPendingCount">0</strong></span>
+            <span class="stat-item"><span class="text-primary">📦</span> <strong id="supplyTransferCount">0</strong></span>
+            <span class="stat-item"><span class="text-info">📥</span> <strong id="supplyReceivedCount">0</strong></span>
         </div>
     </div>
 
@@ -834,6 +880,13 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Affichage du solde disponible du guichet -->
+                        <div class="alert alert-info text-center mb-3" id="balanceDisplayContainer">
+                            <i class="fa-solid fa-wallet me-2"></i>
+                            <span>Solde disponible pour ce guichet : </span>
+                            <strong id="deskBalanceDisplay">0 USD (0 FCFA)</strong>
                         </div>
 
                         <button type="button" class="btn btn-danger w-100 py-3 mt-3 fw-bold fs-5" id="btnWithdraw" onclick="promptWithdrawalConfirmation()">
@@ -1036,7 +1089,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+        import { getDatabase, ref, onValue, update, remove, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
         // Configuration Firebase Cloud de l'application
         const firebaseConfig = {
@@ -1060,13 +1113,83 @@
         let supplyReceived = false;
         let ledgerTransfersReceived = false;
         let configReceived = false;
+        let balancesReceived = false;
 
         // Variables globales du module
         let transfers = [];
         let ledgerSupply = [];
         let ledgerTransfersList = [];
         let USD_RATE = 600;
-        let currentActiveTransfer = null; 
+        let currentActiveTransfer = null;
+        let ledgerBalances = {};
+        let currentDeskId = 'global';
+        let desks = [];
+
+        // Fonctions de gestion des soldes des guichets
+        function getDeskBalance(deskId) {
+            if (!deskId) return 0;
+            return ledgerBalances[deskId] || 0;
+        }
+
+        function updateDeskBalance(deskId, newBalance) {
+            if (!deskId) return;
+            const balances = { ...ledgerBalances };
+            balances[deskId] = Math.max(0, newBalance);
+            ledgerBalances = balances;
+            localStorage.setItem('ledger_balances', JSON.stringify(balances));
+            
+            // Synchroniser avec Firebase
+            const balancesRef = ref(db, 'ledger_balances');
+            set(balancesRef, balances);
+            
+            // Mettre à jour l'affichage du solde
+            updateBalanceDisplay(deskId);
+            // Mettre à jour la plaquette flottante
+            updateSupplyPlaquette();
+        }
+
+        // Fonction pour mettre à jour l'affichage du solde dans l'interface
+        function updateBalanceDisplay(deskId) {
+            const balance = getDeskBalance(deskId);
+            const balanceUSD = balance / USD_RATE;
+            const displayElement = document.getElementById('deskBalanceDisplay');
+            if (displayElement) {
+                displayElement.innerText = balanceUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
+                    ' USD (' + Math.round(balance).toLocaleString() + ' FCFA)';
+            }
+        }
+
+        // Écoute des soldes depuis Firebase
+        onValue(ref(db, 'ledger_balances'), (snapshot) => {
+            const data = snapshot.val() || {};
+            ledgerBalances = data;
+            localStorage.setItem('ledger_balances', JSON.stringify(data));
+            balancesReceived = true;
+            checkFirstLoadComplete();
+            // Mettre à jour l'affichage du solde si un transfert est actif
+            if (currentActiveTransfer) {
+                const deskId = currentActiveTransfer.beneficiary?.agencyId || currentActiveTransfer.targetDeskId;
+                if (deskId) {
+                    updateBalanceDisplay(deskId);
+                }
+            }
+            // Mettre à jour la plaquette flottante
+            updateSupplyPlaquette();
+        });
+
+        // Écoute de la configuration pour récupérer la liste des guichets
+        onValue(ref(db, 'ledger_config'), (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.desks) {
+                desks = data.desks;
+                // Initialiser le sélecteur de guichets
+                initDeskSelector();
+                // Mettre à jour la plaquette
+                updateSupplyPlaquette();
+            }
+            configReceived = true;
+            checkFirstLoadComplete();
+        });
 
         const phonePrefixes = {
             "Bénin": "+229",
@@ -1081,7 +1204,7 @@
         };
 
         function checkFirstLoadComplete() {
-            if (isFirstLoad && transfersReceived && supplyReceived && ledgerTransfersReceived && configReceived) {
+            if (isFirstLoad && transfersReceived && supplyReceived && ledgerTransfersReceived && configReceived && balancesReceived) {
                 isFirstLoad = false;
                 if (loadingOverlay) {
                     loadingOverlay.style.opacity = '0';
@@ -1129,6 +1252,11 @@
                     newRate = parseFloat(data.dollarRate);
                 }
                 localStorage.setItem('ledger_config', JSON.stringify(data));
+                // Mettre à jour la liste des guichets
+                if (data.desks) {
+                    desks = data.desks;
+                    initDeskSelector();
+                }
             }
             if (newRate !== USD_RATE && newRate > 0) {
                 USD_RATE = newRate;
@@ -1137,11 +1265,17 @@
                 if (rateDisplayElement) rateDisplayElement.innerText = USD_RATE;
                 if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = USD_RATE;
                 
+                // Mettre à jour l'affichage du solde si un transfert est actif
                 if (currentActiveTransfer && document.getElementById('detailsCard') && !document.getElementById('detailsCard').classList.contains('d-none')) {
-                    const amountFCFA = currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0;
-                    const netUSD = amountFCFA / USD_RATE;
-                    document.getElementById('totalUSD').innerText = netUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+                    const deskId = currentActiveTransfer.beneficiary?.agencyId || currentActiveTransfer.targetDeskId;
+                    if (deskId) {
+                        updateBalanceDisplay(deskId);
+                        // Mettre à jour l'affichage du montant FCFA recalculé
+                        displayTransferDetails(currentActiveTransfer);
+                    }
                 }
+                // Mettre à jour la plaquette flottante
+                updateSupplyPlaquette();
             }
             configReceived = true;
             checkFirstLoadComplete();
@@ -1199,55 +1333,166 @@
             checkFirstLoadComplete();
         });
 
-        // --- Mise à jour de la plaquette flottante du flux d'approvisionnement ---
-        function updateSupplyPlaquette() {
-            // Calcul des approvisionnements validés
-            const validSupply = ledgerSupply.filter(item => item.status === 'Validé');
-            const pendingSupply = ledgerSupply.filter(item => item.status === 'En attente');
-            
-            const totalApprovFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-            const totalApprovUSD = totalApprovFCFA / USD_RATE;
-            
-            // Total des envois (tous les transferts du nœud 'transfers')
-            const totalEnvoisFCFA = transfers.reduce((sum, t) => sum + (parseFloat(t.amountFCFA) || 0), 0);
-            const totalEnvoisUSD = totalEnvoisFCFA / USD_RATE;
-            
-            // Solde du flux = approvisionnements validés - total des envois
-            const soldeFluxFCFA = totalApprovFCFA - totalEnvoisFCFA;
-            const soldeFluxUSD = soldeFluxFCFA / USD_RATE;
-            
-            // Compteurs pour la plaquette
-            const withdrawnCount = transfers.filter(t => t.status === 'Retiré').length;
-            const pendingCount = transfers.filter(t => t.status === 'En attente').length;
-            const totalTransferCount = transfers.length;
+        // --- Fonctions de mise à jour de la plaquette flottante ---
+        function getDeskData(deskId) {
+            // Filtrer les envois pour le guichet sélectionné
+            let approvFCFA = 0;
+            let envoisEmisFCFA = 0;
+            let retraitsRecusFCFA = 0;
+            let envoisEmisCount = 0;
+            let retraitsRecusCount = 0;
+            let pendingCount = 0;
+            let totalTransferCount = 0;
+            let deskName = 'Tous les guichets';
 
+            if (deskId === 'global') {
+                // Mode global : tout agréger
+                const validSupply = ledgerSupply.filter(item => item.status === 'Validé');
+                approvFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                
+                // Utiliser amountUSD comme source pour les envois
+                envoisEmisFCFA = transfers.reduce((sum, t) => {
+                    if (t.amountUSD) {
+                        return sum + (t.amountUSD * USD_RATE);
+                    } else if (t.amountFCFA) {
+                        const rateUsed = t.rateUsed || 600;
+                        return sum + (t.amountFCFA / rateUsed * USD_RATE);
+                    }
+                    return sum;
+                }, 0);
+                
+                const withdrawn = transfers.filter(t => t.status === 'Retiré');
+                retraitsRecusFCFA = withdrawn.reduce((sum, t) => {
+                    if (t.amountUSD) {
+                        return sum + (t.amountUSD * USD_RATE);
+                    } else if (t.amountFCFA) {
+                        const rateUsed = t.rateUsed || 600;
+                        return sum + (t.amountFCFA / rateUsed * USD_RATE);
+                    }
+                    return sum;
+                }, 0);
+                envoisEmisCount = transfers.length;
+                retraitsRecusCount = withdrawn.length;
+                pendingCount = transfers.filter(t => t.status === 'En attente').length;
+                totalTransferCount = transfers.length;
+                deskName = '🌍 Tous les guichets';
+            } else {
+                // Mode guichet spécifique
+                const desk = desks.find(d => d.id === deskId);
+                deskName = desk ? desk.name : 'Guichet inconnu';
+
+                // Approvisionnements pour ce guichet
+                const approvsForDesk = ledgerSupply.filter(a => {
+                    if (!a || a.status !== 'Validé') return false;
+                    const matchId = a.deskId && a.deskId === deskId;
+                    const matchName = a.deskName && a.deskName === deskName;
+                    return matchId || matchName;
+                });
+                approvFCFA = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+
+                // Envois émis par ce guichet (expéditeur)
+                const sentTransfers = transfers.filter(t => {
+                    if (!t) return false;
+                    const senderAgencyId = t.sender?.agencyId || t.senderDeskId || '';
+                    return senderAgencyId === deskId;
+                });
+                envoisEmisFCFA = sentTransfers.reduce((sum, t) => {
+                    if (t.amountUSD) {
+                        return sum + (t.amountUSD * USD_RATE);
+                    } else if (t.amountFCFA) {
+                        const rateUsed = t.rateUsed || 600;
+                        return sum + (t.amountFCFA / rateUsed * USD_RATE);
+                    }
+                    return sum;
+                }, 0);
+                envoisEmisCount = sentTransfers.length;
+
+                // Retraits reçus par ce guichet (bénéficiaire)
+                const receivedTransfers = transfers.filter(t => {
+                    if (!t || t.status !== 'Retiré') return false;
+                    const beneficiaryAgencyId = t.beneficiary?.agencyId || t.targetDeskId || '';
+                    return beneficiaryAgencyId === deskId;
+                });
+                retraitsRecusFCFA = receivedTransfers.reduce((sum, t) => {
+                    if (t.amountUSD) {
+                        return sum + (t.amountUSD * USD_RATE);
+                    } else if (t.amountFCFA) {
+                        const rateUsed = t.rateUsed || 600;
+                        return sum + (t.amountFCFA / rateUsed * USD_RATE);
+                    }
+                    return sum;
+                }, 0);
+                retraitsRecusCount = receivedTransfers.length;
+
+                // En attente pour ce guichet
+                const pendingTransfers = transfers.filter(t => {
+                    if (!t || t.status !== 'En attente') return false;
+                    const beneficiaryAgencyId = t.beneficiary?.agencyId || t.targetDeskId || '';
+                    return beneficiaryAgencyId === deskId;
+                });
+                pendingCount = pendingTransfers.length;
+
+                // Total des envois pour ce guichet
+                totalTransferCount = sentTransfers.length + receivedTransfers.length;
+            }
+
+            // Calcul du solde du guichet (en FCFA)
+            const soldeFCFA = approvFCFA + retraitsRecusFCFA - envoisEmisFCFA;
+
+            return {
+                deskName,
+                approvFCFA,
+                envoisEmisFCFA,
+                retraitsRecusFCFA,
+                soldeFCFA,
+                envoisEmisCount,
+                retraitsRecusCount,
+                pendingCount,
+                totalTransferCount
+            };
+        }
+
+        function updateSupplyPlaquette() {
+            const deskId = currentDeskId || 'global';
+            const data = getDeskData(deskId);
+            
             // Formatage des montants en USD (principal) et FCFA (entre parenthèses)
-            const formatAmount = (usd, fcfa) => {
-                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            const formatAmount = (fcfa) => {
+                const usd = fcfa / USD_RATE;
+                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
             };
 
-            const approvEl = document.getElementById('supplyTotalApprov');
-            if (approvEl) approvEl.innerText = formatAmount(totalApprovUSD, totalApprovFCFA);
-            
-            const envoisEl = document.getElementById('supplyTotalEnvois');
-            if (envoisEl) envoisEl.innerText = formatAmount(totalEnvoisUSD, totalEnvoisFCFA);
+            // Mise à jour des éléments
+            document.getElementById('supplyTotalApprov').innerText = formatAmount(data.approvFCFA);
+            document.getElementById('supplyTotalEnvois').innerText = formatAmount(data.envoisEmisFCFA);
             
             const soldeEl = document.getElementById('supplySoldeFlux');
-            if (soldeEl) {
-                soldeEl.innerText = formatAmount(soldeFluxUSD, soldeFluxFCFA);
-                soldeEl.className = 'supply-value' + (soldeFluxFCFA < 0 ? ' red' : ' blue');
+            const soldeUSD = data.soldeFCFA / USD_RATE;
+            soldeEl.innerText = formatAmount(data.soldeFCFA);
+            soldeEl.className = 'supply-value' + (data.soldeFCFA < 0 ? ' red' : (data.soldeFCFA > 0 ? ' blue' : ''));
+            
+            document.getElementById('supplyValidCount').innerText = data.retraitsRecusCount;
+            document.getElementById('supplyPendingCount').innerText = data.pendingCount;
+            document.getElementById('supplyTransferCount').innerText = data.envoisEmisCount;
+            document.getElementById('supplyReceivedCount').innerText = data.retraitsRecusCount;
+
+            // Mise à jour du nom du guichet dans le sélecteur
+            const selector = document.getElementById('deskSelector');
+            if (selector) {
+                const selectedOption = selector.options[selector.selectedIndex];
+                if (selectedOption) {
+                    // Mettre à jour le texte affiché dans le sélecteur
+                    selector.value = deskId;
+                }
             }
-            
-            // Mise à jour des compteurs avec les bonnes données
-            const validCountEl = document.getElementById('supplyValidCount');
-            if (validCountEl) validCountEl.innerText = withdrawnCount;
-            
-            const pendingCountEl = document.getElementById('supplyPendingCount');
-            if (pendingCountEl) pendingCountEl.innerText = pendingCount;
-            
-            const transferCountEl = document.getElementById('supplyTransferCount');
-            if (transferCountEl) transferCountEl.innerText = totalTransferCount;
         }
+
+        // Fonction appelée lors du changement de guichet
+        window.onDeskChange = function() {
+            const selector = document.getElementById('deskSelector');
+            currentDeskId = selector.value;
+            updateSupplyPlaquette();
+        };
 
         // Fonction pour rétracter/déplier la plaquette
         window.toggleSupplyBox = function() {
@@ -1261,7 +1506,30 @@
             }
         };
 
-        // Gestion du changement de méthode de recherche
+        // Initialisation du sélecteur de guichets
+        function initDeskSelector() {
+            const selector = document.getElementById('deskSelector');
+            if (!selector) return;
+            
+            // Garder l'option "Tous"
+            const currentValue = selector.value;
+            selector.innerHTML = '<option value="global">🌍 Tous les guichets</option>';
+            
+            // Ajouter chaque guichet
+            desks.forEach(desk => {
+                const option = document.createElement('option');
+                option.value = desk.id;
+                option.textContent = `${desk.name} (${desk.country || ''})`;
+                selector.appendChild(option);
+            });
+            
+            // Restaurer la sélection si possible
+            if (currentValue && selector.querySelector(`option[value="${currentValue}"]`)) {
+                selector.value = currentValue;
+            }
+        }
+
+        // --- Gestion du changement de méthode de recherche ---
         document.getElementById('searchMethod').addEventListener('change', function() {
             const method = this.value;
             const inputLabel = document.getElementById('searchInputLabel');
@@ -1427,22 +1695,51 @@
             // Le téléphone du bénéficiaire est toujours éditable même si les champs sont en lecture seule
             applyUnknownStyle('beneficiaryPhone', matchedTransfer.beneficiary.phone, true);
 
-            // Calcul des montants en dollars et FCFA
-            const amountFCFA = matchedTransfer.amountFCFA || matchedTransfer.amount || 0;
-            const feesFCFA = matchedTransfer.feesFCFA !== undefined ? matchedTransfer.feesFCFA : (matchedTransfer.fees || 0);
-            // Le montant net en USD est basé sur le montant FCFA sans les frais
-            const netUSD = amountFCFA / USD_RATE;
-            const feesUSD = feesFCFA / USD_RATE;
-            const totalUSDWithFees = (amountFCFA + feesFCFA) / USD_RATE;
+            // --- CORRECTION : Utiliser amountUSD comme source de vérité ---
+            let amountUSD = 0;
+            let amountFCFA = 0;
+            let feesUSD = 0;
+            let feesFCFA = 0;
+            let totalUSDWithFees = 0;
+
+            // Récupérer le montant USD depuis la transaction
+            if (matchedTransfer.amountUSD) {
+                // Source de vérité : amountUSD
+                amountUSD = parseFloat(matchedTransfer.amountUSD);
+                amountFCFA = amountUSD * USD_RATE;
+                
+                // Gérer les frais
+                if (matchedTransfer.feesUSD) {
+                    feesUSD = parseFloat(matchedTransfer.feesUSD);
+                    feesFCFA = feesUSD * USD_RATE;
+                } else if (matchedTransfer.feesFCFA) {
+                    feesFCFA = parseFloat(matchedTransfer.feesFCFA);
+                    feesUSD = feesFCFA / USD_RATE;
+                }
+                totalUSDWithFees = amountUSD + feesUSD;
+            } else if (matchedTransfer.amountFCFA) {
+                // Compatibilité avec les anciennes données
+                const rateUsed = matchedTransfer.rateUsed || 600;
+                amountFCFA = parseFloat(matchedTransfer.amountFCFA);
+                amountUSD = amountFCFA / rateUsed;
+                // Recalculer avec le taux actuel
+                amountFCFA = amountUSD * USD_RATE;
+                
+                if (matchedTransfer.feesFCFA) {
+                    feesFCFA = parseFloat(matchedTransfer.feesFCFA);
+                    feesUSD = feesFCFA / rateUsed;
+                }
+                totalUSDWithFees = amountUSD + feesUSD;
+            }
 
             // Affichage du montant net en USD avec FCFA entre parenthèses
             document.getElementById('netTransferDisplay').innerHTML = 
-                netUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
-                parseFloat(amountFCFA).toLocaleString() + ' FCFA)';
+                amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
+                Math.round(amountFCFA).toLocaleString() + ' FCFA)';
             
             document.getElementById('transferFees').innerHTML = 
                 feesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + 
-                parseFloat(feesFCFA).toLocaleString() + ' FCFA)';
+                Math.round(feesFCFA).toLocaleString() + ' FCFA)';
             
             // Affichage du total en USD (montant + frais)
             document.getElementById('totalUSD').innerText = 
@@ -1467,6 +1764,17 @@
             }
             
             document.getElementById('transferReference').innerText = matchedTransfer.sender.transferReference || '--';
+
+            // Afficher le solde disponible du guichet
+            const deskId = matchedTransfer.beneficiary?.agencyId || matchedTransfer.targetDeskId;
+            if (deskId) {
+                updateBalanceDisplay(deskId);
+            } else {
+                const balanceElement = document.getElementById('deskBalanceDisplay');
+                if (balanceElement) {
+                    balanceElement.innerText = '0 USD (0 FCFA)';
+                }
+            }
 
             const btnWithdraw = document.getElementById('btnWithdraw');
             if (matchedTransfer.status === 'Retiré') {
@@ -1570,19 +1878,31 @@
             bootstrap.Modal.getInstance(document.getElementById('securityModal')).hide();
 
             if (currentActiveTransfer) {
-                const amountFCFA = currentActiveTransfer.amountFCFA || currentActiveTransfer.amount || 0;
-                const feesFCFA = currentActiveTransfer.feesFCFA !== undefined ? currentActiveTransfer.feesFCFA : (currentActiveTransfer.fees || 0);
-                const requiredAmount = parseFloat(amountFCFA) + parseFloat(feesFCFA);
+                // Récupérer l'ID du guichet bénéficiaire
+                const deskId = currentActiveTransfer.beneficiary?.agencyId || currentActiveTransfer.targetDeskId;
+                
+                // Vérifier si le guichet a été identifié
+                if (!deskId) {
+                    alert("Impossible d'identifier le guichet de retrait. Veuillez contacter l'administrateur.");
+                    return;
+                }
 
-                const validApprovs = ledgerSupply.filter(a => a.status === 'Validé');
-                const liq = validApprovs.filter(a => a.type === 'liquide').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
-                const virt = validApprovs.filter(a => a.type === 'virtuel').reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
-                const totalApprov = liq + virt;
-                const totalEnvois = ledgerTransfersList.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-                const soldeFlux = totalApprov - totalEnvois;
+                // Utiliser amountUSD comme source pour le calcul du montant à retirer
+                let amountFCFA = 0;
+                if (currentActiveTransfer.amountUSD) {
+                    amountFCFA = currentActiveTransfer.amountUSD * USD_RATE;
+                } else if (currentActiveTransfer.amountFCFA) {
+                    amountFCFA = currentActiveTransfer.amountFCFA;
+                } else {
+                    amountFCFA = currentActiveTransfer.amount || 0;
+                }
 
-                if (soldeFlux < requiredAmount) {
-                    const missingAmount = requiredAmount - soldeFlux;
+                // Récupérer le solde actuel du guichet
+                const currentBalance = getDeskBalance(deskId);
+
+                // Vérifier si le solde est suffisant
+                if (currentBalance < amountFCFA) {
+                    const missingAmount = amountFCFA - currentBalance;
                     document.getElementById('missingAmountDisplay').innerText = missingAmount.toLocaleString();
                     const insufficientFundsModal = new bootstrap.Modal(document.getElementById('insufficientFundsModal'));
                     insufficientFundsModal.show();
@@ -1629,9 +1949,13 @@
                             }
                         }
                     });
+
+                    // Mettre à jour le solde du guichet (décrémenter le montant retiré)
+                    const newBalance = currentBalance - amountFCFA;
+                    updateDeskBalance(deskId, newBalance);
                     
                     update(ref(db), updates).then(() => {
-                        const amountToDisplay = matched.amountFCFA || matched.amount || 0;
+                        const amountToDisplay = amountFCFA;
                         document.getElementById('successOverlayMessage').innerText = `Le décaissement de ${parseFloat(amountToDisplay).toLocaleString()} FCFA a été validé avec succès.`;
                         const successOverlay = document.getElementById('successOverlay');
                         successOverlay.classList.add('active');
@@ -1710,8 +2034,21 @@
                     const transferTime = sender.transferTime || (t.date ? new Date(t.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'}) : '--:--');
                     const transferRef = sender.transferReference || '--';
 
-                    const finalAmount = t.amountFCFA || t.amount || 0;
-                    const finalAmountUSD = finalAmount / USD_RATE;
+                    // --- CORRECTION : Utiliser amountUSD comme source pour l'affichage ---
+                    let finalAmountUSD = 0;
+                    let finalAmountFCFA = 0;
+                    
+                    if (t.amountUSD) {
+                        finalAmountUSD = parseFloat(t.amountUSD);
+                        finalAmountFCFA = finalAmountUSD * USD_RATE;
+                    } else if (t.amountFCFA) {
+                        const rateUsed = t.rateUsed || 600;
+                        finalAmountUSD = parseFloat(t.amountFCFA) / rateUsed;
+                        finalAmountFCFA = finalAmountUSD * USD_RATE;
+                    } else {
+                        finalAmountFCFA = parseFloat(t.amount || 0);
+                        finalAmountUSD = finalAmountFCFA / USD_RATE;
+                    }
                     
                     // Récupération du nom de l'opérateur de retrait
                     const withdrawalOperatorName = t.withdrawalOperator?.name || 'N/A';
@@ -1725,7 +2062,7 @@
                             <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
                             <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-muted">${t.beneficiary.phone || ''}</small></td>
                             <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-success fw-bold">📍 ${t.sender.agency}</small></td>
-                            <td class="text-end fw-bold text-danger">${finalAmountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD<br><small class="text-muted">(${parseFloat(finalAmount).toLocaleString()} FCFA)</small></td>
+                            <td class="text-end fw-bold text-danger">${finalAmountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD<br><small class="text-muted">(${Math.round(finalAmountFCFA).toLocaleString()} FCFA)</small></td>
                             <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span></td>
                             <td><small class="fw-bold text-primary">${withdrawalOperatorName}</small></td>
                         </tr>
@@ -1783,6 +2120,7 @@
         window.handleLogout = handleLogout;
         window.buildHistoryTable = buildHistoryTable;
         window.selectTransfer = selectTransfer;
+        window.onDeskChange = onDeskChange;
 
         const cachedTransfers = localStorage.getItem('ledger_transfers_cache');
         if (cachedTransfers) {
