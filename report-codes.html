@@ -1551,7 +1551,7 @@
                         childCreditor: recipientDisplay,
                         creditor: `${recipientDisplay} (🏁 ${targetLocation})`,
                         amountUSD: amtUSD,
-                        feesUSD: feeUSD,
+                        feesUSD: feeUSD, // On affiche les frais perçus sur l'envoi
                         status: t.status || 'En attente',
                         actingUser: getActingUser(t),
                         isEnvoi: true,
@@ -1572,6 +1572,7 @@
                             wGainUSD = parseFloat(t.withdrawalFees) / rateUsed;
                         }
                         
+                        // Sur le retrait, on affiche le gain réel (frais d'envoi + frais de retrait)
                         let totalGainRetraitUSD = feeUSD + wGainUSD;
 
                         unifiedLedger.push({
@@ -1582,7 +1583,7 @@
                             childCreditor: recipientDisplay,
                             creditor: `${recipientDisplay} (📍 ${targetLocation})`,
                             amountUSD: amtUSD,
-                            feesUSD: totalGainRetraitUSD, 
+                            feesUSD: totalGainRetraitUSD, // Affichage du gain réel sur le retrait
                             status: 'Validé',
                             actingUser: getActingUser(t),
                             isRetrait: true,
@@ -1685,11 +1686,15 @@
 
                     let feesDisplay;
                     if (item.type === 'ENVOI') {
-                        feesDisplay = 'Déjà';
+                        // Pour les envois, on affiche les frais perçus
+                        feesDisplay = item.feesUSD > 0 ? formatAmount(item.feesUSD) : '-';
                     } else if (item.type === 'RETRAIT' && item.t) {
+                        // Pour les retraits, on affiche le gain réel (frais d'envoi + frais de retrait)
                         let rateUsed = parseFloat(item.t.rate) || parseFloat(item.t.dollarRate) || window.USD_RATE || 600;
                         let wGainUSD = item.t.withdrawalFeesUSD !== undefined ? (parseFloat(item.t.withdrawalFeesUSD) || 0) : ((parseFloat(item.t.withdrawalFees) || 0) / rateUsed);
-                        feesDisplay = formatAmount(wGainUSD);
+                        let feeUSD = item.t.feesUSD !== undefined ? (parseFloat(item.t.feesUSD) || 0) : ((parseFloat(item.t.feesFCFA) || parseFloat(item.t.fees) || 0) / rateUsed);
+                        let totalGain = feeUSD + wGainUSD;
+                        feesDisplay = totalGain > 0 ? formatAmount(totalGain) : '-';
                     } else {
                         feesDisplay = item.feesUSD > 0 ? formatAmount(item.feesUSD) : '-';
                     }
