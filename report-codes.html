@@ -448,6 +448,44 @@
         .desk-balance-positive { color: #28a745; }
         .desk-balance-negative { color: #dc3545; }
         .desk-balance-neutral { color: #6c757d; }
+
+        /* Style pour le succès plein écran */
+        #successOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 20000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.5s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+        #successOverlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .success-content {
+            background: white;
+            border-radius: 30px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .success-content i {
+            font-size: 4rem;
+            color: #28a745;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -458,6 +496,14 @@
         </div>
         <h5 class="text-muted">Synchronisation des données cloud...</h5>
         <p class="small text-muted">Veuillez patienter</p>
+    </div>
+
+    <div id="successOverlay">
+        <div class="success-content">
+            <i class="fa-solid fa-circle-check"></i>
+            <h3 class="mt-3 fw-bold text-success">Opération réussie !</h3>
+            <p class="text-muted">Le versement a été enregistré avec succès.</p>
+        </div>
     </div>
 
     <header>
@@ -690,6 +736,27 @@
         </div>
     </main>
 
+    <!-- Modal de régularisation des comptes -->
+    <div class="modal fade elegant-modal" id="settlementModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="elegant-modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-handshake me-2"></i>Régularisation des comptes</h5>
+                </div>
+                <div class="modal-body p-4" id="settlementModalContent">
+                    <!-- Dynamiquement rempli -->
+                </div>
+                <div class="modal-footer border-0 justify-content-between">
+                    <button class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fermer</button>
+                    <button class="btn btn-wa rounded-pill px-4" id="settlementPayBtn" onclick="processSettlement()">
+                        <i class="fa-solid fa-money-bill-wave me-2"></i>Procéder au versement Fiat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Retrait de Gains (existante) -->
     <div class="modal fade elegant-modal" id="gainWithdrawalModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -824,9 +891,11 @@
             databaseURL: "https://afri-link-ledger-default-rtdb.europe-west1.firebasedatabase.app/"
         };
 
-        // Initialisation de l'application Firebase et de la base de données
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+
+        // Exposer db globalement pour les fonctions inline
+        window.db = db;
 
         // Loading overlay
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -836,9 +905,10 @@
         let gainsReceived = false;
         let configReceived = false;
         let balancesReceived = false;
+        let settlementsReceived = false;
 
         function checkFirstLoadComplete() {
-            if (isFirstLoad && transfersReceived && approvsReceived && gainsReceived && configReceived && balancesReceived) {
+            if (isFirstLoad && transfersReceived && approvsReceived && gainsReceived && configReceived && balancesReceived && settlementsReceived) {
                 isFirstLoad = false;
                 if (loadingOverlay) {
                     loadingOverlay.style.opacity = '0';
@@ -849,10 +919,10 @@
             }
         }
 
-        // Variables globales accessibles par les fonctions d'affichage
         window.transfers = [];
         window.approvs = [];
         window.gainsWithdrawals = [];
+        window.settlements = [];
         window.USD_RATE = 600;
         window.currentDateStart = null;
         window.currentDateEnd = null;
@@ -860,7 +930,9 @@
         window.cachedSoldeGainsDispo = 0;
         window.ledgerBalances = {};
 
-        // Variables d'échange natives pour conserver les KPIs d'impression en USD
+        // ---- AJOUT DU CACHE GLOBAL ----
+        window.deskCache = {};
+
         window.kpiSourcesUSD = {
             totalEnvoisBrut: 0,
             totalEnvoisAvecFrais: 0,
@@ -873,7 +945,7 @@
             soldeGainsDispo: 0
         };
 
-        // Écoute de l'état de connexion à Firebase
+        // Connexion Firebase
         const connectedRef = ref(db, ".info/connected");
         onValue(connectedRef, (snap) => {
             const icon = document.getElementById('cloudStatusIcon');
@@ -887,7 +959,7 @@
             }
         });
 
-        // Synchronisation des soldes des guichets depuis Firebase
+        // Soldes des guichets
         onValue(ref(db, 'ledger_balances'), (snapshot) => {
             const data = snapshot.val() || {};
             window.ledgerBalances = data;
@@ -897,19 +969,14 @@
             checkAndRefreshUI();
         });
 
-        // Synchronisation en temps réel des configurations de l'application
+        // Configuration
         onValue(ref(db, 'ledger_config'), (snapshot) => {
             const configObj = snapshot.val() || {};
-            
-            // Sauvegarde locale pour résilience hors ligne
             localStorage.setItem('ledger_config', JSON.stringify(configObj));
-            
-            // Gestion de la marque et du nom de l'entreprise
             const company = configObj.company;
             const dynamicName = document.getElementById('dynamicCompanyName');
             const printCompName = document.getElementById('printHeaderCompany');
             const headerName = document.getElementById('headerCompanyName');
-            
             if (company && company.isLocked && company.name) {
                 if (dynamicName) dynamicName.innerText = company.name;
                 if (printCompName) printCompName.innerText = company.name;
@@ -919,11 +986,8 @@
                 if (printCompName) printCompName.innerText = configObj.companyName;
                 if (headerName) headerName.innerText = configObj.companyName;
             }
-
-            // Gestion dynamique du taux de change du dollar
             const rateDisplayElement = document.getElementById('headerExchangeRate');
             const rateDisplayBrandElement = document.getElementById('headerExchangeRateBrand');
-            
             if (configObj.dollarRateConfig && configObj.dollarRateConfig.value) {
                 const computedRate = parseFloat(configObj.dollarRateConfig.value);
                 if (!isNaN(computedRate) && computedRate > 0) {
@@ -937,29 +1001,27 @@
             }
             if (rateDisplayElement) rateDisplayElement.innerText = window.USD_RATE;
             if (rateDisplayBrandElement) rateDisplayBrandElement.innerText = window.USD_RATE;
-            
             configReceived = true;
             checkFirstLoadComplete();
         });
 
-        // Synchronisation croisée et instantanée des 3 collections majeures du Grand Livre
         function checkAndRefreshUI() {
             computeFinancialKPIs();
             buildAccountingTable();
             buildDeskSummary();
         }
 
-        // ---- CORRECTION : Écoute du bon chemin "transfers" et non "ledger_transfers" ----
+        // Transfers
         onValue(ref(db, 'transfers'), (snapshot) => {
             const data = snapshot.val();
             window.transfers = data ? Object.values(data) : [];
-            // Sauvegarde locale pour résilience hors ligne
             localStorage.setItem('ledger_transfers_cache', JSON.stringify(window.transfers));
             transfersReceived = true;
             checkFirstLoadComplete();
             checkAndRefreshUI();
         });
 
+        // Approvisionnements
         onValue(ref(db, 'ledger_supply'), (snapshot) => {
             const data = snapshot.val();
             window.approvs = data ? Object.values(data) : [];
@@ -969,6 +1031,7 @@
             checkAndRefreshUI();
         });
 
+        // Gains retraits
         onValue(ref(db, 'ledger_profits'), (snapshot) => {
             const data = snapshot.val();
             window.gainsWithdrawals = data ? Object.values(data) : [];
@@ -978,17 +1041,29 @@
             checkAndRefreshUI();
         });
 
-        // Tentative de chargement depuis les caches locaux
+        // Versements (settlements)
+        onValue(ref(db, 'ledger_settlements'), (snapshot) => {
+            const data = snapshot.val();
+            window.settlements = data ? Object.values(data) : [];
+            localStorage.setItem('ledger_settlements_cache', JSON.stringify(window.settlements));
+            settlementsReceived = true;
+            checkFirstLoadComplete();
+            checkAndRefreshUI();
+        });
+
+        // Chargement depuis caches
         const cachedTransfers = localStorage.getItem('ledger_transfers_cache');
         const cachedApprovs = localStorage.getItem('ledger_supply_cache');
         const cachedGains = localStorage.getItem('ledger_profits_cache');
         const cachedBalances = localStorage.getItem('ledger_balances');
+        const cachedSettlements = localStorage.getItem('ledger_settlements_cache');
         if (cachedTransfers) window.transfers = JSON.parse(cachedTransfers);
         if (cachedApprovs) window.approvs = JSON.parse(cachedApprovs);
         if (cachedGains) window.gainsWithdrawals = JSON.parse(cachedGains);
         if (cachedBalances) window.ledgerBalances = JSON.parse(cachedBalances);
+        if (cachedSettlements) window.settlements = JSON.parse(cachedSettlements);
 
-        // Liaison des fonctions de modification au contexte global Window pour compatibilité HTML Inline
+        // Fonctions existantes (inchangées)
         window.executeGainWithdrawal = function(event) {
             event.preventDefault();
             const beneficiary = document.getElementById('withdrawGainBeneficiary').value.trim();
@@ -1004,8 +1079,6 @@
                 alert("Le montant doit être supérieur à 0.");
                 return;
             }
-            
-            // Conversion en USD pour vérification de la balance immuable
             const amountUSD = amountFCFA / window.USD_RATE;
             if (amountUSD > window.cachedSoldeGainsDispo) {
                 alert("Action Refusée : Le solde disponible des gains est insuffisant pour couvrir ce retrait d'ajustement.");
@@ -1018,13 +1091,12 @@
                 date: new Date().toLocaleString('fr-FR'),
                 type: 'RETRAIT_GAIN',
                 beneficiary: beneficiary,
-                amount: amountFCFA, // Conserver le champ amount historique pour le noeud de profits
+                amount: amountFCFA,
                 amountUSD: amountUSD,
                 comment: comment,
                 status: 'Validé'
             };
 
-            // Écriture Cloud native immédiate
             set(ref(db, `ledger_profits/${withdrawalId}`), withdrawalItem)
                 .then(() => {
                     const modalElement = document.getElementById('gainWithdrawalModal');
@@ -1040,20 +1112,20 @@
 
         window.resetAllData = function() {
             if (confirm("Êtes-vous absolument sûr de vouloir réinitialiser TOUTES les données ? Cette action videra complètement la mémoire cloud de l'application et est irréversible.")) {
-                // Suppression atomique via remove() sur les nœuds distants Firebase
                 Promise.all([
                     remove(ref(db, 'ledger_config')),
                     remove(ref(db, 'transfers')),
                     remove(ref(db, 'ledger_supply')),
                     remove(ref(db, 'ledger_profits')),
-                    remove(ref(db, 'ledger_balances'))
+                    remove(ref(db, 'ledger_balances')),
+                    remove(ref(db, 'ledger_settlements'))
                 ]).then(() => {
-                    // Nettoyer également les caches locaux
                     localStorage.removeItem('ledger_config');
                     localStorage.removeItem('ledger_transfers_cache');
                     localStorage.removeItem('ledger_supply_cache');
                     localStorage.removeItem('ledger_profits_cache');
                     localStorage.removeItem('ledger_balances');
+                    localStorage.removeItem('ledger_settlements_cache');
                     sessionStorage.clear();
                     location.reload();
                 }).catch((err) => {
@@ -1063,7 +1135,6 @@
             }
         };
 
-        // Fonctions de gestion des soldes des guichets
         window.getDeskBalance = function(deskId) {
             if (!deskId) return 0;
             return window.ledgerBalances[deskId] || 0;
@@ -1075,14 +1146,11 @@
             balances[deskId] = Math.max(0, newBalance);
             window.ledgerBalances = balances;
             localStorage.setItem('ledger_balances', JSON.stringify(balances));
-            
-            // Synchroniser avec Firebase
             if (window.fbDatabase) {
                 const balancesRef = ref(window.fbDatabase, 'ledger_balances');
                 set(balancesRef, balances);
             }
-            // Rafraîchir l'affichage
-            buildDeskSummary();
+            // Ne pas appeler buildDeskSummary ici pour éviter la boucle
         };
     </script>
 
@@ -1138,7 +1206,6 @@
             const card = document.getElementById('accountingCard');
             const icon = document.getElementById('toggleIcon');
             const text = document.getElementById('toggleText');
-
             if (card.style.display === 'none') {
                 card.style.display = 'block';
                 icon.className = 'fa-solid fa-eye-slash me-2';
@@ -1154,7 +1221,6 @@
             const card = document.getElementById('gainsHistoryCard');
             const icon = document.getElementById('toggleGainsIcon');
             const text = document.getElementById('toggleGainsText');
-
             if (card.style.display === 'none') {
                 card.style.display = 'block';
                 icon.className = 'fa-solid fa-eye-slash me-2';
@@ -1168,25 +1234,20 @@
 
         function setTimeFilter(filterType) {
             window.currentTimeFilter = filterType;
-            
             document.querySelectorAll('.filter-time-btn').forEach(btn => {
                 btn.classList.remove('btn-wa', 'active');
                 btn.classList.add('btn-outline-secondary');
             });
-            
             const targetId = 'timeFilter' + filterType.charAt(0) + filterType.slice(1).toLowerCase();
             const activeBtn = document.getElementById(targetId);
             if (activeBtn) {
                 activeBtn.classList.remove('btn-outline-secondary');
                 activeBtn.classList.add('btn-wa', 'active');
             }
-
-            // Réinitialiser les filtres de date
             document.getElementById('filterDateStart').value = '';
             document.getElementById('filterDateEnd').value = '';
             window.currentDateStart = null;
             window.currentDateEnd = null;
-            
             computeFinancialKPIs();
             buildAccountingTable();
         }
@@ -1194,16 +1255,12 @@
         function updateDateFilter() {
             const startDate = document.getElementById('filterDateStart').value;
             const endDate = document.getElementById('filterDateEnd').value;
-            
             window.currentDateStart = startDate ? new Date(startDate) : null;
             window.currentDateEnd = endDate ? new Date(endDate) : null;
-            
-            // Désactiver le bouton "Tout voir"
             document.querySelectorAll('.filter-time-btn').forEach(btn => {
                 btn.classList.remove('btn-wa', 'active');
                 btn.classList.add('btn-outline-secondary');
             });
-            
             window.currentTimeFilter = 'CUSTOM';
             computeFinancialKPIs();
             buildAccountingTable();
@@ -1218,16 +1275,11 @@
         }
 
         function isDateInPeriod(dateStr, period) {
-            // Si c'est "Tout voir" et pas de filtre de date personnalisé
             if (period === 'ALL' && !window.currentDateStart && !window.currentDateEnd) return true;
-            
-            // Si filtre de date personnalisé
             if (window.currentDateStart || window.currentDateEnd) {
                 if (!dateStr || dateStr === '--/--/----') return true;
-                
                 let matches = dateStr.match(/(\d{2,4})/g);
                 if (!matches || matches.length < 3) return true;
-                
                 let itemDate;
                 if (dateStr.includes('/')) {
                     let day = parseInt(matches[0], 10);
@@ -1242,25 +1294,18 @@
                 } else {
                     return true;
                 }
-                
                 if (isNaN(itemDate.getTime())) return true;
-                
                 if (window.currentDateStart && itemDate < window.currentDateStart) return false;
                 if (window.currentDateEnd) {
-                    // Ajouter 1 jour pour inclure la date de fin
                     const endDatePlusOne = new Date(window.currentDateEnd);
                     endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
                     if (itemDate >= endDatePlusOne) return false;
                 }
                 return true;
             }
-            
-            // Sinon, pour les autres périodes (jour, semaine, mois, année)
             if (period === 'ALL' || !dateStr || dateStr === '--/--/----') return true;
-            
             let matches = dateStr.match(/(\d{2,4})/g);
             if (!matches || matches.length < 3) return true;
-            
             let itemDate;
             if (dateStr.includes('/')) {
                 let day = parseInt(matches[0], 10);
@@ -1275,47 +1320,31 @@
             } else {
                 return true;
             }
-            
-            if (isNaN(itemDate.getTime())) return true; 
-            
+            if (isNaN(itemDate.getTime())) return true;
             let now = new Date();
             let startOfDayNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             let startOfDayItem = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
-            
-            if (period === 'DAY') {
-                return startOfDayItem.getTime() === startOfDayNow.getTime();
-            }
-            
+            if (period === 'DAY') return startOfDayItem.getTime() === startOfDayNow.getTime();
             if (period === 'WEEK') {
                 let diffInTime = startOfDayNow.getTime() - startOfDayItem.getTime();
                 let diffInDays = diffInTime / (1000 * 3600 * 24);
                 return diffInDays >= 0 && diffInDays <= 7;
             }
-            
-            if (period === 'MONTH') {
-                return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
-            }
-            
-            if (period === 'YEAR') {
-                return itemDate.getFullYear() === now.getFullYear();
-            }
-            
+            if (period === 'MONTH') return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+            if (period === 'YEAR') return itemDate.getFullYear() === now.getFullYear();
             return true;
         }
 
+        // ---- KPIs globaux (inchangés) ----
         function computeFinancialKPIs() {
-            // Sources de données immuables en USD
             let totalEnvoisBrutUSD = 0;
             let totalEnvoisAvecFraisUSD = 0;
             let totalFeesCollectesUSD = 0;
-            
             let totalRetraitsUSD = 0;
             let totalGainsRetraitsUSD = 0;
-            
             let totalApprovUSD = 0;
             let totalRetraitsGainsUSD = 0;
 
-            // Variables globales en USD (toutes périodes) pour la balance de caisse nette
             let globalTotalEncaissesUSD = 0;
             let globalTotalRetiresUSD = 0;
             let globalTotalApprovUSD = 0;
@@ -1326,63 +1355,49 @@
             const gainsWithdrawalsList = window.gainsWithdrawals || [];
 
             transfersList.forEach(t => {
-                // Extraction source immuable USD + Rétrocompatibilité
                 let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
                 if (rateUsed <= 0) rateUsed = 600;
-
                 let amtUSD = 0;
                 let feeUSD = 0;
-
                 if (t.amountUSD !== undefined) {
                     amtUSD = parseFloat(t.amountUSD) || 0;
                 } else {
                     let amtFCFA = parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0;
                     amtUSD = amtFCFA / rateUsed;
                 }
-
                 if (t.feesUSD !== undefined) {
                     feeUSD = parseFloat(t.feesUSD) || 0;
                 } else {
                     let feeFCFA = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
                     feeUSD = feeFCFA / rateUsed;
                 }
-
                 let totalUSD = amtUSD + feeUSD;
-
-                // Flux global de caisse (indépendant du filtre temporel)
                 globalTotalEncaissesUSD += totalUSD;
                 if (t.status === 'Retiré') {
                     globalTotalRetiresUSD += amtUSD;
                 }
-
-                // Filtrage temporel pour KPIs de la page
                 if (isDateInPeriod(t.date, window.currentTimeFilter)) {
                     totalEnvoisBrutUSD += amtUSD;
                     totalEnvoisAvecFraisUSD += totalUSD;
                 }
-
                 if (t.status === 'Retiré') {
                     let wDate = t.withdrawalDate || t.date;
                     if (isDateInPeriod(wDate, window.currentTimeFilter)) {
                         totalRetraitsUSD += amtUSD;
-                        
                         let wGainUSD = 0;
                         if (t.withdrawalFeesUSD !== undefined) {
                             wGainUSD = parseFloat(t.withdrawalFeesUSD) || 0;
                         } else if (t.withdrawalFees !== undefined) {
                             wGainUSD = parseFloat(t.withdrawalFees) / rateUsed;
                         }
-                        
                         totalGainsRetraitsUSD += (feeUSD + wGainUSD);
                         totalFeesCollectesUSD += feeUSD;
                     }
                 }
             });
 
-            // Approvisionnements (Saisis en USD maintenant)
             approvsList.forEach(a => {
                 let appAmtUSD = parseFloat(a.amountUSD) || 0;
-
                 if (a.status === 'Validé') {
                     globalTotalApprovUSD += appAmtUSD;
                     if (isDateInPeriod(a.date, window.currentTimeFilter)) {
@@ -1391,7 +1406,6 @@
                 }
             });
 
-            // Retraits de gains d'entreprise
             gainsWithdrawalsList.forEach(gw => {
                 let gwAmtUSD = 0;
                 if (gw.amountUSD !== undefined) {
@@ -1400,33 +1414,25 @@
                     let gwAmtFCFA = parseFloat(gw.amount) || 0;
                     gwAmtUSD = gwAmtFCFA / window.USD_RATE;
                 }
-
                 globalTotalRetraitsGainsUSD += gwAmtUSD;
                 if (isDateInPeriod(gw.date, window.currentTimeFilter)) {
                     totalRetraitsGainsUSD += gwAmtUSD;
                 }
             });
 
-            // Calcul global pour le solde immuable des gains disponibles
             let globalGainsRetraitsUSD = 0;
             transfersList.forEach(t => {
                 if (t.status === 'Retiré') {
                     let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
                     if (rateUsed <= 0) rateUsed = 600;
-
                     let feeUSD = t.feesUSD !== undefined ? (parseFloat(t.feesUSD) || 0) : ((parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0) / rateUsed);
                     let wGainUSD = t.withdrawalFeesUSD !== undefined ? (parseFloat(t.withdrawalFeesUSD) || 0) : ((parseFloat(t.withdrawalFees) || 0) / rateUsed);
-                    
                     globalGainsRetraitsUSD += (feeUSD + wGainUSD);
                 }
             });
-            
             window.cachedSoldeGainsDispo = globalGainsRetraitsUSD - globalTotalRetraitsGainsUSD;
-
-            // Solde net global de trésorerie en caisse en USD
             let soldeNetCaisseGlobaleUSD = (globalTotalApprovUSD + globalTotalEncaissesUSD) - (globalTotalRetiresUSD + globalTotalRetraitsGainsUSD);
 
-            // Remplissage de l'objet de cache d'impression (Sources natives en USD)
             window.kpiSourcesUSD = {
                 totalEnvoisBrut: totalEnvoisBrutUSD,
                 totalEnvoisAvecFrais: totalEnvoisAvecFraisUSD,
@@ -1439,31 +1445,20 @@
                 soldeGainsDispo: window.cachedSoldeGainsDispo
             };
 
-            // Fonction de formatage d'affichage : USD fixe source et FCFA calculé par multiplication direct du taux actuel
             const displayFormat = (usdValue) => {
                 const fcfaCalculated = usdValue * window.USD_RATE;
                 return usdValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfaCalculated).toLocaleString() + ' FCFA)';
             };
 
-            const kpiTotalEnvoisBrutElem = document.getElementById('kpiTotalEnvoisBrut');
-            const kpiTotalEnvoisElem = document.getElementById('kpiTotalEnvois');
-            const kpiBeneficeEnvoisElem = document.getElementById('kpiBeneficeEnvois');
-            const kpiTotalRetraitsElem = document.getElementById('kpiTotalRetraits');
-            const kpiGainsRetraitsElem = document.getElementById('kpiGainsRetraits');
-            const kpiSoldeGainsDispoElem = document.getElementById('kpiSoldeGainsDispo');
-            const kpiTotalApprovElem = document.getElementById('kpiTotalApprov');
-            const kpiTotalRetraitsGainsElem = document.getElementById('kpiTotalRetraitsGains');
-            const kpiSoldeNetElem = document.getElementById('kpiSoldeNet');
-
-            if (kpiTotalEnvoisBrutElem) kpiTotalEnvoisBrutElem.innerText = displayFormat(totalEnvoisBrutUSD);
-            if (kpiTotalEnvoisElem) kpiTotalEnvoisElem.innerText = displayFormat(totalEnvoisAvecFraisUSD);
-            if (kpiBeneficeEnvoisElem) kpiBeneficeEnvoisElem.innerText = displayFormat(totalFeesCollectesUSD);
-            if (kpiTotalRetraitsElem) kpiTotalRetraitsElem.innerText = displayFormat(totalRetraitsUSD);
-            if (kpiGainsRetraitsElem) kpiGainsRetraitsElem.innerText = displayFormat(totalGainsRetraitsUSD);
-            if (kpiSoldeGainsDispoElem) kpiSoldeGainsDispoElem.innerText = displayFormat(window.cachedSoldeGainsDispo);
-            if (kpiTotalApprovElem) kpiTotalApprovElem.innerText = displayFormat(totalApprovUSD);
-            if (kpiTotalRetraitsGainsElem) kpiTotalRetraitsGainsElem.innerText = displayFormat(totalRetraitsGainsUSD);
-            if (kpiSoldeNetElem) kpiSoldeNetElem.innerText = displayFormat(soldeNetCaisseGlobaleUSD);
+            document.getElementById('kpiTotalEnvoisBrut').innerText = displayFormat(totalEnvoisBrutUSD);
+            document.getElementById('kpiTotalEnvois').innerText = displayFormat(totalEnvoisAvecFraisUSD);
+            document.getElementById('kpiBeneficeEnvois').innerText = displayFormat(totalFeesCollectesUSD);
+            document.getElementById('kpiTotalRetraits').innerText = displayFormat(totalRetraitsUSD);
+            document.getElementById('kpiGainsRetraits').innerText = displayFormat(totalGainsRetraitsUSD);
+            document.getElementById('kpiSoldeGainsDispo').innerText = displayFormat(window.cachedSoldeGainsDispo);
+            document.getElementById('kpiTotalApprov').innerText = displayFormat(totalApprovUSD);
+            document.getElementById('kpiTotalRetraitsGains').innerText = displayFormat(totalRetraitsGainsUSD);
+            document.getElementById('kpiSoldeNet').innerText = displayFormat(soldeNetCaisseGlobaleUSD);
         }
 
         function openGainWithdrawalModal() {
@@ -1472,15 +1467,10 @@
                 const fcfaCalculated = window.cachedSoldeGainsDispo * window.USD_RATE;
                 modalSoldeGainsElem.innerText = window.cachedSoldeGainsDispo.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfaCalculated).toLocaleString() + ' FCFA)';
             }
-            const beneficiaryInput = document.getElementById('withdrawGainBeneficiary');
-            const amountInput = document.getElementById('withdrawGainAmount');
-            const commentInput = document.getElementById('withdrawGainComment');
-            const authInput = document.getElementById('withdrawGainAuthCode');
-            if (beneficiaryInput) beneficiaryInput.value = '';
-            if (amountInput) amountInput.value = '';
-            if (commentInput) commentInput.value = '';
-            if (authInput) authInput.value = '';
-            
+            document.getElementById('withdrawGainBeneficiary').value = '';
+            document.getElementById('withdrawGainAmount').value = '';
+            document.getElementById('withdrawGainComment').value = '';
+            document.getElementById('withdrawGainAuthCode').value = '';
             const modal = new bootstrap.Modal(document.getElementById('gainWithdrawalModal'));
             modal.show();
         }
@@ -1494,15 +1484,14 @@
             return 'N/A';
         }
 
+        // ---- Comptabilité (Grand Livre) ----
         function buildAccountingTable() {
             const tbody = document.getElementById('accountingTableBody');
             const printTbody = document.getElementById('printAccountingTableBody');
             const gainsTbody = document.getElementById('gainsHistoryTableBody');
             const printGenNode = document.getElementById('printGenerationDate');
             const printGenNode2 = document.getElementById('printGenerationDate2');
-            
             if(!tbody || !printTbody || !gainsTbody) return;
-
             if (printGenNode) printGenNode.innerText = new Date().toLocaleString('fr-FR');
             if (printGenNode2) printGenNode2.innerText = new Date().toLocaleString('fr-FR');
 
@@ -1522,16 +1511,13 @@
             transfersList.forEach(t => {
                 let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
                 if (rateUsed <= 0) rateUsed = 600;
-
                 let amtUSD = 0;
                 let feeUSD = 0;
-
                 if (t.amountUSD !== undefined) {
                     amtUSD = parseFloat(t.amountUSD) || 0;
                 } else {
                     amtUSD = (parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0) / rateUsed;
                 }
-
                 if (t.feesUSD !== undefined) {
                     feeUSD = parseFloat(t.feesUSD) || 0;
                 } else {
@@ -1542,7 +1528,6 @@
                     const senderDisplay = t.senderName ? t.senderName : (t.sender ? `${t.sender.firstname} ${t.sender.name}` : 'N/A');
                     const recipientDisplay = t.recipientName ? t.recipientName : (t.beneficiary ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A');
                     const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.agency : 'N/A');
-
                     unifiedLedger.push({
                         date: t.date || '--/--/----',
                         type: 'ENVOI',
@@ -1551,7 +1536,7 @@
                         childCreditor: recipientDisplay,
                         creditor: `${recipientDisplay} (🏁 ${targetLocation})`,
                         amountUSD: amtUSD,
-                        feesUSD: feeUSD, // On affiche les frais perçus sur l'envoi
+                        feesUSD: feeUSD,
                         status: t.status || 'En attente',
                         actingUser: getActingUser(t),
                         isEnvoi: true,
@@ -1564,17 +1549,13 @@
                     if (isDateInPeriod(wDate, window.currentTimeFilter)) {
                         const recipientDisplay = t.recipientName ? t.recipientName : (t.beneficiary ? `${t.beneficiary.firstname} ${t.beneficiary.name}` : 'N/A');
                         const targetLocation = t.targetDeskName || t.deskName || (t.beneficiary ? t.beneficiary.agency : 'N/A');
-                        
                         let wGainUSD = 0;
                         if (t.withdrawalFeesUSD !== undefined) {
                             wGainUSD = parseFloat(t.withdrawalFeesUSD) || 0;
                         } else if (t.withdrawalFees !== undefined) {
                             wGainUSD = parseFloat(t.withdrawalFees) / rateUsed;
                         }
-                        
-                        // Sur le retrait, on affiche le gain réel (frais d'envoi + frais de retrait)
                         let totalGainRetraitUSD = feeUSD + wGainUSD;
-
                         unifiedLedger.push({
                             date: wDate,
                             type: 'RETRAIT',
@@ -1583,7 +1564,7 @@
                             childCreditor: recipientDisplay,
                             creditor: `${recipientDisplay} (📍 ${targetLocation})`,
                             amountUSD: amtUSD,
-                            feesUSD: totalGainRetraitUSD, // Affichage du gain réel sur le retrait
+                            feesUSD: totalGainRetraitUSD,
                             status: 'Validé',
                             actingUser: getActingUser(t),
                             isRetrait: true,
@@ -1593,14 +1574,11 @@
                 }
             });
 
-            // Approvisionnements - Maintenant en USD source
             approvsList.forEach(a => {
                 if (isDateInPeriod(a.date, window.currentTimeFilter)) {
                     const actingUser = a.userName || a.actingUser || a.user || (currentUser ? currentUser.name : 'N/A');
                     let deskName = a.deskName || 'Guichet Général';
-                    
                     let appAmtUSD = parseFloat(a.amountUSD) || 0;
-
                     unifiedLedger.push({
                         date: a.date || '--/--/----',
                         type: 'APPROV',
@@ -1617,18 +1595,15 @@
                 }
             });
 
-            // Retraits de Gains
             gainsWithdrawalsList.forEach(gw => {
                 if (isDateInPeriod(gw.date, window.currentTimeFilter)) {
                     const actingUser = gw.userName || gw.actingUser || gw.beneficiary || (currentUser ? currentUser.name : 'N/A');
-                    
                     let gwAmtUSD = 0;
                     if (gw.amountUSD !== undefined) {
                         gwAmtUSD = parseFloat(gw.amountUSD) || 0;
                     } else {
                         gwAmtUSD = (parseFloat(gw.amount) || 0) / window.USD_RATE;
                     }
-
                     unifiedLedger.push({
                         date: gw.date,
                         type: 'RETRAIT_GAIN',
@@ -1648,7 +1623,6 @@
 
             let filteredLedger = unifiedLedger.filter(item => {
                 if (filterType !== 'ALL' && item.type !== filterType) return false;
-                
                 if (filterSearch !== '') {
                     const childText = item.childCreditor ? item.childCreditor.toLowerCase() : '';
                     const matchText = (item.code + ' ' + item.debitor + ' ' + item.creditor + ' ' + item.type + ' ' + childText + ' ' + (item.actingUser || '')).toLowerCase();
@@ -1665,7 +1639,6 @@
                 const rows = filteredLedger.map(item => {
                     let typeBadge = '';
                     let amountColor = 'text-dark';
-
                     if (item.type === 'ENVOI') {
                         typeBadge = '<span class="badge bg-primary"><i class="fa-solid fa-paper-plane me-1"></i>Envoi</span>';
                         amountColor = 'text-primary';
@@ -1679,17 +1652,13 @@
                         typeBadge = '<span class="badge bg-secondary text-white"><i class="fa-solid fa-money-bill-trend-up me-1"></i>Retrait Gain</span>';
                         amountColor = 'text-muted fw-italic';
                     }
-
                     let statusBadge = item.status === 'Retiré' || item.status === 'Validé' || item.status === 'Crédité' 
                         ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> ${item.status}</span>`
                         : `<span class="badge bg-secondary"><i class="fa-solid fa-clock"></i> ${item.status}</span>`;
-
                     let feesDisplay;
                     if (item.type === 'ENVOI') {
-                        // Pour les envois, on affiche les frais perçus
                         feesDisplay = item.feesUSD > 0 ? formatAmount(item.feesUSD) : '-';
                     } else if (item.type === 'RETRAIT' && item.t) {
-                        // Pour les retraits, on affiche le gain réel (frais d'envoi + frais de retrait)
                         let rateUsed = parseFloat(item.t.rate) || parseFloat(item.t.dollarRate) || window.USD_RATE || 600;
                         let wGainUSD = item.t.withdrawalFeesUSD !== undefined ? (parseFloat(item.t.withdrawalFeesUSD) || 0) : ((parseFloat(item.t.withdrawalFees) || 0) / rateUsed);
                         let feeUSD = item.t.feesUSD !== undefined ? (parseFloat(item.t.feesUSD) || 0) : ((parseFloat(item.t.feesFCFA) || parseFloat(item.t.fees) || 0) / rateUsed);
@@ -1698,7 +1667,6 @@
                     } else {
                         feesDisplay = item.feesUSD > 0 ? formatAmount(item.feesUSD) : '-';
                     }
-
                     return `
                         <tr>
                             <td>${item.date}</td>
@@ -1713,7 +1681,6 @@
                         </tr>
                     `;
                 }).join('');
-
                 tbody.innerHTML = rows;
                 printTbody.innerHTML = rows;
             }
@@ -1737,17 +1704,14 @@
                     `;
                 }).join('');
             }
-
             updatePrintSummary();
         }
 
         function updatePrintSummary() {
-            // Utilisation directe des valeurs sources stockées en USD
             const printFormat = (usdValue) => {
                 const fcfaCalculated = usdValue * window.USD_RATE;
                 return usdValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfaCalculated).toLocaleString() + ' FCFA)';
             };
-
             document.getElementById('printTotalEnvoisBrut').innerText = printFormat(window.kpiSourcesUSD.totalEnvoisBrut);
             document.getElementById('printTotalEnvoisAvecFrais').innerText = printFormat(window.kpiSourcesUSD.totalEnvoisAvecFrais);
             document.getElementById('printBeneficeEnvois').innerText = printFormat(window.kpiSourcesUSD.totalFeesCollectes);
@@ -1759,8 +1723,7 @@
             document.getElementById('printSoldeGainsDispo').innerText = printFormat(window.kpiSourcesUSD.soldeGainsDispo);
         }
 
-        // --- Fonction : Construction de la plaquette des guichets ---
-        // NOUVELLE VERSION AVEC LOGIQUE INTER-AGENCES ET FRAIS INCLUS DANS LE SOLDE
+        // ---- buildDeskSummary avec corrections de type et ajout des détails financiers par guichet ----
         function buildDeskSummary() {
             const container = document.getElementById('deskSummaryContainer');
             if (!container) return;
@@ -1780,47 +1743,67 @@
 
             const transfers = window.transfers || [];
             const approvs = window.approvs || [];
+            const settlements = window.settlements || [];
+
+            // Fonction formatAmount sécurisée
+            const formatAmount = (usd) => {
+                if (usd === undefined || usd === null || isNaN(usd)) usd = 0;
+                const fcfa = usd * window.USD_RATE;
+                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
+                       + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            };
 
             let deskCards = desks.map(desk => {
-                const deskId = desk.id;
+                // FORCER l'ID en chaîne
+                const deskId = String(desk.id);
                 const deskName = desk.name;
                 const fullDeskName = desk.country ? `${deskName} (${desk.country})` : deskName;
 
-                // ---- 1. Approvisionnements ----
+                // Approvisionnements validés (Approv initial)
                 const approvsForDesk = approvs.filter(a => {
                     if (!a || a.status !== 'Validé') return false;
-                    return a.deskId === deskId || a.deskName === deskName || a.deskName === fullDeskName;
+                    return String(a.deskId) === deskId || a.deskName === deskName || a.deskName === fullDeskName;
                 });
                 const totalApprovUSD = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amountUSD) || 0), 0);
 
-                // ---- 2. Envois émis (par ce guichet) ----
+                // Envois émis (par ce guichet) – affichés mais non utilisés dans le solde
                 const transfersSent = transfers.filter(t => {
                     if (!t) return false;
                     const senderId = t.senderDeskId || t.sender?.deskId;
                     const senderName = t.senderDeskName || t.sender?.agency || '';
-                    return senderId === deskId || senderName === deskName || senderName === fullDeskName;
+                    return String(senderId) === deskId || senderName === deskName || senderName === fullDeskName;
                 });
-                const totalEnvoisEmisUSD = transfersSent.reduce((sum, t) => {
-                    return sum + (parseFloat(t.amountUSD) || 0);
-                }, 0);
+                const totalEnvoisEmisUSD = transfersSent.reduce((sum, t) => sum + (parseFloat(t.amountUSD) || 0), 0);
 
-                // ---- 3. Retraits reçus (par ce guichet) ----
+                // Retraits reçus (par ce guichet) – déjà retirés
                 const transfersReceived = transfers.filter(t => {
                     if (!t || t.status !== 'Retiré') return false;
                     const targetId = t.targetDeskId || t.beneficiary?.deskId || t.deskId;
                     const targetName = t.targetDeskName || t.beneficiary?.agency || t.deskName || '';
-                    return targetId === deskId || targetName === deskName || targetName === fullDeskName;
+                    return String(targetId) === deskId || targetName === deskName || targetName === fullDeskName;
                 });
-                const totalRetraitsRecusUSD = transfersReceived.reduce((sum, t) => {
-                    return sum + (parseFloat(t.amountUSD) || 0);
-                }, 0);
+                const totalRetraitsRecusUSD = transfersReceived.reduce((sum, t) => sum + (parseFloat(t.amountUSD) || 0), 0);
 
-                // ---- 4. Frais inter‑agences (uniquement si l'émetteur est différent) ----
+                // Retraits en attente (envois non retirés destinés à ce guichet, provenant d'autres guichets)
+                const transfersEnAttente = transfers.filter(t => {
+                    if (!t || t.status === 'Retiré') return false;
+                    const targetId = t.targetDeskId || t.beneficiary?.deskId || t.deskId;
+                    const targetName = t.targetDeskName || t.beneficiary?.agency || t.deskName || '';
+                    const isTarget = String(targetId) === deskId || targetName === deskName || targetName === fullDeskName;
+                    if (!isTarget) return false;
+                    const senderId = t.senderDeskId || t.sender?.deskId;
+                    const senderName = t.senderDeskName || t.sender?.agency || '';
+                    const isOther = (senderId && String(senderId) !== deskId) || (senderName && senderName !== deskName && senderName !== fullDeskName);
+                    return isOther;
+                });
+                const totalEnAttenteUSD = transfersEnAttente.reduce((sum, t) => sum + (parseFloat(t.amountUSD) || 0), 0);
+
+                // Frais inter‑agences sur les retraits déjà effectués
                 let totalFraisInterUSD = 0;
                 transfersReceived.forEach(t => {
                     const senderId = t.senderDeskId || t.sender?.deskId;
                     const senderName = t.senderDeskName || t.sender?.agency || '';
-                    const isInterAgency = (senderId && senderId !== deskId) || 
+                    const isInterAgency = (senderId && String(senderId) !== deskId) || 
                                           (senderName && senderName !== deskName && senderName !== fullDeskName);
                     if (isInterAgency) {
                         let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
@@ -1830,36 +1813,85 @@
                     }
                 });
 
-                // ---- 5. Solde réel ----
-                const soldeUSD = totalApprovUSD - totalEnvoisEmisUSD + totalRetraitsRecusUSD + totalFraisInterUSD;
+                // Montant total à réclamer = retraits reçus + frais inter
+                const montantAReclamerUSD = totalRetraitsRecusUSD + totalFraisInterUSD;
 
-                const formatAmount = (usd) => {
-                    const fcfa = usd * window.USD_RATE;
-                    return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
-                           + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
-                };
+                // Filtrage des settlements avec comparaison en chaîne
+                const deskSettlements = settlements.filter(s => String(s.deskId) === deskId);
+                const totalVerseUSD = deskSettlements.reduce((sum, s) => sum + (parseFloat(s.amountUSD) || 0), 0);
+                const resteAReclamerUSD = montantAReclamerUSD - totalVerseUSD;
 
-                const balanceClass = soldeUSD > 0 ? 'desk-balance-positive' : 
-                                    (soldeUSD < 0 ? 'desk-balance-negative' : 'desk-balance-neutral');
+                // ---- MODIFICATION : Solde réel = Approv - retraits reçus + déjà versé (frais exclus) ----
+                const soldeReelUSD = totalApprovUSD - totalRetraitsRecusUSD + totalVerseUSD;
+
+                // ---- CORRECTION : Aucun frais sur les envois ----
+                // "Avec Frais" pour les envois = Total Brut (puisqu'il n'y a pas de frais sur les envois)
+                const totalAvecFraisUSD = totalEnvoisEmisUSD;
+                // Marge brute collectée sur les envois = 0 (car les frais sont perçus au retrait, pas à l'envoi)
+                const margeBruteEnvoisUSD = 0;
+                const soldeGainsDispoUSD = Math.max(0, totalFraisInterUSD - totalVerseUSD);
+
+                // Récupération des agences émettrices pour l'affichage
+                const agencesEmetteurs = {};
+                transfersReceived.forEach(t => {
+                    const senderName = t.senderDeskName || t.sender?.agency || 'Inconnue';
+                    if (!agencesEmetteurs[senderName]) agencesEmetteurs[senderName] = 0;
+                    agencesEmetteurs[senderName] += (parseFloat(t.amountUSD) || 0);
+                });
+                const agencesList = Object.entries(agencesEmetteurs)
+                    .map(([nom, montant]) => `${nom} (${montant.toFixed(2)} USD)`)
+                    .join(', ');
+
+                const balanceClass = soldeReelUSD > 0 ? 'desk-balance-positive' : 
+                                    (soldeReelUSD < 0 ? 'desk-balance-negative' : 'desk-balance-neutral');
 
                 return {
                     id: deskId,
                     name: deskName,
                     fullName: fullDeskName,
-                    totalApprovFormatted: formatAmount(totalApprovUSD),
-                    totalEnvoisFormatted: formatAmount(totalEnvoisEmisUSD),
-                    totalRetraitsFormatted: formatAmount(totalRetraitsRecusUSD),
-                    totalFraisFormatted: formatAmount(totalFraisInterUSD),
-                    soldeFormatted: formatAmount(soldeUSD),
+                    totalApprovUSD,
+                    totalEnvoisEmisUSD,
+                    totalRetraitsRecusUSD,
+                    totalEnAttenteUSD,
+                    totalFraisInterUSD,
+                    montantAReclamerUSD,
+                    totalVerseUSD,
+                    resteAReclamerUSD,
+                    soldeReelUSD,
+                    totalAvecFraisUSD,
+                    margeBruteEnvoisUSD,
+                    soldeGainsDispoUSD,
+                    agencesList: agencesList || 'Aucun retrait inter-agences',
+                    deskSettlements,
                     approvCount: approvsForDesk.length,
                     sentCount: transfersSent.length,
                     receivedCount: transfersReceived.length,
-                    solde: soldeUSD
+                    enAttenteCount: transfersEnAttente.length,
+                    balanceClass: balanceClass,
+                    // Formatés
+                    totalApprovFormatted: formatAmount(totalApprovUSD),
+                    totalEnvoisFormatted: formatAmount(totalEnvoisEmisUSD),
+                    totalRetraitsFormatted: formatAmount(totalRetraitsRecusUSD),
+                    totalEnAttenteFormatted: formatAmount(totalEnAttenteUSD),
+                    totalFraisFormatted: formatAmount(totalFraisInterUSD),
+                    montantAReclamerFormatted: formatAmount(montantAReclamerUSD),
+                    totalVerseFormatted: formatAmount(totalVerseUSD),
+                    resteAReclamerFormatted: formatAmount(resteAReclamerUSD),
+                    soldeReelFormatted: formatAmount(soldeReelUSD),
+                    totalAvecFraisFormatted: formatAmount(totalAvecFraisUSD),
+                    margeBruteEnvoisFormatted: formatAmount(margeBruteEnvoisUSD),
+                    soldeGainsDispoFormatted: formatAmount(soldeGainsDispoUSD)
                 };
             });
 
+            // --- Remplir le cache avec des clés en chaîne ---
+            window.deskCache = {};
+            deskCards.forEach(d => {
+                window.deskCache[String(d.id)] = d;
+            });
+
             // Tri décroissant par solde
-            deskCards.sort((a, b) => b.solde - a.solde);
+            deskCards.sort((a, b) => b.soldeReelUSD - a.soldeReelUSD);
 
             let html = '';
             deskCards.forEach(desk => {
@@ -1871,32 +1903,91 @@
                                 <span class="badge bg-light text-dark border"><i class="fa-solid fa-store me-1"></i>${desk.id || 'N/A'}</span>
                             </div>
                             <hr class="my-2">
+
+                            <!-- Flux Envois Globaux -->
+                            <div class="fw-bold text-primary mb-1" style="font-size: 0.85rem;">📊 Flux Envois Globaux</div>
                             <div class="stat-item d-flex justify-content-between">
-                                <span class="stat-label"><i class="fa-solid fa-wallet me-1 text-warning"></i>Approv.</span>
+                                <span class="stat-label">Total Brut :</span>
+                                <span class="stat-value">${desk.totalEnvoisFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label">Avec Frais :</span>
+                                <span class="stat-value">${desk.totalAvecFraisFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label">Marge brute collectée :</span>
+                                <span class="stat-value">${desk.margeBruteEnvoisFormatted}</span>
+                            </div>
+
+                            <hr class="my-1">
+
+                            <!-- Flux Retraits & Gains -->
+                            <div class="fw-bold text-danger mb-1" style="font-size: 0.85rem;">💳 Flux Retraits & Gains</div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label">Total Retraits :</span>
+                                <span class="stat-value">${desk.totalRetraitsFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label">Gains / Retrait :</span>
+                                <span class="stat-value">${desk.totalFraisFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label">Solde Gains Dispo :</span>
+                                <span class="stat-value">${desk.soldeGainsDispoFormatted}</span>
+                            </div>
+
+                            <hr class="my-1">
+
+                            <!-- Trésorerie & Solde Réel Caisse -->
+                            <div class="fw-bold text-success mb-1" style="font-size: 0.85rem;">💰 Trésorerie & Solde Réel Caisse</div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label">Approvisionnements :</span>
                                 <span class="stat-value">${desk.totalApprovFormatted}</span>
                             </div>
                             <div class="stat-item d-flex justify-content-between">
-                                <span class="stat-label"><i class="fa-solid fa-paper-plane me-1 text-danger"></i>Envois émis</span>
-                                <span class="stat-value text-danger">-${desk.totalEnvoisFormatted}</span>
+                                <span class="stat-label">Retraits de Gains Effectués :</span>
+                                <span class="stat-value">${desk.totalVerseFormatted}</span>
                             </div>
                             <div class="stat-item d-flex justify-content-between">
-                                <span class="stat-label"><i class="fa-solid fa-hand-holding-dollar me-1 text-success"></i>Retraits reçus</span>
-                                <span class="stat-value text-success">+${desk.totalRetraitsFormatted}</span>
+                                <span class="stat-label">Solde Net En Caisse :</span>
+                                <span class="stat-value">${desk.soldeReelFormatted}</span>
                             </div>
-                            <div class="stat-item d-flex justify-content-between">
-                                <span class="stat-label"><i class="fa-solid fa-coins me-1 text-primary"></i>Frais inter‑agences</span>
-                                <span class="stat-value">${desk.totalFraisFormatted}</span>
-                            </div>
+
                             <hr class="my-1">
+
+                            <!-- Section réclamation / régularisation -->
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label"><i class="fa-solid fa-money-bill-wave me-1 text-info"></i>À réclamer</span>
+                                <span class="stat-value fw-bold">${desk.montantAReclamerFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label"><i class="fa-solid fa-check-circle me-1 text-success"></i>Déjà versé</span>
+                                <span class="stat-value text-success">${desk.totalVerseFormatted}</span>
+                            </div>
+                            <div class="stat-item d-flex justify-content-between">
+                                <span class="stat-label"><i class="fa-solid fa-clock me-1 text-warning"></i>Reste à réclamer</span>
+                                <span class="stat-value text-warning">${desk.resteAReclamerFormatted}</span>
+                            </div>
+
+                            <hr class="my-1">
+
                             <div class="stat-item d-flex justify-content-between fw-bold">
                                 <span class="stat-label">📊 Solde Réel</span>
-                                <span class="stat-value ${desk.balanceClass}">${desk.soldeFormatted}</span>
+                                <span class="stat-value ${desk.balanceClass}">${desk.soldeReelFormatted}</span>
                             </div>
                             <div class="stat-item d-flex justify-content-between small text-muted mt-1">
                                 <span>${desk.approvCount} approv.</span>
                                 <span>${desk.sentCount} envois</span>
                                 <span>${desk.receivedCount} retraits</span>
+                                <span>${desk.enAttenteCount} en attente</span>
                             </div>
+                            ${desk.montantAReclamerUSD > 0 ? `
+                            <div class="mt-2">
+                                <button class="btn btn-outline-primary btn-sm w-100" onclick="openSettlementModal('${desk.id}')">
+                                    <i class="fa-solid fa-handshake me-1"></i>Régulariser
+                                </button>
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -1904,14 +1995,306 @@
 
             container.innerHTML = html;
 
-            // Mise à jour de la base de données (ledger_balances) avec le solde en FCFA
-            deskCards.forEach(desk => {
-                const deskId = desk.id;
-                if (deskId && window.updateDeskBalance) {
-                    const soldeFCFA = desk.solde * window.USD_RATE;
-                    window.updateDeskBalance(deskId, soldeFCFA);
+            // Ne pas mettre à jour ledger_balances ici pour éviter la boucle
+        }
+
+        // ---- openSettlementModal avec conversion en chaîne et historique masqué ----
+        let currentSettlementDeskId = null;
+        let historyVisible = false;
+
+        function openSettlementModal(deskId) {
+            currentSettlementDeskId = String(deskId);
+            let desk = window.deskCache[currentSettlementDeskId];
+            if (!desk) {
+                desk = getDeskData(currentSettlementDeskId);
+                if (!desk) {
+                    alert("Guichet introuvable. Veuillez rafraîchir la page.");
+                    return;
+                }
+            }
+
+            const modalContent = document.getElementById('settlementModalContent');
+            const formatAmount = (usd) => {
+                if (usd === undefined || usd === null || isNaN(usd)) usd = 0;
+                const fcfa = usd * window.USD_RATE;
+                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
+                       + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+            };
+
+            let historyHtml = '';
+            if (desk.deskSettlements && desk.deskSettlements.length > 0) {
+                historyHtml = '<ul class="list-group list-group-flush small">';
+                desk.deskSettlements.forEach(s => {
+                    historyHtml += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span>${s.date || '--/--/----'}</span>
+                                <span class="badge bg-info text-dark ms-2">${formatAmount(s.amountUSD)}</span>
+                                <span class="text-muted ms-2">${s.comment || ''}</span>
+                            </div>
+                            <button class="btn btn-danger btn-sm" onclick="deleteSettlement('${deskId}', '${s.id}')">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </li>
+                    `;
+                });
+                historyHtml += '</ul>';
+            } else {
+                historyHtml = '<p class="text-muted text-center">Aucun versement enregistré.</p>';
+            }
+
+            const toggleHistoryBtn = `
+                <button class="btn btn-outline-secondary btn-sm mt-2" onclick="toggleHistoryVisibility()">
+                    <i class="fa-solid fa-eye me-1"></i> <span id="historyToggleText">Afficher</span> l'historique
+                </button>
+            `;
+
+            const historyContainer = `
+                <div id="settlementHistoryContainer" style="display: none; margin-top: 10px;">
+                    <hr>
+                    <h6 class="fw-bold"><i class="fa-solid fa-history me-2"></i>Historique des versements</h6>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${historyHtml}
+                    </div>
+                </div>
+            `;
+
+            modalContent.innerHTML = `
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <h6 class="fw-bold"><i class="fa-solid fa-arrow-right me-2 text-primary"></i>Montant total à réclamer</h6>
+                            <p class="fs-4 fw-bold text-primary">${desk.montantAReclamerFormatted}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <h6 class="fw-bold"><i class="fa-solid fa-check-circle me-2 text-success"></i>Déjà versé</h6>
+                            <p class="fs-4 fw-bold text-success">${desk.totalVerseFormatted}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="p-3 bg-warning bg-opacity-10 rounded-3">
+                            <h6 class="fw-bold"><i class="fa-solid fa-clock me-2 text-warning"></i>Reste à réclamer</h6>
+                            <p class="fs-4 fw-bold text-warning">${desk.resteAReclamerFormatted}</p>
+                        </div>
+                    </div>
+                    ${desk.agencesList ? `<p><i class="fa-solid fa-building me-1"></i> <strong>Agences émettrices :</strong> ${desk.agencesList}</p>` : ''}
+                    <div class="col-12">
+                        <hr>
+                        <h6 class="fw-bold"><i class="fa-solid fa-pen me-2"></i>Effectuer un versement</h6>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">USD</span>
+                            <input type="number" id="settlementAmount" class="form-control" placeholder="Montant à verser" step="0.01" min="0.01">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text"><i class="fa-solid fa-comment"></i></span>
+                            <input type="text" id="settlementComment" class="form-control" placeholder="Commentaire (optionnel)">
+                        </div>
+                        ${toggleHistoryBtn}
+                        ${historyContainer}
+                    </div>
+                </div>
+            `;
+
+            historyVisible = false;
+            const modal = new bootstrap.Modal(document.getElementById('settlementModal'));
+            modal.show();
+        }
+
+        window.toggleHistoryVisibility = function() {
+            const container = document.getElementById('settlementHistoryContainer');
+            const toggleText = document.getElementById('historyToggleText');
+            if (container) {
+                historyVisible = !historyVisible;
+                container.style.display = historyVisible ? 'block' : 'none';
+                if (toggleText) {
+                    toggleText.innerText = historyVisible ? 'Masquer' : 'Afficher';
+                }
+            }
+        };
+
+        window.deleteSettlement = function(deskId, settlementId) {
+            if (!confirm("Supprimer ce versement ? Cette action est irréversible.")) return;
+
+            if (window.settlements) {
+                window.settlements = window.settlements.filter(s => s.id !== settlementId);
+                localStorage.setItem('ledger_settlements_cache', JSON.stringify(window.settlements));
+            }
+
+            const db = window.db;
+            if (db) {
+                import('https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js').then(({ ref, remove }) => {
+                    const settlementRef = ref(db, `ledger_settlements/${settlementId}`);
+                    remove(settlementRef)
+                        .then(() => {
+                            const modalEl = document.getElementById('settlementModal');
+                            const modal = bootstrap.Modal.getInstance(modalEl);
+                            if (modal) modal.hide();
+                            buildDeskSummary();
+                            setTimeout(() => {
+                                openSettlementModal(deskId);
+                            }, 300);
+                        })
+                        .catch(err => {
+                            console.error("Erreur lors de la suppression Firebase :", err);
+                            alert("Erreur lors de la suppression.");
+                        });
+                });
+            } else {
+                const modalEl = document.getElementById('settlementModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                buildDeskSummary();
+                setTimeout(() => {
+                    openSettlementModal(deskId);
+                }, 300);
+            }
+        };
+
+        function getDeskData(deskId) {
+            deskId = String(deskId);
+            const desks = JSON.parse(localStorage.getItem('ledger_config') || '{}').desks || [];
+            const desk = desks.find(d => String(d.id) === deskId);
+            if (!desk) return null;
+            const transfers = window.transfers || [];
+            const approvs = window.approvs || [];
+            const settlements = window.settlements || [];
+            const deskName = desk.name;
+            const fullDeskName = desk.country ? `${deskName} (${desk.country})` : deskName;
+
+            const approvsForDesk = approvs.filter(a => a.status === 'Validé' && (String(a.deskId) === deskId || a.deskName === deskName || a.deskName === fullDeskName));
+            const totalApprovUSD = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amountUSD) || 0), 0);
+
+            const transfersReceived = transfers.filter(t => t.status === 'Retiré' && (String(t.targetDeskId) === deskId || String(t.beneficiary?.deskId) === deskId || String(t.deskId) === deskId || t.targetDeskName === deskName || t.targetDeskName === fullDeskName || t.deskName === deskName || t.deskName === fullDeskName));
+            const totalRetraitsRecusUSD = transfersReceived.reduce((sum, t) => sum + (parseFloat(t.amountUSD) || 0), 0);
+
+            let totalFraisInterUSD = 0;
+            transfersReceived.forEach(t => {
+                const senderId = t.senderDeskId || t.sender?.deskId;
+                const senderName = t.senderDeskName || t.sender?.agency || '';
+                const isInterAgency = (senderId && String(senderId) !== deskId) || (senderName && senderName !== deskName && senderName !== fullDeskName);
+                if (isInterAgency) {
+                    let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
+                    let feeUSD = t.feesUSD !== undefined ? (parseFloat(t.feesUSD) || 0) : ((parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0) / rateUsed);
+                    let wGainUSD = t.withdrawalFeesUSD !== undefined ? (parseFloat(t.withdrawalFeesUSD) || 0) : ((parseFloat(t.withdrawalFees) || 0) / rateUsed);
+                    totalFraisInterUSD += (feeUSD + wGainUSD);
                 }
             });
+
+            const montantAReclamerUSD = totalRetraitsRecusUSD + totalFraisInterUSD;
+            const deskSettlements = settlements.filter(s => String(s.deskId) === deskId);
+            const totalVerseUSD = deskSettlements.reduce((sum, s) => sum + (parseFloat(s.amountUSD) || 0), 0);
+            const resteAReclamerUSD = montantAReclamerUSD - totalVerseUSD;
+            const soldeReelUSD = totalApprovUSD - totalRetraitsRecusUSD + totalVerseUSD;
+
+            const agencesEmetteurs = {};
+            transfersReceived.forEach(t => {
+                const senderName = t.senderDeskName || t.sender?.agency || 'Inconnue';
+                if (!agencesEmetteurs[senderName]) agencesEmetteurs[senderName] = 0;
+                agencesEmetteurs[senderName] += (parseFloat(t.amountUSD) || 0);
+            });
+            const agencesList = Object.entries(agencesEmetteurs)
+                .map(([nom, montant]) => `${nom} (${montant.toFixed(2)} USD)`)
+                .join(', ');
+
+            return {
+                id: deskId,
+                name: deskName,
+                fullName: fullDeskName,
+                totalApprovUSD,
+                totalRetraitsRecusUSD,
+                totalFraisInterUSD,
+                montantAReclamerUSD,
+                totalVerseUSD,
+                resteAReclamerUSD,
+                soldeReelUSD,
+                agencesList: agencesList || 'Aucun retrait inter-agences',
+                deskSettlements,
+                montantAReclamerFormatted: (() => {
+                    const fcfa = montantAReclamerUSD * window.USD_RATE;
+                    return montantAReclamerUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+                })(),
+                totalVerseFormatted: (() => {
+                    const fcfa = totalVerseUSD * window.USD_RATE;
+                    return totalVerseUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+                })(),
+                resteAReclamerFormatted: (() => {
+                    const fcfa = resteAReclamerUSD * window.USD_RATE;
+                    return resteAReclamerUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
+                })()
+            };
+        }
+
+        window.processSettlement = function() {
+            const amountInput = document.getElementById('settlementAmount');
+            const commentInput = document.getElementById('settlementComment');
+            const amountUSD = parseFloat(amountInput.value);
+            const comment = commentInput.value.trim() || 'Versement Fiat';
+
+            if (!currentSettlementDeskId) {
+                alert("Erreur : aucun guichet sélectionné.");
+                return;
+            }
+            if (isNaN(amountUSD) || amountUSD <= 0) {
+                alert("Veuillez saisir un montant valide (supérieur à 0).");
+                return;
+            }
+
+            let desk = window.deskCache[currentSettlementDeskId];
+            if (!desk) {
+                desk = getDeskData(currentSettlementDeskId);
+                if (!desk) {
+                    alert("Guichet introuvable. Veuillez rafraîchir la page.");
+                    return;
+                }
+            }
+
+            if (amountUSD > desk.resteAReclamerUSD) {
+                alert(`Le montant saisi (${amountUSD.toFixed(2)} USD) dépasse le reste à réclamer (${desk.resteAReclamerUSD.toFixed(2)} USD).`);
+                return;
+            }
+
+            const settlementId = 'SET-' + Date.now();
+            const settlementItem = {
+                id: settlementId,
+                deskId: String(currentSettlementDeskId),
+                date: new Date().toLocaleString('fr-FR'),
+                amountUSD: amountUSD,
+                comment: comment,
+                status: 'Validé'
+            };
+
+            if (!window.settlements) window.settlements = [];
+            window.settlements.push(settlementItem);
+            localStorage.setItem('ledger_settlements_cache', JSON.stringify(window.settlements));
+
+            const modalEl = document.getElementById('settlementModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            showSuccessOverlay();
+            buildDeskSummary();
+
+            const db = window.db;
+            if (db) {
+                import('https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js').then(({ ref, set }) => {
+                    set(ref(db, `ledger_settlements/${settlementId}`), settlementItem)
+                        .catch(err => {
+                            console.error("Erreur d'enregistrement Firebase du versement :", err);
+                        });
+                });
+            } else {
+                console.warn("Firebase non disponible, versement sauvegardé en local.");
+            }
+        };
+
+        function showSuccessOverlay() {
+            const overlay = document.getElementById('successOverlay');
+            overlay.classList.add('show');
+            setTimeout(() => {
+                overlay.classList.remove('show');
+            }, 2000);
         }
 
         window.onload = function() { 
@@ -1919,9 +2302,7 @@
             setTimeout(() => buildDeskSummary(), 500);
         };
 
-        // --- LOGIQUE PWA & BOUTON D'INSTALLATION INTELLIGENT ---
         let deferredPrompt;
-
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
@@ -1929,23 +2310,17 @@
                     .catch(err => console.error('Échec de l\'enregistrement du Service Worker :', err));
             });
         }
-
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             const installContainer = document.getElementById('pwaInstallContainer');
-            if (installContainer) {
-                installContainer.style.display = 'block';
-            }
+            if (installContainer) installContainer.style.display = 'block';
         });
-
         document.addEventListener('click', function(e) {
             if (e.target && e.target.id === 'pwaInstallBtn' || (e.target.closest && e.target.closest('#pwaInstallBtn'))) {
                 if (e) e.preventDefault();
                 if (!deferredPrompt) return;
-
                 deferredPrompt.prompt();
-
                 deferredPrompt.userChoice.then((choiceResult) => {
                     if (choiceResult.outcome === 'accepted') {
                         console.log('L\'utilisateur a accepté l\'installation de AFRI-LINK LEDGER');
@@ -1958,18 +2333,14 @@
                 });
             }
         });
-
         if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
             const installContainer = document.getElementById('pwaInstallContainer');
             if (installContainer) installContainer.style.display = 'none';
         }
-
         window.addEventListener('appinstalled', (evt) => {
             console.log('AFRI-LINK LEDGER a été installée avec succès sur le système.');
             const installContainer = document.getElementById('pwaInstallContainer');
-            if (installContainer) {
-                installContainer.style.display = 'none';
-            }
+            if (installContainer) installContainer.style.display = 'none';
             deferredPrompt = null;
         });
     </script>
