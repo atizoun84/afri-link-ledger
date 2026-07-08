@@ -666,6 +666,31 @@
             color: #212529;
             font-style: normal;
         }
+        
+        /* --- Date/Time picker side by side --- */
+        .datetime-picker-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .datetime-picker-group .form-group {
+            flex: 1 1 0;
+            min-width: 120px;
+        }
+        .datetime-picker-group .form-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 2px;
+        }
+        .datetime-picker-group .form-group input {
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #dee2e6;
+            background-color: white;
+        }
     </style>
     
     <script>
@@ -788,7 +813,10 @@
                                 </div>
                                 <div class="col-md-8">
                                     <label class="form-label small fw-bold" id="searchInputLabel">Code Secret Confidentiel</label>
-                                    <input type="text" id="searchInput" class="form-control form-control-lg text-center font-monospace fw-bold" placeholder="EX: A1B2C3" style="letter-spacing: 4px;" required>
+                                    <!-- Conteneur pour le champ de recherche (sera remplacé dynamiquement) -->
+                                    <div id="searchInputContainer">
+                                        <input type="text" id="searchInput" class="form-control form-control-lg text-center font-monospace fw-bold" placeholder="EX: A1B2C3" style="letter-spacing: 4px;" required>
+                                    </div>
                                 </div>
                                 <div class="col-md-12 mt-3">
                                     <button type="submit" class="btn btn-wa w-100 py-3">
@@ -885,7 +913,7 @@
                         <!-- Affichage du solde disponible du guichet -->
                         <div class="alert alert-info text-center mb-3" id="balanceDisplayContainer">
                             <i class="fa-solid fa-wallet me-2"></i>
-                            <span>Solde disponible pour ce guichet : </span>
+                            <span>Montant restant de l'approvisionnement : </span>
                             <strong id="deskBalanceDisplay">0 USD (0 FCFA)</strong>
                         </div>
 
@@ -1125,7 +1153,7 @@
         let currentDeskId = 'global';
         let desks = [];
 
-        // Fonctions de gestion des soldes des guichets
+        // Fonctions de gestion des soldes des guichets (stockés)
         function getDeskBalance(deskId) {
             if (!deskId) return 0;
             return ledgerBalances[deskId] || 0;
@@ -1148,25 +1176,67 @@
             updateSupplyPlaquette();
         }
 
-        // Fonction pour mettre à jour l'affichage du solde dans l'interface
+        // --- NOUVELLE FONCTION : Calcul dynamique du solde restant de l'approvisionnement ---
+        function computeSupplyBalance(deskId) {
+            if (!deskId) return 0;
+            
+            // 1. Somme des approvisionnements validés pour ce guichet (en FCFA)
+            const approvTotalFCFA = ledgerSupply
+                .filter(item => {
+                    if (item.status !== 'Validé') return false;
+                    // Correspondance par ID ou par nom
+                    const matchId = item.deskId && item.deskId === deskId;
+                    const desk = desks.find(d => d.id === deskId);
+                    const matchName = item.deskName && desk && item.deskName === desk.name;
+                    return matchId || matchName;
+                })
+                .reduce((sum, item) => {
+                    // Utiliser amountFCFA s'il existe, sinon calculer à partir de amountUSD
+                    if (item.amountFCFA) return sum + parseFloat(item.amountFCFA);
+                    if (item.amountUSD) return sum + (parseFloat(item.amountUSD) * USD_RATE);
+                    return sum;
+                }, 0);
+            
+            // 2. Somme des retraits effectués par ce guichet (transfers avec status 'Retiré' et beneficiary.agencyId == deskId)
+            const retraitsTotalFCFA = transfers
+                .filter(t => {
+                    if (t.status !== 'Retiré') return false;
+                    const beneficiaryAgencyId = t.beneficiary?.agencyId || t.targetDeskId || '';
+                    return beneficiaryAgencyId === deskId;
+                })
+                .reduce((sum, t) => {
+                    // Utiliser amountUSD comme source, puis convertir en FCFA
+                    if (t.amountUSD) {
+                        return sum + (parseFloat(t.amountUSD) * USD_RATE);
+                    } else if (t.amountFCFA) {
+                        return sum + parseFloat(t.amountFCFA);
+                    }
+                    return sum;
+                }, 0);
+            
+            const soldeFCFA = approvTotalFCFA - retraitsTotalFCFA;
+            return Math.max(0, soldeFCFA); // ne pas afficher négatif
+        }
+
+        // Fonction pour mettre à jour l'affichage du solde dans l'interface (utilise le calcul dynamique)
         function updateBalanceDisplay(deskId) {
-            const balance = getDeskBalance(deskId);
-            const balanceUSD = balance / USD_RATE;
+            const balanceFCFA = computeSupplyBalance(deskId);
+            const balanceUSD = balanceFCFA / USD_RATE;
             const displayElement = document.getElementById('deskBalanceDisplay');
             if (displayElement) {
                 displayElement.innerText = balanceUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
-                    ' USD (' + Math.round(balance).toLocaleString() + ' FCFA)';
+                    ' USD (' + Math.round(balanceFCFA).toLocaleString() + ' FCFA)';
             }
         }
 
-        // Écoute des soldes depuis Firebase
+        // Écoute des soldes depuis Firebase (pour compatibilité et mise à jour du cache)
         onValue(ref(db, 'ledger_balances'), (snapshot) => {
             const data = snapshot.val() || {};
             ledgerBalances = data;
             localStorage.setItem('ledger_balances', JSON.stringify(data));
             balancesReceived = true;
             checkFirstLoadComplete();
-            // Mettre à jour l'affichage du solde si un transfert est actif
+            // Mettre à jour l'affichage du solde si un transfert est actif (avec le calcul dynamique)
             if (currentActiveTransfer) {
                 const deskId = currentActiveTransfer.beneficiary?.agencyId || currentActiveTransfer.targetDeskId;
                 if (deskId) {
@@ -1303,6 +1373,13 @@
             updateSupplyPlaquette();
             transfersReceived = true;
             checkFirstLoadComplete();
+            // Si un transfert est actif, mettre à jour le solde
+            if (currentActiveTransfer) {
+                const deskId = currentActiveTransfer.beneficiary?.agencyId || currentActiveTransfer.targetDeskId;
+                if (deskId) {
+                    updateBalanceDisplay(deskId);
+                }
+            }
         });
 
         // Écouteurs synchronisés en temps réel
@@ -1318,6 +1395,13 @@
             supplyReceived = true;
             checkFirstLoadComplete();
             updateSupplyPlaquette();
+            // Si un transfert est actif, mettre à jour le solde
+            if (currentActiveTransfer) {
+                const deskId = currentActiveTransfer.beneficiary?.agencyId || currentActiveTransfer.targetDeskId;
+                if (deskId) {
+                    updateBalanceDisplay(deskId);
+                }
+            }
         });
 
         const ledgerTransfersRef = ref(db, "ledger_transfers");
@@ -1348,7 +1432,7 @@
             if (deskId === 'global') {
                 // Mode global : tout agréger
                 const validSupply = ledgerSupply.filter(item => item.status === 'Validé');
-                approvFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                approvFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amountFCFA) || 0), 0);
                 
                 // Utiliser amountUSD comme source pour les envois
                 envoisEmisFCFA = transfers.reduce((sum, t) => {
@@ -1388,7 +1472,7 @@
                     const matchName = a.deskName && a.deskName === deskName;
                     return matchId || matchName;
                 });
-                approvFCFA = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+                approvFCFA = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amountFCFA) || 0), 0);
 
                 // Envois émis par ce guichet (expéditeur)
                 const sentTransfers = transfers.filter(t => {
@@ -1436,7 +1520,7 @@
                 totalTransferCount = sentTransfers.length + receivedTransfers.length;
             }
 
-            // Calcul du solde du guichet (en FCFA)
+            // Calcul du solde du guichet (en FCFA) pour la plaquette (conservé tel quel)
             const soldeFCFA = approvFCFA + retraitsRecusFCFA - envoisEmisFCFA;
 
             return {
@@ -1533,39 +1617,108 @@
         document.getElementById('searchMethod').addEventListener('change', function() {
             const method = this.value;
             const inputLabel = document.getElementById('searchInputLabel');
-            const searchInput = document.getElementById('searchInput');
+            const container = document.getElementById('searchInputContainer');
+            
+            // Nettoyer le conteneur
+            container.innerHTML = '';
             
             switch(method) {
                 case 'code':
                     inputLabel.innerText = 'Code Secret Confidentiel';
-                    searchInput.placeholder = 'EX: A1B2C3';
-                    searchInput.style.letterSpacing = '4px';
-                    searchInput.type = 'text';
-                    searchInput.className = 'form-control form-control-lg text-center font-monospace fw-bold';
-                    searchInput.value = '';
+                    const inputCode = document.createElement('input');
+                    inputCode.type = 'text';
+                    inputCode.id = 'searchInput';
+                    inputCode.className = 'form-control form-control-lg text-center font-monospace fw-bold';
+                    inputCode.placeholder = 'EX: A1B2C3';
+                    inputCode.style.letterSpacing = '4px';
+                    inputCode.required = true;
+                    container.appendChild(inputCode);
                     break;
                 case 'reference':
                     inputLabel.innerText = 'Référence d\'envoi';
-                    searchInput.placeholder = 'EX: REF-123456';
-                    searchInput.style.letterSpacing = 'normal';
-                    searchInput.type = 'text';
-                    searchInput.className = 'form-control form-control-lg fw-bold';
-                    searchInput.value = '';
+                    const inputRef = document.createElement('input');
+                    inputRef.type = 'text';
+                    inputRef.id = 'searchInput';
+                    inputRef.className = 'form-control form-control-lg fw-bold';
+                    inputRef.placeholder = 'EX: REF-123456';
+                    inputRef.required = true;
+                    container.appendChild(inputRef);
                     break;
                 case 'datetime':
                     inputLabel.innerText = 'Date et Heure d\'envoi';
-                    searchInput.placeholder = 'YYYY-MM-DDTHH:mm';
-                    searchInput.style.letterSpacing = 'normal';
-                    searchInput.type = 'datetime-local';
-                    searchInput.className = 'form-control form-control-lg fw-bold';
-                    searchInput.value = '';
+                    const group = document.createElement('div');
+                    group.className = 'datetime-picker-group';
+                    
+                    // Date
+                    const dateGroup = document.createElement('div');
+                    dateGroup.className = 'form-group';
+                    const dateLabel = document.createElement('label');
+                    dateLabel.innerText = 'Date';
+                    const dateInput = document.createElement('input');
+                    dateInput.type = 'date';
+                    dateInput.id = 'searchDate';
+                    dateInput.className = 'form-control';
+                    dateInput.required = true;
+                    dateGroup.appendChild(dateLabel);
+                    dateGroup.appendChild(dateInput);
+                    
+                    // Heure
+                    const timeGroup = document.createElement('div');
+                    timeGroup.className = 'form-group';
+                    const timeLabel = document.createElement('label');
+                    timeLabel.innerText = 'Heure';
+                    const timeInput = document.createElement('input');
+                    timeInput.type = 'time';
+                    timeInput.id = 'searchTime';
+                    timeInput.className = 'form-control';
+                    timeInput.required = true;
+                    timeGroup.appendChild(timeLabel);
+                    timeGroup.appendChild(timeInput);
+                    
+                    group.appendChild(dateGroup);
+                    group.appendChild(timeGroup);
+                    
+                    // Ajouter un input caché pour stocker le format combiné
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.id = 'searchInput';
+                    hiddenInput.required = true;
+                    
+                    // Fonction pour mettre à jour le hiddenInput
+                    function updateHiddenInput() {
+                        const dateVal = document.getElementById('searchDate').value;
+                        const timeVal = document.getElementById('searchTime').value;
+                        if (dateVal && timeVal) {
+                            hiddenInput.value = dateVal + 'T' + timeVal;
+                        } else {
+                            hiddenInput.value = '';
+                        }
+                    }
+                    
+                    dateInput.addEventListener('change', updateHiddenInput);
+                    timeInput.addEventListener('change', updateHiddenInput);
+                    
+                    container.appendChild(group);
+                    container.appendChild(hiddenInput);
+                    
+                    // Ajouter un écouteur pour valider que les deux champs sont remplis
+                    const form = document.getElementById('verificationForm');
+                    form.addEventListener('submit', function(e) {
+                        const dateVal = document.getElementById('searchDate').value;
+                        const timeVal = document.getElementById('searchTime').value;
+                        if (!dateVal || !timeVal) {
+                            e.preventDefault();
+                            alert('Veuillez sélectionner à la fois la date et l\'heure.');
+                            return false;
+                        }
+                    });
                     break;
                 default:
                     break;
             }
         });
 
-        // Fonction de recherche de transferts
+        // Fonction de recherche de transferts (modifiée pour gérer la double vérification date/heure)
         function findTransfersByMethod(method, inputValue) {
             if (!inputValue || inputValue.trim() === '') return [];
             
@@ -1585,15 +1738,31 @@
                 case 'datetime': {
                     const searchDateTime = new Date(inputValue);
                     if (isNaN(searchDateTime.getTime())) return [];
-                    // Recherche approximative par date (comparer les dates sans les secondes)
-                    const searchDateStr = searchDateTime.toISOString().slice(0, 16);
-                    return transfers.filter(t => {
+                    const searchStr = searchDateTime.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:MM"
+                    
+                    // Premier passage : comparer avec la date de création (t.date)
+                    const matchedByCreation = transfers.filter(t => {
                         if (!t.date) return false;
                         const tDate = new Date(t.date);
                         if (isNaN(tDate.getTime())) return false;
-                        const tDateStr = tDate.toISOString().slice(0, 16);
-                        return tDateStr === searchDateStr;
+                        return tDate.toISOString().slice(0, 16) === searchStr;
                     });
+                    
+                    if (matchedByCreation.length > 0) {
+                        return matchedByCreation;
+                    }
+                    
+                    // Deuxième passage : comparer avec la date/heure saisie par l'expéditeur
+                    const matchedBySender = transfers.filter(t => {
+                        if (!t.sender || !t.sender.transferDate || !t.sender.transferTime) return false;
+                        // Construire une date à partir des champs sender.transferDate et sender.transferTime
+                        const combined = `${t.sender.transferDate}T${t.sender.transferTime}`;
+                        const tDate = new Date(combined);
+                        if (isNaN(tDate.getTime())) return false;
+                        return tDate.toISOString().slice(0, 16) === searchStr;
+                    });
+                    
+                    return matchedBySender; // Peut être vide
                 }
                 default:
                     return [];
@@ -1604,7 +1773,22 @@
             e.preventDefault();
             
             const method = document.getElementById('searchMethod').value;
-            const inputValue = document.getElementById('searchInput').value;
+            let inputValue;
+            
+            // Pour la méthode datetime, récupérer la valeur depuis le hiddenInput
+            if (method === 'datetime') {
+                const hiddenInput = document.getElementById('searchInput');
+                if (hiddenInput) {
+                    inputValue = hiddenInput.value;
+                } else {
+                    alert('Veuillez sélectionner une date et une heure.');
+                    return;
+                }
+            } else {
+                const searchInput = document.getElementById('searchInput');
+                if (!searchInput) return;
+                inputValue = searchInput.value;
+            }
             
             if (!inputValue || inputValue.trim() === '') {
                 alert('Veuillez saisir une valeur de recherche.');
@@ -1765,7 +1949,7 @@
             
             document.getElementById('transferReference').innerText = matchedTransfer.sender.transferReference || '--';
 
-            // Afficher le solde disponible du guichet
+            // Afficher le solde disponible du guichet (calcul dynamique)
             const deskId = matchedTransfer.beneficiary?.agencyId || matchedTransfer.targetDeskId;
             if (deskId) {
                 updateBalanceDisplay(deskId);
@@ -1897,8 +2081,8 @@
                     amountFCFA = currentActiveTransfer.amount || 0;
                 }
 
-                // Récupérer le solde actuel du guichet
-                const currentBalance = getDeskBalance(deskId);
+                // Récupérer le solde actuel du guichet (calcul dynamique)
+                const currentBalance = computeSupplyBalance(deskId);
 
                 // Vérifier si le solde est suffisant
                 if (currentBalance < amountFCFA) {
@@ -1950,9 +2134,11 @@
                         }
                     });
 
-                    // Mettre à jour le solde du guichet (décrémenter le montant retiré)
-                    const newBalance = currentBalance - amountFCFA;
-                    updateDeskBalance(deskId, newBalance);
+                    // Mettre à jour le solde du guichet (décrémenter le montant retiré) dans le stockage
+                    // On utilise le solde stocké pour la cohérence avec l'historique
+                    const storedBalance = getDeskBalance(deskId);
+                    const newStoredBalance = Math.max(0, storedBalance - amountFCFA);
+                    updateDeskBalance(deskId, newStoredBalance);
                     
                     update(ref(db), updates).then(() => {
                         const amountToDisplay = amountFCFA;
@@ -1966,7 +2152,13 @@
                             document.getElementById('detailsCard').classList.add('d-none');
                             currentActiveTransfer = null;
                             // Réinitialiser le champ de recherche
-                            document.getElementById('searchInput').value = '';
+                            const searchInput = document.getElementById('searchInput');
+                            if (searchInput) searchInput.value = '';
+                            // Réinitialiser les champs date/time si présents
+                            const searchDate = document.getElementById('searchDate');
+                            const searchTime = document.getElementById('searchTime');
+                            if (searchDate) searchDate.value = '';
+                            if (searchTime) searchTime.value = '';
                             // Mettre à jour la plaquette et l'historique
                             updateSupplyPlaquette();
                             buildHistoryTable();

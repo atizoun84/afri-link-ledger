@@ -1760,6 +1760,7 @@
         }
 
         // --- Fonction : Construction de la plaquette des guichets ---
+        // NOUVELLE VERSION AVEC LOGIQUE INTER-AGENCES ET FRAIS INCLUS DANS LE SOLDE
         function buildDeskSummary() {
             const container = document.getElementById('deskSummaryContainer');
             if (!container) return;
@@ -1767,121 +1768,97 @@
             let desks = [];
             try {
                 const config = JSON.parse(localStorage.getItem('ledger_config') || '{}');
-                if (config.desks && Array.isArray(config.desks)) {
-                    desks = config.desks;
-                } else if (window.ledgerConfig && window.ledgerConfig.desks) {
-                    desks = window.ledgerConfig.desks;
-                }
-            } catch (e) {
-                console.warn("Impossible de charger la configuration des guichets");
-            }
+                if (config.desks && Array.isArray(config.desks)) desks = config.desks;
+            } catch (e) { /* ignore */ }
 
             if (!desks || desks.length === 0) {
-                container.innerHTML = `
-                    <div class="col-12 text-center text-muted py-3">
-                        <i class="fa-solid fa-store me-2"></i>Aucun guichet configuré. Veuillez ajouter des guichets dans la page Configuration.
-                    </div>
-                `;
+                container.innerHTML = `<div class="col-12 text-center text-muted py-3">
+                    <i class="fa-solid fa-store me-2"></i>Aucun guichet configuré.
+                </div>`;
                 return;
             }
 
-            const transfersList = window.transfers || [];
-            const approvsList = window.approvs || [];
+            const transfers = window.transfers || [];
+            const approvs = window.approvs || [];
 
             let deskCards = desks.map(desk => {
                 const deskId = desk.id;
-                const deskName = desk.name || 'Guichet sans nom';
+                const deskName = desk.name;
                 const fullDeskName = desk.country ? `${deskName} (${desk.country})` : deskName;
 
-                // 1. Approvisionnements validés pour ce guichet - SOURCE USD
-                const approvsForDesk = approvsList.filter(a => {
+                // ---- 1. Approvisionnements ----
+                const approvsForDesk = approvs.filter(a => {
                     if (!a || a.status !== 'Validé') return false;
-                    const matchId = a.deskId && a.deskId === deskId;
-                    const matchName = a.deskName && a.deskName === deskName;
-                    const matchFullName = a.deskName && a.deskName === fullDeskName;
-                    const matchDesk = a.desk && (a.desk === deskName || a.desk === fullDeskName);
-                    const containsName = a.deskName && a.deskName.includes(deskName);
-                    return matchId || matchName || matchFullName || matchDesk || containsName;
+                    return a.deskId === deskId || a.deskName === deskName || a.deskName === fullDeskName;
                 });
                 const totalApprovUSD = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amountUSD) || 0), 0);
 
-                // 2. ENVOIS : Sorties de fonds (Source native USD)
-                const transfersSent = transfersList.filter(t => {
+                // ---- 2. Envois émis (par ce guichet) ----
+                const transfersSent = transfers.filter(t => {
                     if (!t) return false;
-                    const senderAgency = t.sender?.agency || t.senderAgency || '';
-                    const matchSender = senderAgency.includes(deskName) || senderAgency.includes(fullDeskName);
-                    const matchSenderId = t.senderDeskId && t.senderDeskId === deskId;
-                    const matchSenderName = t.senderDeskName && (t.senderDeskName === deskName || t.senderDeskName === fullDeskName);
-                    return matchSender || matchSenderId || matchSenderName;
+                    const senderId = t.senderDeskId || t.sender?.deskId;
+                    const senderName = t.senderDeskName || t.sender?.agency || '';
+                    return senderId === deskId || senderName === deskName || senderName === fullDeskName;
                 });
-                
                 const totalEnvoisEmisUSD = transfersSent.reduce((sum, t) => {
-                    if (t.amountUSD !== undefined) return sum + (parseFloat(t.amountUSD) || 0);
-                    let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
-                    return sum + ((parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0) / rateUsed);
+                    return sum + (parseFloat(t.amountUSD) || 0);
                 }, 0);
 
-                // 3. RETRAITS : Entrées de fonds (Source native USD)
-                const transfersReceived = transfersList.filter(t => {
+                // ---- 3. Retraits reçus (par ce guichet) ----
+                const transfersReceived = transfers.filter(t => {
                     if (!t || t.status !== 'Retiré') return false;
-                    const beneficiaryAgency = t.beneficiary?.agency || t.targetDeskName || t.deskName || '';
-                    const matchBeneficiary = beneficiaryAgency.includes(deskName) || beneficiaryAgency.includes(fullDeskName);
-                    const matchTargetId = t.targetDeskId && t.targetDeskId === deskId;
-                    const matchTargetName = t.targetDeskName && (t.targetDeskName === deskName || t.targetDeskName === fullDeskName);
-                    const matchDeskName = t.deskName && (t.deskName === deskName || t.deskName === fullDeskName);
-                    return matchBeneficiary || matchTargetId || matchTargetName || matchDeskName;
+                    const targetId = t.targetDeskId || t.beneficiary?.deskId || t.deskId;
+                    const targetName = t.targetDeskName || t.beneficiary?.agency || t.deskName || '';
+                    return targetId === deskId || targetName === deskName || targetName === fullDeskName;
                 });
-                
                 const totalRetraitsRecusUSD = transfersReceived.reduce((sum, t) => {
-                    if (t.amountUSD !== undefined) return sum + (parseFloat(t.amountUSD) || 0);
-                    let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
-                    return sum + ((parseFloat(t.amountFCFA) || parseFloat(t.amount) || 0) / rateUsed);
+                    return sum + (parseFloat(t.amountUSD) || 0);
                 }, 0);
 
-                // Frais perçus en USD
-                let totalFeesCollectedUSD = 0;
+                // ---- 4. Frais inter‑agences (uniquement si l'émetteur est différent) ----
+                let totalFraisInterUSD = 0;
                 transfersReceived.forEach(t => {
-                    let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
-                    let feeUSD = t.feesUSD !== undefined ? (parseFloat(t.feesUSD) || 0) : ((parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0) / rateUsed);
-                    let wGainUSD = t.withdrawalFeesUSD !== undefined ? (parseFloat(t.withdrawalFeesUSD) || 0) : ((parseFloat(t.withdrawalFees) || 0) / rateUsed);
-                    totalFeesCollectedUSD += (feeUSD + wGainUSD);
+                    const senderId = t.senderDeskId || t.sender?.deskId;
+                    const senderName = t.senderDeskName || t.sender?.agency || '';
+                    const isInterAgency = (senderId && senderId !== deskId) || 
+                                          (senderName && senderName !== deskName && senderName !== fullDeskName);
+                    if (isInterAgency) {
+                        let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
+                        let feeUSD = t.feesUSD !== undefined ? (parseFloat(t.feesUSD) || 0) : ((parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0) / rateUsed);
+                        let wGainUSD = t.withdrawalFeesUSD !== undefined ? (parseFloat(t.withdrawalFeesUSD) || 0) : ((parseFloat(t.withdrawalFees) || 0) / rateUsed);
+                        totalFraisInterUSD += (feeUSD + wGainUSD);
+                    }
                 });
 
-                // --- CORRECTION : Solde = totalApprovUSD - totalEnvoisEmisUSD + totalRetraitsRecusUSD ---
-                const soldeCalculeUSD = totalApprovUSD - totalEnvoisEmisUSD + totalRetraitsRecusUSD;
+                // ---- 5. Solde réel ----
+                const soldeUSD = totalApprovUSD - totalEnvoisEmisUSD + totalRetraitsRecusUSD + totalFraisInterUSD;
 
-                // Pour la carte, on utilise le solde calculé comme source de vérité
-                const realBalanceUSD = soldeCalculeUSD;
-
-                const formatAmount = (usdValue) => {
-                    const fcfaCalculated = usdValue * window.USD_RATE;
-                    return usdValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfaCalculated).toLocaleString() + ' FCFA)';
+                const formatAmount = (usd) => {
+                    const fcfa = usd * window.USD_RATE;
+                    return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
+                           + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
                 };
 
-                let balanceClass = 'desk-balance-neutral';
-                if (realBalanceUSD > 0) balanceClass = 'desk-balance-positive';
-                else if (realBalanceUSD < 0) balanceClass = 'desk-balance-negative';
+                const balanceClass = soldeUSD > 0 ? 'desk-balance-positive' : 
+                                    (soldeUSD < 0 ? 'desk-balance-negative' : 'desk-balance-neutral');
 
                 return {
                     id: deskId,
                     name: deskName,
                     fullName: fullDeskName,
-                    balanceClass: balanceClass,
                     totalApprovFormatted: formatAmount(totalApprovUSD),
                     totalEnvoisFormatted: formatAmount(totalEnvoisEmisUSD),
                     totalRetraitsFormatted: formatAmount(totalRetraitsRecusUSD),
-                    totalFeesFormatted: formatAmount(totalFeesCollectedUSD),
-                    soldeFormatted: formatAmount(realBalanceUSD),
+                    totalFraisFormatted: formatAmount(totalFraisInterUSD),
+                    soldeFormatted: formatAmount(soldeUSD),
                     approvCount: approvsForDesk.length,
                     sentCount: transfersSent.length,
                     receivedCount: transfersReceived.length,
-                    solde: realBalanceUSD,
-                    totalApprovUSD: totalApprovUSD,
-                    totalEnvoisEmisUSD: totalEnvoisEmisUSD,
-                    totalRetraitsRecusUSD: totalRetraitsRecusUSD
+                    solde: soldeUSD
                 };
             });
 
+            // Tri décroissant par solde
             deskCards.sort((a, b) => b.solde - a.solde);
 
             let html = '';
@@ -1907,8 +1884,8 @@
                                 <span class="stat-value text-success">+${desk.totalRetraitsFormatted}</span>
                             </div>
                             <div class="stat-item d-flex justify-content-between">
-                                <span class="stat-label"><i class="fa-solid fa-coins me-1 text-primary"></i>Frais perçus</span>
-                                <span class="stat-value">${desk.totalFeesFormatted}</span>
+                                <span class="stat-label"><i class="fa-solid fa-coins me-1 text-primary"></i>Frais inter‑agences</span>
+                                <span class="stat-value">${desk.totalFraisFormatted}</span>
                             </div>
                             <hr class="my-1">
                             <div class="stat-item d-flex justify-content-between fw-bold">
@@ -1927,11 +1904,10 @@
 
             container.innerHTML = html;
 
-            // Mise à jour du solde réel dans le nœud ledger_balances pour chaque guichet
+            // Mise à jour de la base de données (ledger_balances) avec le solde en FCFA
             deskCards.forEach(desk => {
                 const deskId = desk.id;
                 if (deskId && window.updateDeskBalance) {
-                    // Convertir le solde en FCFA pour le stockage
                     const soldeFCFA = desk.solde * window.USD_RATE;
                     window.updateDeskBalance(deskId, soldeFCFA);
                 }

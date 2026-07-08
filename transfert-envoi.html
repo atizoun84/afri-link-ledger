@@ -1054,7 +1054,7 @@
     </div>
 
     <div class="modal fade" id="historyDisplayModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
             <div class="modal-content elegant-modal">
                 <div class="elegant-modal-header d-flex justify-content-between align-items-center">
                     <div>
@@ -1071,7 +1071,9 @@
                         <table class="table table-hover align-middle small">
                             <thead class="table-light sticky-top">
                                 <tr>
-                                    <th>Date</th>
+                                    <th>Date/Heure Saisie</th>
+                                    <th>Date/Heure Création</th>
+                                    <th>Référence</th>
                                     <th>Code</th>
                                     <th>Expéditeur</th>
                                     <th>Bénéficiaire (Agence)</th>
@@ -1116,7 +1118,9 @@
         <table class="table table-bordered table-striped align-middle small" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="background-color: #f8f9fa;">
-                    <th style="padding: 10px; border: 1px solid #dee2e6;">Date</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Date/Heure Saisie</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Date/Heure Création</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6;">Référence</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Code Retrait</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Expéditeur</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Bénéficiaire & Agence de Retrait</th>
@@ -1606,7 +1610,7 @@
             const printTbody = document.getElementById('printHistoryTableBody');
             
             if (!transfers || transfers.length === 0) {
-                const emptyRow = `<tr><td colspan="8" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun envoi trouvé pour cette période.</td></tr>`;
+                const emptyRow = `<tr><td colspan="10" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun envoi trouvé pour cette période.</td></tr>`;
                 tbody.innerHTML = emptyRow;
                 printTbody.innerHTML = emptyRow;
                 document.getElementById('deleteAllHistoryBtn').style.display = 'none';
@@ -1620,7 +1624,17 @@
                     ? `<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>En attente de retrait</span>`
                     : `<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span>`;
                 
-                const displayDate = t.date ? new Date(t.date).toLocaleDateString('fr-FR') : '--/--/----';
+                // Date/Heure saisie par l'expéditeur
+                const saisieDate = t.sender?.transferDate ? new Date(t.sender.transferDate).toLocaleDateString('fr-FR') : '--/--/----';
+                const saisieHeure = t.sender?.transferTime || '--:--';
+                const saisieDisplay = `${saisieDate} ${saisieHeure}`;
+                
+                // Date/Heure de création (enregistrement)
+                const creationDate = t.date ? new Date(t.date).toLocaleDateString('fr-FR') : '--/--/----';
+                const creationHeure = t.date ? new Date(t.date).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) : '--:--';
+                const creationDisplay = `${creationDate} ${creationHeure}`;
+                
+                const displayRef = t.sender?.transferReference || 'N/A';
                 
                 // Utiliser amountUSD comme source pour l'affichage en dollars
                 let amtUSD = 0;
@@ -1642,7 +1656,9 @@
                 
                 return `
                     <tr>
-                        <td>${displayDate}</td>
+                        <td>${saisieDisplay}</td>
+                        <td>${creationDisplay}</td>
+                        <td><span class="fw-bold">${displayRef}</span></td>
                         <td class="fw-bold font-monospace">${t.secretCode || 'N/A'}</td>
                         <td>${t.sender?.firstname || ''} ${t.sender?.name || ''}<br><small class="text-muted">${t.sender?.phone || ''}</small></td>
                         <td>${t.beneficiary?.firstname || ''} ${t.beneficiary?.name || ''}<br><small class="text-success fw-bold">📍 ${t.beneficiary?.agency || ''}</small></td>
@@ -1925,6 +1941,7 @@
             if (selectBeneficiary) selectBeneficiary.innerHTML = beneficiaryOptions;
         }
 
+        // --- NOUVELLE GRILLE TARIFAIRE (remplace l'ancienne) ---
         function getFeeInUSD(amountInUSD) {
             if (amountInUSD >= 0.00 && amountInUSD <= 20.00) return 1.00;
             if (amountInUSD > 20.00 && amountInUSD <= 40.00) return 2.00;
@@ -1936,34 +1953,37 @@
             if (amountInUSD > 140.00 && amountInUSD <= 160.00) return 8.00;
             if (amountInUSD > 160.00 && amountInUSD <= 180.00) return 9.00;
             if (amountInUSD > 180.00 && amountInUSD <= 210.00) return 10.00;
-            if (amountInUSD > 210.00 && amountInUSD <= 315.00) return 15.00;
-            if (amountInUSD > 315.00 && amountInUSD <= 420.00) return 20.00;
-            if (amountInUSD > 420.00 && amountInUSD <= 525.00) return 25.00;
-            if (amountInUSD > 525.00 && amountInUSD <= 630.00) return 30.00;
-            if (amountInUSD > 630.00 && amountInUSD <= 735.00) return 35.00;
-            if (amountInUSD > 735.00 && amountInUSD <= 840.00) return 40.00;
-            if (amountInUSD > 840.00 && amountInUSD <= 945.00) return 45.00;
-            if (amountInUSD > 945.00 && amountInUSD <= 1050.00) return 50.00;
-            if (amountInUSD > 1050.00 && amountInUSD <= 1100.00) return 55.00;
-            if (amountInUSD > 1100.00 && amountInUSD <= 1200.00) return 60.00;
-            if (amountInUSD > 1200.00 && amountInUSD <= 1300.00) return 65.00;
-            if (amountInUSD > 1300.00 && amountInUSD <= 1400.00) return 70.00;
-            if (amountInUSD > 1400.00 && amountInUSD <= 1500.00) return 75.00;
-            if (amountInUSD > 1500.00 && amountInUSD <= 1600.00) return 80.00;
-            if (amountInUSD > 1600.00 && amountInUSD <= 1700.00) return 85.00;
-            if (amountInUSD > 1700.00 && amountInUSD <= 1800.00) return 90.00;
-            if (amountInUSD > 1800.00 && amountInUSD <= 1900.00) return 95.00;
-            if (amountInUSD > 1900.00 && amountInUSD <= 2000.00) return 100.00;
-            if (amountInUSD > 2000.00 && amountInUSD <= 2100.00) return 105.00;
-            if (amountInUSD > 2100.00 && amountInUSD <= 2200.00) return 110.00;
-            if (amountInUSD > 2200.00 && amountInUSD <= 2300.00) return 115.00;
-            if (amountInUSD > 2300.00 && amountInUSD <= 2400.00) return 120.00;
-            if (amountInUSD > 2400.00 && amountInUSD <= 2500.00) return 125.00;
-            if (amountInUSD > 2500.00 && amountInUSD <= 2600.00) return 130.00;
-            if (amountInUSD > 2600.00 && amountInUSD <= 2700.00) return 135.00;
-            if (amountInUSD > 2700.00 && amountInUSD <= 2800.00) return 140.00;
-            if (amountInUSD > 2800.00 && amountInUSD <= 2900.00) return 145.00;
-            if (amountInUSD > 2900.00 && amountInUSD <= 3000.00) return 150.00;
+            // Nouvelle grille pour les paliers > 210
+            if (amountInUSD > 210.00 && amountInUSD <= 315.00) return 11.00;
+            if (amountInUSD > 315.00 && amountInUSD <= 420.00) return 16.00;
+            if (amountInUSD > 420.00 && amountInUSD <= 525.00) return 21.00;
+            if (amountInUSD > 525.00 && amountInUSD <= 630.00) return 27.00;
+            if (amountInUSD > 630.00 && amountInUSD <= 735.00) return 32.00;
+            if (amountInUSD > 735.00 && amountInUSD <= 840.00) return 37.00;
+            if (amountInUSD > 840.00 && amountInUSD <= 945.00) return 42.00;
+            if (amountInUSD > 945.00 && amountInUSD <= 1050.00) return 48.00;
+            if (amountInUSD > 1050.00 && amountInUSD <= 1100.00) return 53.00;
+            if (amountInUSD > 1100.00 && amountInUSD <= 1200.00) return 55.00;
+            if (amountInUSD > 1200.00 && amountInUSD <= 1300.00) return 60.00;
+            if (amountInUSD > 1300.00 && amountInUSD <= 1400.00) return 65.00;
+            if (amountInUSD > 1400.00 && amountInUSD <= 1500.00) return 70.00;
+            if (amountInUSD > 1500.00 && amountInUSD <= 1600.00) return 75.00;
+            if (amountInUSD > 1600.00 && amountInUSD <= 1700.00) return 80.00;
+            if (amountInUSD > 1700.00 && amountInUSD <= 1800.00) return 85.00;
+            if (amountInUSD > 1800.00 && amountInUSD <= 1900.00) return 90.00;
+            if (amountInUSD > 1900.00 && amountInUSD <= 2000.00) return 95.00;
+            if (amountInUSD > 2000.00 && amountInUSD <= 2100.00) return 100.00;
+            if (amountInUSD > 2100.00 && amountInUSD <= 2200.00) return 105.00;
+            if (amountInUSD > 2200.00 && amountInUSD <= 2300.00) return 110.00;
+            if (amountInUSD > 2300.00 && amountInUSD <= 2400.00) return 115.00;
+            if (amountInUSD > 2400.00 && amountInUSD <= 2500.00) return 120.00;
+            if (amountInUSD > 2500.00 && amountInUSD <= 2600.00) return 125.00;
+            if (amountInUSD > 2600.00 && amountInUSD <= 2700.00) return 130.00;
+            if (amountInUSD > 2700.00 && amountInUSD <= 2800.00) return 135.00;
+            if (amountInUSD > 2800.00 && amountInUSD <= 2900.00) return 140.00;
+            if (amountInUSD > 2900.00 && amountInUSD <= 3000.00) return 145.00;
+            // Au-dessus de 3000, on peut éventuellement continuer avec une formule ou 150, mais on laisse 150 pour l'instant
+            if (amountInUSD > 3000.00) return 150.00;
             return 0.00;
         }
 
