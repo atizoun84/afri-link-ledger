@@ -116,146 +116,6 @@
             font-weight: 700;
         }
 
-        /* --- Plaquette Flottante du Flux d'Approvisionnement --- */
-        .floating-supply-box {
-            position: fixed;
-            top: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1050;
-            background: rgba(255, 255, 255, 0.97);
-            backdrop-filter: blur(15px);
-            padding: 12px 24px;
-            border-radius: 20px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-            border: 1.5px solid var(--wa-medium);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-width: 280px;
-            max-width: 95%;
-            transition: all 0.3s ease;
-            text-align: center;
-            line-height: 1.4;
-        }
-
-        .floating-supply-box .supply-line {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
-            gap: 5px 15px;
-            width: 100%;
-        }
-
-        .floating-supply-box .supply-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: #777;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-
-        .floating-supply-box .supply-value {
-            font-size: 1rem;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .floating-supply-box .supply-value.blue {
-            color: #0275d8;
-        }
-        .floating-supply-box .supply-value.red {
-            color: #d9534f;
-        }
-        .floating-supply-box .supply-value.green {
-            color: #28a745;
-        }
-        .floating-supply-box .separator {
-            color: #adb5bd;
-            font-weight: 300;
-            margin: 0 2px;
-        }
-
-        .floating-supply-box .supply-sub-line {
-            font-size: 0.8rem;
-            color: #555;
-            margin-top: 2px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 0 15px;
-        }
-
-        .floating-supply-box .toggle-supply-btn {
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            background: var(--wa-medium);
-            color: white;
-            border: 2px solid white;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 0.8rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            transition: all 0.3s ease;
-            z-index: 1051;
-        }
-
-        .floating-supply-box .toggle-supply-btn:hover {
-            background: var(--wa-dark);
-            transform: scale(1.05);
-        }
-
-        .floating-supply-box.collapsed {
-            padding: 6px 20px;
-            min-width: unset;
-            width: auto;
-            border-radius: 100px;
-        }
-
-        .floating-supply-box.collapsed .supply-line,
-        .floating-supply-box.collapsed .supply-sub-line {
-            display: none;
-        }
-
-        .floating-supply-box.collapsed .toggle-supply-btn {
-            position: static;
-            margin: 0;
-            transform: rotate(180deg);
-        }
-
-        /* Ajustement du contenu pour éviter le chevauchement */
-        .content-wrapper {
-            margin-top: 70px;
-        }
-
-        @media (max-width: 576px) {
-            .floating-supply-box {
-                top: 70px;
-                padding: 10px 15px;
-                min-width: unset;
-                width: 95%;
-                border-radius: 15px;
-            }
-            .floating-supply-box .supply-value {
-                font-size: 0.9rem;
-            }
-            .floating-supply-box .supply-label {
-                font-size: 0.65rem;
-            }
-            .content-wrapper {
-                margin-top: 95px;
-            }
-        }
-
         /* --- Card Styles --- */
         .card-stats {
             border-radius: 15px;
@@ -450,28 +310,7 @@
         </nav>
     </header>
 
-    <!-- Plaquette Flottante du Flux d'Approvisionnement avec bouton de rétractation -->
-    <div class="floating-supply-box" id="floatingSupplyBox">
-        <button class="toggle-supply-btn" id="toggleSupplyBtn" onclick="toggleSupplyBox()" title="Rétracter/Déplier">
-            <i class="fa-solid fa-chevron-up" id="supplyToggleIcon"></i>
-        </button>
-        <div class="supply-line" id="supplyLineContent">
-            <span class="supply-label"><i class="fa-solid fa-scale-balanced me-1 text-success"></i>Flux :</span>
-            <span class="supply-value blue" id="supplyTotalApprov">0 USD (0 FCFA)</span>
-            <span class="separator">/</span>
-            <span class="supply-value red" id="supplyTotalEnvois">0 USD (0 FCFA)</span>
-            <span class="separator">|</span>
-            <span class="supply-label"><i class="fa-solid fa-coins me-1 text-warning"></i>Solde :</span>
-            <span class="supply-value" id="supplySoldeFlux">0 USD (0 FCFA)</span>
-        </div>
-        <div class="supply-sub-line" id="supplySubLineContent">
-            <span><span class="text-muted">✅ Retirés</span> <strong id="supplyValidCount">0</strong></span>
-            <span><span class="text-muted">⏳ En attente de retrait</span> <strong id="supplyPendingCount">0</strong></span>
-            <span><span class="text-muted">📦 Envois</span> <strong id="supplyTransferCount">0</strong></span>
-        </div>
-    </div>
-
-    <main class="container content-wrapper">
+    <main class="container">
         <div class="page-header mb-4">
             <h1>Gestion des Approvisionnements</h1>
             <p class="text-muted">Enregistrez les flux entrants et gérez les recharges de caisses.</p>
@@ -909,18 +748,6 @@
             }
         }
 
-        // Fonction pour rétracter/déplier la plaquette
-        function toggleSupplyBox() {
-            const box = document.getElementById('floatingSupplyBox');
-            const icon = document.getElementById('supplyToggleIcon');
-            box.classList.toggle('collapsed');
-            if (box.classList.contains('collapsed')) {
-                icon.className = 'fa-solid fa-chevron-down';
-            } else {
-                icon.className = 'fa-solid fa-chevron-up';
-            }
-        }
-
         // Affichage du message de confirmation visuel standardisé
         function showSuccess(msg) {
             const overlay = document.getElementById('success-overlay');
@@ -1013,60 +840,6 @@
             if (totalVirtuelElem) {
                 totalVirtuelElem.innerText = virtUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(virtFCFA).toLocaleString() + ' FCFA)';
             }
-            
-            // Mise à jour de la plaquette
-            updateSupplyPlaquette();
-        }
-
-        // --- Mise à jour de la plaquette flottante du flux d'approvisionnement ---
-        function updateSupplyPlaquette() {
-            // Calcul des approvisionnements validés (en USD maintenant)
-            const validSupply = window.approvisionnements.filter(item => item.status === 'Validé');
-            const pendingSupply = window.approvisionnements.filter(item => item.status === 'En attente');
-            
-            const totalApprovUSD = validSupply.reduce((sum, item) => sum + (parseFloat(item.amountUSD) || 0), 0);
-            const totalApprovFCFA = totalApprovUSD * window.dollarRate;
-            
-            // Total des envois (tous, y compris ceux en attente)
-            // Utilisation de amountUSD comme source de vérité pour les envois
-            const totalEnvoisUSD = window.transfers.reduce((sum, t) => {
-                if (t.amountUSD) {
-                    return sum + parseFloat(t.amountUSD);
-                } else if (t.amountFCFA) {
-                    const rateUsed = t.rateUsed || 600;
-                    return sum + (parseFloat(t.amountFCFA) / rateUsed);
-                }
-                return sum;
-            }, 0);
-            const totalEnvoisFCFA = totalEnvoisUSD * window.dollarRate;
-            
-            // Solde du flux = approvisionnements validés - total des envois
-            const soldeFluxUSD = totalApprovUSD - totalEnvoisUSD;
-            const soldeFluxFCFA = soldeFluxUSD * window.dollarRate;
-            
-            // Nombre d'envois en attente (non retirés)
-            const pendingTransfers = window.transfers.filter(t => t.status === 'En attente');
-            const pendingTransfersCount = pendingTransfers.length;
-            
-            const validCount = validSupply.length;
-            const pendingCount = pendingSupply.length;
-            const transferCount = window.transfers.length;
-
-            // Formatage des montants en USD (principal) et FCFA (entre parenthèses)
-            const formatAmount = (usd, fcfa) => {
-                return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
-            };
-
-            document.getElementById('supplyTotalApprov').innerText = formatAmount(totalApprovUSD, totalApprovFCFA);
-            document.getElementById('supplyTotalEnvois').innerText = formatAmount(totalEnvoisUSD, totalEnvoisFCFA);
-            
-            const soldeEl = document.getElementById('supplySoldeFlux');
-            soldeEl.innerText = formatAmount(soldeFluxUSD, soldeFluxFCFA);
-            soldeEl.className = 'supply-value' + (soldeFluxUSD < 0 ? ' red' : ' blue');
-            
-            document.getElementById('supplyValidCount').innerText = validCount;
-            document.getElementById('supplyPendingCount').innerText = pendingCount;
-            document.getElementById('supplyTransferCount').innerText = transferCount;
         }
 
         // --- Gestion du formulaire d'approvisionnement ---

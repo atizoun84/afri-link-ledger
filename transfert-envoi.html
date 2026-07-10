@@ -2418,6 +2418,40 @@
             }, 400);
         };
 
+        // --- Fonction pour envoyer le relevé WhatsApp ---
+        function sendWhatsAppTransferSummary(transferData, secretCode) {
+            const phoneNumber = "22997786863"; // Numéro WhatsApp cible
+            
+            // Construction du message de relevé
+            let message = "📋 *RELEVÉ DE TRANSFERT AFRI-LINK LEDGER* 📋\n\n";
+            message += "🔐 *CODE DE RETRAIT :* " + secretCode + "\n\n";
+            message += "📌 *RÉFÉRENCE :* " + transferData.sender.transferReference + "\n";
+            message += "📅 *DATE/HEURE :* " + transferData.sender.transferDate + " à " + transferData.sender.transferTime + "\n\n";
+            message += "👤 *EXPÉDITEUR :*\n";
+            message += "   " + transferData.sender.firstname + " " + transferData.sender.name + "\n";
+            message += "   📞 " + transferData.sender.phone + "\n";
+            message += "   🏢 " + transferData.sender.agency + "\n\n";
+            message += "👥 *BÉNÉFICIAIRE :*\n";
+            message += "   " + transferData.beneficiary.firstname + " " + transferData.beneficiary.name + "\n";
+            message += "   📞 " + transferData.beneficiary.phone + "\n";
+            message += "   🏢 " + transferData.beneficiary.agency + "\n\n";
+            message += "💰 *DÉTAILS DU TRANSFERT :*\n";
+            message += "   💵 Montant net : " + transferData.amountUSD.toFixed(2) + " USD (" + Math.round(transferData.amountFCFA).toLocaleString() + " FCFA)\n";
+            message += "   📊 Frais : " + transferData.feesUSD.toFixed(2) + " USD (" + Math.round(transferData.feesUSD * USD_RATE).toLocaleString() + " FCFA)\n";
+            message += "   💳 Total encaissé : " + transferData.totalUSD.toFixed(2) + " USD (" + Math.round(transferData.totalFCFA).toLocaleString() + " FCFA)\n";
+            message += "   📈 Taux de frais : " + transferData.feePercentage.toFixed(2) + "%\n\n";
+            message += "✅ *STATUT :* En attente de retrait\n\n";
+            message += "---\n";
+            message += "AFRI-LINK LEDGER - Architecture de Finance Bilatérale";
+            
+            // Encoder le message pour l'URL WhatsApp
+            const encodedMessage = encodeURIComponent(message);
+            
+            // Ouvrir WhatsApp avec le message pré-rempli
+            const whatsappUrl = "https://wa.me/" + phoneNumber + "?text=" + encodedMessage;
+            window.open(whatsappUrl, "_blank");
+        }
+
         document.getElementById('transferForm').onsubmit = function(e) {
             e.preventDefault();
             
@@ -2449,19 +2483,13 @@
             const transferRefVal = document.getElementById('senderTransferReference').value;
 
             // IMPORTANT: amountUSD est la source de vérité
-            // Si la devise saisie est FCFA, amountUSD est calculé à partir du FCFA pour l'instant
-            // Mais on stocke le montant en USD comme source pour les calculs futurs
             let amountUSD = feeCalculations.initialAmountUSD;
             let amountFCFA = feeCalculations.initialAmountFCFA;
             
-            // Si la devise saisie est USD, amountUSD est la source directe
             if (currencyChoice === 'USD') {
                 amountUSD = rawAmount;
                 amountFCFA = amountUSD * USD_RATE;
             } else {
-                // Si FCFA, on garde amountUSD calculé pour référence, mais on stocke aussi le FCFA
-                // Mais pour la cohérence, on va utiliser amountUSD comme source
-                // On recalcule le FCFA à partir du USD pour être sûr
                 amountFCFA = amountUSD * USD_RATE;
             }
 
@@ -2473,9 +2501,7 @@
                 currency: currencyChoice,
                 currencyDisplayName: currencyDisplayName,
                 rate: USD_RATE,
-                // amountUSD est la SOURCE DE VÉRITÉ
                 amountUSD: amountUSD,
-                // amountFCFA est CALCULÉ à partir du USD
                 amountFCFA: amountFCFA,
                 feesUSD: feeCalculations.feesUSD,
                 feesFCFA: feeCalculations.feesUSD * USD_RATE,
@@ -2483,7 +2509,6 @@
                 totalUSD: amountUSD + feeCalculations.feesUSD,
                 totalFCFA: (amountUSD + feeCalculations.feesUSD) * USD_RATE,
                 status: 'En attente',
-                // Signature de l'opérateur (utilisateur connecté)
                 operator: currentUser ? {
                     name: currentUser.name,
                     role: currentUser.role,
@@ -2498,7 +2523,6 @@
                     transferDate: transferDateVal,
                     transferTime: transferTimeVal,
                     transferReference: transferRefVal,
-                    // Ajout de l'ID de l'agence pour le suivi des soldes
                     agencyId: document.getElementById('senderAgency').value
                 },
                 beneficiary: {
@@ -2514,13 +2538,15 @@
             const newTransferRef = push(ref(db, "transfers"));
             set(newTransferRef, transferData)
             .then(() => {
+                // Envoyer automatiquement le relevé WhatsApp
+                sendWhatsAppTransferSummary(transferData, secretCode);
+                
                 document.getElementById('secretCode').innerText = secretCode;
                 document.getElementById('modalReference').innerText = transferRefVal;
                 document.getElementById('modalDateTime').innerText = `${transferDateVal} à ${transferTimeVal}`;
                 document.getElementById('modalSender').innerHTML = `${transferData.sender.firstname} ${transferData.sender.name}`;
                 document.getElementById('modalBeneficiary').innerHTML = `${transferData.beneficiary.firstname} ${transferData.beneficiary.name}`;
                 
-                // Rendu Dollars en premier dans la modal (source en USD)
                 document.getElementById('modalAmount').innerHTML = `${transferData.amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD (${Math.round(transferData.amountFCFA).toLocaleString()} FCFA)`;
                 document.getElementById('modalAgency').innerHTML = beneficiaryAgencyName;
                 document.getElementById('modalTotalPaid').innerHTML = `${transferData.totalUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD (${Math.round(transferData.totalFCFA).toLocaleString()} FCFA)`;
@@ -2653,26 +2679,19 @@
             }
 
             // Calcul des frais et du montant net par itération
-            // On part du principe que le montant net = montant encaissé - frais
-            // On cherche le montant net N tel que N + frais(N) = total
             let netUSD = totalUSD;
             let feesUSD = 0;
             let netFCFA = totalFCFA;
             let feesFCFA = 0;
             let feePercent = 0;
 
-            // Méthode itérative pour trouver le montant net
             if (specialFeePercentage !== null && specialFeePercentage > 0) {
-                // Si taux spécial, calcul direct
                 feePercent = specialFeePercentage;
-                // Le montant net en USD est la source
                 netUSD = totalUSD / (1 + feePercent / 100);
                 feesUSD = totalUSD - netUSD;
                 netFCFA = netUSD * USD_RATE;
                 feesFCFA = feesUSD * USD_RATE;
             } else {
-                // Grille tarifaire standard
-                // Approximation par itération
                 let guessNetUSD = totalUSD;
                 let guessFeesUSD = 0;
                 let iterations = 100;
@@ -2712,7 +2731,6 @@
                 feePercent = (feesFCFA / totalFCFA) * 100;
             }
 
-            // Affichage - Le montant net USD est la valeur source
             const formatCurrency = (usd, fcfa) => {
                 return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD (' + Math.round(fcfa).toLocaleString() + ' FCFA)';
             };
@@ -2759,11 +2777,9 @@
                 if (config.desks && Array.isArray(config.desks)) desks = config.desks;
             } catch(e) {}
             
-            // Garder l'option "Tous"
             const currentValue = selector.value;
             selector.innerHTML = '<option value="global">🌍 Tous les guichets</option>';
             
-            // Ajouter chaque guichet
             desks.forEach(desk => {
                 const option = document.createElement('option');
                 option.value = desk.id;
@@ -2771,7 +2787,6 @@
                 selector.appendChild(option);
             });
             
-            // Restaurer la sélection si possible
             if (currentValue && selector.querySelector(`option[value="${currentValue}"]`)) {
                 selector.value = currentValue;
             }
@@ -2784,7 +2799,6 @@
         window.deleteHistoryItem = deleteHistoryItem;
         window.deleteAllHistory = deleteAllHistory;
 
-        // Initialiser le sélecteur de guichets au chargement
         initDeskSelector();
 
         window.onload = function() { 
@@ -2797,7 +2811,6 @@
             updatePhonePrefix('senderCountry', 'senderPhonePrefix');
             updatePhonePrefix('beneficiaryCountry', 'beneficiaryPhonePrefix');
             
-            // Mettre à jour la plaquette
             updateSupplyPlaquette();
         };
     </script>

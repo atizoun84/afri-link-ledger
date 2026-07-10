@@ -578,7 +578,7 @@
         <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <div class="card p-3 border-0 shadow-sm border-start border-4 border-primary bg-white h-100">
-                    <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Flux Envois Globaux</small>
+                    <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Flux Financier Général</small>
                     <div class="mt-2">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-secondary">Total Brut :</span>
@@ -1656,8 +1656,9 @@
                         ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> ${item.status}</span>`
                         : `<span class="badge bg-secondary"><i class="fa-solid fa-clock"></i> ${item.status}</span>`;
                     let feesDisplay;
+                    // Pour les ENVOIS, on affiche toujours "-" (0 FCFA) car il n'y a pas de frais à l'envoi
                     if (item.type === 'ENVOI') {
-                        feesDisplay = item.feesUSD > 0 ? formatAmount(item.feesUSD) : '-';
+                        feesDisplay = '-';
                     } else if (item.type === 'RETRAIT' && item.t) {
                         let rateUsed = parseFloat(item.t.rate) || parseFloat(item.t.dollarRate) || window.USD_RATE || 600;
                         let wGainUSD = item.t.withdrawalFeesUSD !== undefined ? (parseFloat(item.t.withdrawalFeesUSD) || 0) : ((parseFloat(item.t.withdrawalFees) || 0) / rateUsed);
