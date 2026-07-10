@@ -774,12 +774,10 @@
             </select>
         </div>
         <div class="supply-line" id="supplyLineContent">
-            <span class="supply-label"><i class="fa-solid fa-scale-balanced me-1 text-success"></i>Flux :</span>
+            <span class="supply-label"><i class="fa-solid fa-scale-balanced me-1 text-success"></i>Approv :</span>
             <span class="supply-value blue" id="supplyTotalApprov">0 USD</span>
-            <span class="separator">/</span>
-            <span class="supply-value red" id="supplyTotalEnvois">0 USD</span>
             <span class="separator">|</span>
-            <span class="supply-label"><i class="fa-solid fa-coins me-1 text-warning"></i>Solde :</span>
+            <span class="supply-label"><i class="fa-solid fa-coins me-1 text-warning"></i>Solde réel :</span>
             <span class="supply-value" id="supplySoldeFlux">0 USD</span>
         </div>
         <div class="supply-sub-line" id="supplySubLineContent">
@@ -1142,6 +1140,7 @@
         let ledgerTransfersReceived = false;
         let configReceived = false;
         let balancesReceived = false;
+        let settlementsReceived = false;
 
         // Variables globales du module
         let transfers = [];
@@ -1152,6 +1151,7 @@
         let ledgerBalances = {};
         let currentDeskId = 'global';
         let desks = [];
+        let settlements = [];
 
         // Fonctions de gestion des soldes des guichets (stockés)
         function getDeskBalance(deskId) {
@@ -1176,8 +1176,8 @@
             updateSupplyPlaquette();
         }
 
-        // --- NOUVELLE FONCTION : Calcul dynamique du solde restant de l'approvisionnement ---
-        function computeSupplyBalance(deskId) {
+        // --- Calcul du solde réel par guichet (Approvisionnements - Retraits reçus + Versements déjà effectués) ---
+        function computeRealSupplyBalance(deskId) {
             if (!deskId) return 0;
             
             // 1. Somme des approvisionnements validés pour ce guichet (en FCFA)
@@ -1185,8 +1185,8 @@
                 .filter(item => {
                     if (item.status !== 'Validé') return false;
                     // Correspondance par ID ou par nom
-                    const matchId = item.deskId && item.deskId === deskId;
-                    const desk = desks.find(d => d.id === deskId);
+                    const matchId = item.deskId && String(item.deskId) === String(deskId);
+                    const desk = desks.find(d => String(d.id) === String(deskId));
                     const matchName = item.deskName && desk && item.deskName === desk.name;
                     return matchId || matchName;
                 })
@@ -1202,7 +1202,7 @@
                 .filter(t => {
                     if (t.status !== 'Retiré') return false;
                     const beneficiaryAgencyId = t.beneficiary?.agencyId || t.targetDeskId || '';
-                    return beneficiaryAgencyId === deskId;
+                    return String(beneficiaryAgencyId) === String(deskId);
                 })
                 .reduce((sum, t) => {
                     // Utiliser amountUSD comme source, puis convertir en FCFA
@@ -1213,14 +1213,20 @@
                     }
                     return sum;
                 }, 0);
+
+            // 3. Somme des versements (settlements) déjà effectués pour ce guichet
+            const totalVersementsFCFA = settlements
+                .filter(s => String(s.deskId) === String(deskId))
+                .reduce((sum, s) => sum + (parseFloat(s.amountUSD) || 0) * USD_RATE, 0);
             
-            const soldeFCFA = approvTotalFCFA - retraitsTotalFCFA;
-            return Math.max(0, soldeFCFA); // ne pas afficher négatif
+            // Solde réel = Approvisionnements - Retraits reçus + Versements déjà effectués
+            const soldeReelFCFA = approvTotalFCFA - retraitsTotalFCFA + totalVersementsFCFA;
+            return Math.max(0, soldeReelFCFA);
         }
 
         // Fonction pour mettre à jour l'affichage du solde dans l'interface (utilise le calcul dynamique)
         function updateBalanceDisplay(deskId) {
-            const balanceFCFA = computeSupplyBalance(deskId);
+            const balanceFCFA = computeRealSupplyBalance(deskId);
             const balanceUSD = balanceFCFA / USD_RATE;
             const displayElement = document.getElementById('deskBalanceDisplay');
             if (displayElement) {
@@ -1261,6 +1267,28 @@
             checkFirstLoadComplete();
         });
 
+        // Écoute des versements (settlements)
+        onValue(ref(db, 'ledger_settlements'), (snapshot) => {
+            const data = snapshot.val();
+            settlements = [];
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    settlements.push({ fbKey: key, ...data[key] });
+                });
+            }
+            settlementsReceived = true;
+            checkFirstLoadComplete();
+            // Mettre à jour la plaquette flottante
+            updateSupplyPlaquette();
+            // Mettre à jour le solde si un transfert est actif
+            if (currentActiveTransfer) {
+                const deskId = currentActiveTransfer.beneficiary?.agencyId || currentActiveTransfer.targetDeskId;
+                if (deskId) {
+                    updateBalanceDisplay(deskId);
+                }
+            }
+        });
+
         const phonePrefixes = {
             "Bénin": "+229",
             "Côte d'Ivoire": "+225",
@@ -1274,7 +1302,7 @@
         };
 
         function checkFirstLoadComplete() {
-            if (isFirstLoad && transfersReceived && supplyReceived && ledgerTransfersReceived && configReceived && balancesReceived) {
+            if (isFirstLoad && transfersReceived && supplyReceived && ledgerTransfersReceived && configReceived && balancesReceived && settlementsReceived) {
                 isFirstLoad = false;
                 if (loadingOverlay) {
                     loadingOverlay.style.opacity = '0';
@@ -1419,10 +1447,8 @@
 
         // --- Fonctions de mise à jour de la plaquette flottante ---
         function getDeskData(deskId) {
-            // Filtrer les envois pour le guichet sélectionné
             let approvFCFA = 0;
-            let envoisEmisFCFA = 0;
-            let retraitsRecusFCFA = 0;
+            let soldeReelFCFA = 0;
             let envoisEmisCount = 0;
             let retraitsRecusCount = 0;
             let pendingCount = 0;
@@ -1434,27 +1460,19 @@
                 const validSupply = ledgerSupply.filter(item => item.status === 'Validé');
                 approvFCFA = validSupply.reduce((sum, item) => sum + (parseFloat(item.amountFCFA) || 0), 0);
                 
-                // Utiliser amountUSD comme source pour les envois
-                envoisEmisFCFA = transfers.reduce((sum, t) => {
+                const withdrawn = transfers.filter(t => t.status === 'Retiré');
+                const retraitsFCFA = withdrawn.reduce((sum, t) => {
                     if (t.amountUSD) {
-                        return sum + (t.amountUSD * USD_RATE);
+                        return sum + (parseFloat(t.amountUSD) * USD_RATE);
                     } else if (t.amountFCFA) {
-                        const rateUsed = t.rateUsed || 600;
-                        return sum + (t.amountFCFA / rateUsed * USD_RATE);
+                        return sum + parseFloat(t.amountFCFA);
                     }
                     return sum;
                 }, 0);
                 
-                const withdrawn = transfers.filter(t => t.status === 'Retiré');
-                retraitsRecusFCFA = withdrawn.reduce((sum, t) => {
-                    if (t.amountUSD) {
-                        return sum + (t.amountUSD * USD_RATE);
-                    } else if (t.amountFCFA) {
-                        const rateUsed = t.rateUsed || 600;
-                        return sum + (t.amountFCFA / rateUsed * USD_RATE);
-                    }
-                    return sum;
-                }, 0);
+                const totalVersementsFCFA = settlements.reduce((sum, s) => sum + (parseFloat(s.amountUSD) || 0) * USD_RATE, 0);
+                soldeReelFCFA = Math.max(0, approvFCFA - retraitsFCFA + totalVersementsFCFA);
+                
                 envoisEmisCount = transfers.length;
                 retraitsRecusCount = withdrawn.length;
                 pendingCount = transfers.filter(t => t.status === 'En attente').length;
@@ -1462,73 +1480,64 @@
                 deskName = '🌍 Tous les guichets';
             } else {
                 // Mode guichet spécifique
-                const desk = desks.find(d => d.id === deskId);
+                const desk = desks.find(d => String(d.id) === String(deskId));
                 deskName = desk ? desk.name : 'Guichet inconnu';
 
                 // Approvisionnements pour ce guichet
                 const approvsForDesk = ledgerSupply.filter(a => {
                     if (!a || a.status !== 'Validé') return false;
-                    const matchId = a.deskId && a.deskId === deskId;
+                    const matchId = a.deskId && String(a.deskId) === String(deskId);
                     const matchName = a.deskName && a.deskName === deskName;
                     return matchId || matchName;
                 });
                 approvFCFA = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amountFCFA) || 0), 0);
 
-                // Envois émis par ce guichet (expéditeur)
-                const sentTransfers = transfers.filter(t => {
-                    if (!t) return false;
-                    const senderAgencyId = t.sender?.agencyId || t.senderDeskId || '';
-                    return senderAgencyId === deskId;
-                });
-                envoisEmisFCFA = sentTransfers.reduce((sum, t) => {
-                    if (t.amountUSD) {
-                        return sum + (t.amountUSD * USD_RATE);
-                    } else if (t.amountFCFA) {
-                        const rateUsed = t.rateUsed || 600;
-                        return sum + (t.amountFCFA / rateUsed * USD_RATE);
-                    }
-                    return sum;
-                }, 0);
-                envoisEmisCount = sentTransfers.length;
-
                 // Retraits reçus par ce guichet (bénéficiaire)
                 const receivedTransfers = transfers.filter(t => {
                     if (!t || t.status !== 'Retiré') return false;
                     const beneficiaryAgencyId = t.beneficiary?.agencyId || t.targetDeskId || '';
-                    return beneficiaryAgencyId === deskId;
+                    return String(beneficiaryAgencyId) === String(deskId);
                 });
-                retraitsRecusFCFA = receivedTransfers.reduce((sum, t) => {
+                const retraitsFCFA = receivedTransfers.reduce((sum, t) => {
                     if (t.amountUSD) {
-                        return sum + (t.amountUSD * USD_RATE);
+                        return sum + (parseFloat(t.amountUSD) * USD_RATE);
                     } else if (t.amountFCFA) {
-                        const rateUsed = t.rateUsed || 600;
-                        return sum + (t.amountFCFA / rateUsed * USD_RATE);
+                        return sum + parseFloat(t.amountFCFA);
                     }
                     return sum;
                 }, 0);
                 retraitsRecusCount = receivedTransfers.length;
 
+                // Versements déjà effectués pour ce guichet
+                const totalVersementsFCFA = settlements
+                    .filter(s => String(s.deskId) === String(deskId))
+                    .reduce((sum, s) => sum + (parseFloat(s.amountUSD) || 0) * USD_RATE, 0);
+
+                soldeReelFCFA = Math.max(0, approvFCFA - retraitsFCFA + totalVersementsFCFA);
+
+                // Envois émis par ce guichet (expéditeur) - pour les compteurs
+                const sentTransfers = transfers.filter(t => {
+                    if (!t) return false;
+                    const senderAgencyId = t.sender?.agencyId || t.senderDeskId || '';
+                    return String(senderAgencyId) === String(deskId);
+                });
+                envoisEmisCount = sentTransfers.length;
+
                 // En attente pour ce guichet
                 const pendingTransfers = transfers.filter(t => {
                     if (!t || t.status !== 'En attente') return false;
                     const beneficiaryAgencyId = t.beneficiary?.agencyId || t.targetDeskId || '';
-                    return beneficiaryAgencyId === deskId;
+                    return String(beneficiaryAgencyId) === String(deskId);
                 });
                 pendingCount = pendingTransfers.length;
 
-                // Total des envois pour ce guichet
                 totalTransferCount = sentTransfers.length + receivedTransfers.length;
             }
-
-            // Calcul du solde du guichet (en FCFA) pour la plaquette (conservé tel quel)
-            const soldeFCFA = approvFCFA + retraitsRecusFCFA - envoisEmisFCFA;
 
             return {
                 deskName,
                 approvFCFA,
-                envoisEmisFCFA,
-                retraitsRecusFCFA,
-                soldeFCFA,
+                soldeReelFCFA,
                 envoisEmisCount,
                 retraitsRecusCount,
                 pendingCount,
@@ -1546,14 +1555,12 @@
                 return usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
             };
 
-            // Mise à jour des éléments
+            // Mise à jour des éléments - uniquement Approv et Solde réel
             document.getElementById('supplyTotalApprov').innerText = formatAmount(data.approvFCFA);
-            document.getElementById('supplyTotalEnvois').innerText = formatAmount(data.envoisEmisFCFA);
             
             const soldeEl = document.getElementById('supplySoldeFlux');
-            const soldeUSD = data.soldeFCFA / USD_RATE;
-            soldeEl.innerText = formatAmount(data.soldeFCFA);
-            soldeEl.className = 'supply-value' + (data.soldeFCFA < 0 ? ' red' : (data.soldeFCFA > 0 ? ' blue' : ''));
+            soldeEl.innerText = formatAmount(data.soldeReelFCFA);
+            soldeEl.className = 'supply-value' + (data.soldeReelFCFA < 0 ? ' red' : (data.soldeReelFCFA > 0 ? ' green' : ''));
             
             document.getElementById('supplyValidCount').innerText = data.retraitsRecusCount;
             document.getElementById('supplyPendingCount').innerText = data.pendingCount;
@@ -1563,11 +1570,7 @@
             // Mise à jour du nom du guichet dans le sélecteur
             const selector = document.getElementById('deskSelector');
             if (selector) {
-                const selectedOption = selector.options[selector.selectedIndex];
-                if (selectedOption) {
-                    // Mettre à jour le texte affiché dans le sélecteur
-                    selector.value = deskId;
-                }
+                selector.value = deskId;
             }
         }
 
@@ -1949,7 +1952,7 @@
             
             document.getElementById('transferReference').innerText = matchedTransfer.sender.transferReference || '--';
 
-            // Afficher le solde disponible du guichet (calcul dynamique)
+            // Afficher le solde disponible du guichet (calcul dynamique avec solde réel)
             const deskId = matchedTransfer.beneficiary?.agencyId || matchedTransfer.targetDeskId;
             if (deskId) {
                 updateBalanceDisplay(deskId);
@@ -2081,8 +2084,8 @@
                     amountFCFA = currentActiveTransfer.amount || 0;
                 }
 
-                // Récupérer le solde actuel du guichet (calcul dynamique)
-                const currentBalance = computeSupplyBalance(deskId);
+                // Récupérer le solde actuel du guichet (calcul dynamique avec solde réel)
+                const currentBalance = computeRealSupplyBalance(deskId);
 
                 // Vérifier si le solde est suffisant
                 if (currentBalance < amountFCFA) {
@@ -2196,6 +2199,7 @@
         }
 
         // Fonction pour construire l'historique des retraits avec date/heure/référence d'envoi et colonne utilisateur agissant
+        // Tri du plus récent au plus ancien selon la date de retrait
         function buildHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
             const printTbody = document.getElementById('printHistoryTableBody');
@@ -2204,6 +2208,13 @@
             if (printGenNode) printGenNode.innerText = new Date().toLocaleString('fr-FR');
 
             const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
+
+            // Trier les retraits du plus récent au plus ancien selon la date de retrait
+            withdrawnTransfers.sort((a, b) => {
+                const dateA = a.withdrawalDate ? new Date(a.withdrawalDate) : new Date(0);
+                const dateB = b.withdrawalDate ? new Date(b.withdrawalDate) : new Date(0);
+                return dateB - dateA; // Plus récent en premier
+            });
 
             if (withdrawnTransfers.length === 0) {
                 const emptyRow = `<tr><td colspan="10" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
