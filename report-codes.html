@@ -608,10 +608,7 @@
                             <span class="small text-secondary">Gains / Retrait :</span>
                             <span class="fw-bold text-info" id="kpiGainsRetraits">0 USD (0 FCFA)</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center pt-1 border-top dashed">
-                            <span class="small text-dark fw-bold">Solde Gains Dispo :</span>
-                            <span class="fw-bold text-dark" id="kpiSoldeGainsDispo">0 USD (0 FCFA)</span>
-                        </div>
+                        <!-- Solde Gains Dispo supprimé de cette plaquette -->
                     </div>
                     <div class="mt-2">
                         <button class="btn btn-warning btn-sm w-100 fw-bold py-1" onclick="openGainWithdrawalModal()">
@@ -1335,17 +1332,18 @@
             return true;
         }
 
-        // ---- KPIs globaux (inchangés) ----
+        // ---- KPIs globaux ----
+        // Modifié pour que les frais ne soient pas sur les envois, mais sur les retraits
         function computeFinancialKPIs() {
             let totalEnvoisBrutUSD = 0;
-            let totalEnvoisAvecFraisUSD = 0;
-            let totalFeesCollectesUSD = 0;
+            let totalEnvoisAvecFraisUSD = 0; // désormais égal à totalEnvoisBrutUSD (pas de frais à l'envoi)
+            let totalFeesCollectesUSD = 0;   // deviendra totalGainsRetraitsUSD (frais perçus au retrait)
             let totalRetraitsUSD = 0;
             let totalGainsRetraitsUSD = 0;
             let totalApprovUSD = 0;
             let totalRetraitsGainsUSD = 0;
 
-            let globalTotalEncaissesUSD = 0;
+            let globalTotalEncaissesUSD = 0;       // somme des montants d'envois (sans frais)
             let globalTotalRetiresUSD = 0;
             let globalTotalApprovUSD = 0;
             let globalTotalRetraitsGainsUSD = 0;
@@ -1354,6 +1352,7 @@
             const approvsList = window.approvs || [];
             const gainsWithdrawalsList = window.gainsWithdrawals || [];
 
+            // Parcours des transferts
             transfersList.forEach(t => {
                 let rateUsed = parseFloat(t.rate) || parseFloat(t.dollarRate) || window.USD_RATE || 600;
                 if (rateUsed <= 0) rateUsed = 600;
@@ -1371,31 +1370,38 @@
                     let feeFCFA = parseFloat(t.feesFCFA) || parseFloat(t.fees) || 0;
                     feeUSD = feeFCFA / rateUsed;
                 }
-                let totalUSD = amtUSD + feeUSD;
-                globalTotalEncaissesUSD += totalUSD;
-                if (t.status === 'Retiré') {
-                    globalTotalRetiresUSD += amtUSD;
-                }
+
+                // Encaissements : uniquement le montant de l'envoi (pas de frais)
+                globalTotalEncaissesUSD += amtUSD;
+
+                // Pour les envois, on ne prend pas en compte les frais
                 if (isDateInPeriod(t.date, window.currentTimeFilter)) {
                     totalEnvoisBrutUSD += amtUSD;
-                    totalEnvoisAvecFraisUSD += totalUSD;
+                    totalEnvoisAvecFraisUSD += amtUSD;   // pas de frais, donc égal au brut
                 }
+
+                // Retraits : si le transfert est retiré
                 if (t.status === 'Retiré') {
+                    globalTotalRetiresUSD += amtUSD;
                     let wDate = t.withdrawalDate || t.date;
                     if (isDateInPeriod(wDate, window.currentTimeFilter)) {
                         totalRetraitsUSD += amtUSD;
+                        // Frais perçus lors du retrait (frais d'envoi + frais de retrait)
                         let wGainUSD = 0;
                         if (t.withdrawalFeesUSD !== undefined) {
                             wGainUSD = parseFloat(t.withdrawalFeesUSD) || 0;
                         } else if (t.withdrawalFees !== undefined) {
                             wGainUSD = parseFloat(t.withdrawalFees) / rateUsed;
                         }
-                        totalGainsRetraitsUSD += (feeUSD + wGainUSD);
-                        totalFeesCollectesUSD += feeUSD;
+                        // Les gains totaux = frais d'envoi + frais de retrait
+                        let totalGainRetrait = feeUSD + wGainUSD;
+                        totalGainsRetraitsUSD += totalGainRetrait;
+                        // On n'ajoute pas feeUSD séparément car on veut le total des gains
                     }
                 }
             });
 
+            // Approvisionnements
             approvsList.forEach(a => {
                 let appAmtUSD = parseFloat(a.amountUSD) || 0;
                 if (a.status === 'Validé') {
@@ -1406,6 +1412,7 @@
                 }
             });
 
+            // Retraits de gains (prélèvements sur le compte de profits)
             gainsWithdrawalsList.forEach(gw => {
                 let gwAmtUSD = 0;
                 if (gw.amountUSD !== undefined) {
@@ -1420,6 +1427,8 @@
                 }
             });
 
+            // Calcul du solde des gains disponibles
+            // On recalcule globalGainsRetraitsUSD à partir de tous les retraits (non filtré)
             let globalGainsRetraitsUSD = 0;
             transfersList.forEach(t => {
                 if (t.status === 'Retiré') {
@@ -1431,8 +1440,14 @@
                 }
             });
             window.cachedSoldeGainsDispo = globalGainsRetraitsUSD - globalTotalRetraitsGainsUSD;
+
+            // Solde net en caisse
             let soldeNetCaisseGlobaleUSD = (globalTotalApprovUSD + globalTotalEncaissesUSD) - (globalTotalRetiresUSD + globalTotalRetraitsGainsUSD);
 
+            // Les frais collectés = gains totaux (car tous les frais sont perçus au retrait)
+            totalFeesCollectesUSD = totalGainsRetraitsUSD;
+
+            // Mise à jour des sources
             window.kpiSourcesUSD = {
                 totalEnvoisBrut: totalEnvoisBrutUSD,
                 totalEnvoisAvecFrais: totalEnvoisAvecFraisUSD,
@@ -1455,7 +1470,6 @@
             document.getElementById('kpiBeneficeEnvois').innerText = displayFormat(totalFeesCollectesUSD);
             document.getElementById('kpiTotalRetraits').innerText = displayFormat(totalRetraitsUSD);
             document.getElementById('kpiGainsRetraits').innerText = displayFormat(totalGainsRetraitsUSD);
-            document.getElementById('kpiSoldeGainsDispo').innerText = displayFormat(window.cachedSoldeGainsDispo);
             document.getElementById('kpiTotalApprov').innerText = displayFormat(totalApprovUSD);
             document.getElementById('kpiTotalRetraitsGains').innerText = displayFormat(totalRetraitsGainsUSD);
             document.getElementById('kpiSoldeNet').innerText = displayFormat(soldeNetCaisseGlobaleUSD);
@@ -1536,7 +1550,7 @@
                         childCreditor: recipientDisplay,
                         creditor: `${recipientDisplay} (🏁 ${targetLocation})`,
                         amountUSD: amtUSD,
-                        feesUSD: feeUSD,
+                        feesUSD: 0, // Pas de frais à l'envoi
                         status: t.status || 'En attente',
                         actingUser: getActingUser(t),
                         isEnvoi: true,
@@ -1564,7 +1578,7 @@
                             childCreditor: recipientDisplay,
                             creditor: `${recipientDisplay} (📍 ${targetLocation})`,
                             amountUSD: amtUSD,
-                            feesUSD: totalGainRetraitUSD,
+                            feesUSD: totalGainRetraitUSD, // Frais totaux perçus
                             status: 'Validé',
                             actingUser: getActingUser(t),
                             isRetrait: true,
@@ -1656,7 +1670,6 @@
                         ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> ${item.status}</span>`
                         : `<span class="badge bg-secondary"><i class="fa-solid fa-clock"></i> ${item.status}</span>`;
                     let feesDisplay;
-                    // Pour les ENVOIS, on affiche toujours "-" (0 FCFA) car il n'y a pas de frais à l'envoi
                     if (item.type === 'ENVOI') {
                         feesDisplay = '-';
                     } else if (item.type === 'RETRAIT' && item.t) {
@@ -1724,7 +1737,7 @@
             document.getElementById('printSoldeGainsDispo').innerText = printFormat(window.kpiSourcesUSD.soldeGainsDispo);
         }
 
-        // ---- buildDeskSummary avec corrections de type et ajout des détails financiers par guichet ----
+        // ---- buildDeskSummary ----
         function buildDeskSummary() {
             const container = document.getElementById('deskSummaryContainer');
             if (!container) return;
@@ -1755,19 +1768,18 @@
             };
 
             let deskCards = desks.map(desk => {
-                // FORCER l'ID en chaîne
                 const deskId = String(desk.id);
                 const deskName = desk.name;
                 const fullDeskName = desk.country ? `${deskName} (${desk.country})` : deskName;
 
-                // Approvisionnements validés (Approv initial)
+                // Approvisionnements validés
                 const approvsForDesk = approvs.filter(a => {
                     if (!a || a.status !== 'Validé') return false;
                     return String(a.deskId) === deskId || a.deskName === deskName || a.deskName === fullDeskName;
                 });
                 const totalApprovUSD = approvsForDesk.reduce((sum, a) => sum + (parseFloat(a.amountUSD) || 0), 0);
 
-                // Envois émis (par ce guichet) – affichés mais non utilisés dans le solde
+                // Envois émis (par ce guichet)
                 const transfersSent = transfers.filter(t => {
                     if (!t) return false;
                     const senderId = t.senderDeskId || t.sender?.deskId;
@@ -1814,25 +1826,20 @@
                     }
                 });
 
-                // Montant total à réclamer = retraits reçus + frais inter
                 const montantAReclamerUSD = totalRetraitsRecusUSD + totalFraisInterUSD;
-
-                // Filtrage des settlements avec comparaison en chaîne
                 const deskSettlements = settlements.filter(s => String(s.deskId) === deskId);
                 const totalVerseUSD = deskSettlements.reduce((sum, s) => sum + (parseFloat(s.amountUSD) || 0), 0);
                 const resteAReclamerUSD = montantAReclamerUSD - totalVerseUSD;
 
-                // ---- MODIFICATION : Solde réel = Approv - retraits reçus + déjà versé (frais exclus) ----
+                // Solde réel = Approv - retraits reçus + déjà versé (frais exclus)
                 const soldeReelUSD = totalApprovUSD - totalRetraitsRecusUSD + totalVerseUSD;
 
-                // ---- CORRECTION : Aucun frais sur les envois ----
-                // "Avec Frais" pour les envois = Total Brut (puisqu'il n'y a pas de frais sur les envois)
+                // Aucun frais sur les envois
                 const totalAvecFraisUSD = totalEnvoisEmisUSD;
-                // Marge brute collectée sur les envois = 0 (car les frais sont perçus au retrait, pas à l'envoi)
                 const margeBruteEnvoisUSD = 0;
                 const soldeGainsDispoUSD = Math.max(0, totalFraisInterUSD - totalVerseUSD);
 
-                // Récupération des agences émettrices pour l'affichage
+                // Agences émettrices
                 const agencesEmetteurs = {};
                 transfersReceived.forEach(t => {
                     const senderName = t.senderDeskName || t.sender?.agency || 'Inconnue';
@@ -1869,7 +1876,6 @@
                     receivedCount: transfersReceived.length,
                     enAttenteCount: transfersEnAttente.length,
                     balanceClass: balanceClass,
-                    // Formatés
                     totalApprovFormatted: formatAmount(totalApprovUSD),
                     totalEnvoisFormatted: formatAmount(totalEnvoisEmisUSD),
                     totalRetraitsFormatted: formatAmount(totalRetraitsRecusUSD),
@@ -1885,13 +1891,11 @@
                 };
             });
 
-            // --- Remplir le cache avec des clés en chaîne ---
             window.deskCache = {};
             deskCards.forEach(d => {
                 window.deskCache[String(d.id)] = d;
             });
 
-            // Tri décroissant par solde
             deskCards.sort((a, b) => b.soldeReelUSD - a.soldeReelUSD);
 
             let html = '';
@@ -1905,7 +1909,6 @@
                             </div>
                             <hr class="my-2">
 
-                            <!-- Flux Envois Globaux -->
                             <div class="fw-bold text-primary mb-1" style="font-size: 0.85rem;">📊 Flux Envois Globaux</div>
                             <div class="stat-item d-flex justify-content-between">
                                 <span class="stat-label">Total Brut :</span>
@@ -1922,7 +1925,6 @@
 
                             <hr class="my-1">
 
-                            <!-- Flux Retraits & Gains -->
                             <div class="fw-bold text-danger mb-1" style="font-size: 0.85rem;">💳 Flux Retraits & Gains</div>
                             <div class="stat-item d-flex justify-content-between">
                                 <span class="stat-label">Total Retraits :</span>
@@ -1939,7 +1941,6 @@
 
                             <hr class="my-1">
 
-                            <!-- Trésorerie & Solde Réel Caisse -->
                             <div class="fw-bold text-success mb-1" style="font-size: 0.85rem;">💰 Trésorerie & Solde Réel Caisse</div>
                             <div class="stat-item d-flex justify-content-between">
                                 <span class="stat-label">Approvisionnements :</span>
@@ -1956,7 +1957,6 @@
 
                             <hr class="my-1">
 
-                            <!-- Section réclamation / régularisation -->
                             <div class="stat-item d-flex justify-content-between">
                                 <span class="stat-label"><i class="fa-solid fa-money-bill-wave me-1 text-info"></i>À réclamer</span>
                                 <span class="stat-value fw-bold">${desk.montantAReclamerFormatted}</span>
@@ -1995,11 +1995,9 @@
             });
 
             container.innerHTML = html;
-
-            // Ne pas mettre à jour ledger_balances ici pour éviter la boucle
         }
 
-        // ---- openSettlementModal avec conversion en chaîne et historique masqué ----
+        // ---- openSettlementModal ----
         let currentSettlementDeskId = null;
         let historyVisible = false;
 

@@ -935,6 +935,19 @@
 
                 <div class="card card-form shadow-sm d-none" id="historyCard">
                     <div class="card-body p-4">
+                        <!-- Nouveau résumé dynamique en haut du tableau -->
+                        <div id="historySummary" class="mb-3 p-3 bg-light rounded-3 border">
+                            <div class="row text-center">
+                                <div class="col-md-6">
+                                    <span class="text-muted small">Somme totale des retraits :</span>
+                                    <strong class="text-danger fs-5" id="totalWithdrawalsSum">0 USD</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted small">Somme totale des frais de retrait :</span>
+                                    <strong class="text-warning fs-5" id="totalWithdrawalFeesSum">0 USD</strong>
+                                </div>
+                            </div>
+                        </div>
                         <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                             <table class="table table-hover align-middle small">
                                 <thead class="table-light sticky-top">
@@ -947,6 +960,7 @@
                                         <th>Bénéficiaire</th>
                                         <th>Provenance (Agence)</th>
                                         <th class="text-end">Montant Reçu</th>
+                                        <th class="text-end">Frais de retrait</th>   <!-- NOUVELLE COLONNE -->
                                         <th class="text-center">Statut</th>
                                         <th>Utilisateur agissant</th>
                                     </tr>
@@ -993,6 +1007,7 @@
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Bénéficiaire</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Provenance & Agence d'Envoi</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6; text-align: right;">Montant Payé</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: right;">Frais de retrait</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6; text-align: center;">Statut</th>
                     <th style="padding: 10px; border: 1px solid #dee2e6;">Utilisateur agissant</th>
                 </tr>
@@ -2107,6 +2122,17 @@
                     // Récupération de l'utilisateur connecté pour signature du retrait
                     const currentUser = JSON.parse(localStorage.getItem('current_user'));
                     
+                    // --- Calcul des frais de retrait (frais perçus) ---
+                    let withdrawalFeesUSD = 0;
+                    if (matched.feesUSD) {
+                        withdrawalFeesUSD = parseFloat(matched.feesUSD);
+                    } else if (matched.feesFCFA) {
+                        withdrawalFeesUSD = parseFloat(matched.feesFCFA) / USD_RATE;
+                    }
+                    // Si aucun frais n'est défini, on les considère à 0 (mais on peut ajouter une logique supplémentaire)
+                    // On stocke les frais en USD et en FCFA
+                    const withdrawalFeesFCFA = withdrawalFeesUSD * USD_RATE;
+                    
                     const updates = {};
                     updates[`${itemPath}/status`] = 'Retiré';
                     updates[`${itemPath}/withdrawalDate`] = withdrawalDate;
@@ -2116,6 +2142,10 @@
                         role: currentUser.role,
                         desk: currentUser.desk || currentUser.guichet || 'N/A'
                     } : { name: 'Système', role: 'Inconnu', desk: 'N/A' };
+                    
+                    // --- STOCKAGE DES FRAIS DE RETRAIT ---
+                    updates[`${itemPath}/withdrawalFeesUSD`] = withdrawalFeesUSD;
+                    updates[`${itemPath}/withdrawalFeesFCFA`] = withdrawalFeesFCFA;
                     
                     // Mettre à jour les informations du bénéficiaire si elles ont été modifiées
                     const beneficiaryFields = ['beneficiaryName', 'beneficiaryFirstname', 'beneficiaryCountry', 'beneficiaryAgency', 'beneficiaryPhone'];
@@ -2149,6 +2179,9 @@
                         const successOverlay = document.getElementById('successOverlay');
                         successOverlay.classList.add('active');
                         
+                        // --- ENVOI DU MESSAGE WHATSAPP ---
+                        sendWhatsAppNotification(matched, amountFCFA, withdrawalDate, withdrawalFeesFCFA);
+                        
                         setTimeout(function() {
                             successOverlay.classList.remove('active');
                             document.getElementById('verificationForm').reset();
@@ -2172,6 +2205,43 @@
                     });
                 }
             }
+        }
+
+        // Nouvelle fonction pour envoyer un message WhatsApp
+        function sendWhatsAppNotification(transfer, amountFCFA, withdrawalDate, withdrawalFeesFCFA) {
+            const phoneNumber = "22997786863"; // Numéro cible (sans le +)
+            const message = `
+🧾 *CONFIRMATION DE RETRAIT* 🧾
+--------------------------------
+📅 Date du retrait : ${withdrawalDate}
+🔑 Code secret : ${transfer.secretCode || 'N/A'}
+📌 Référence : ${transfer.sender?.transferReference || 'N/A'}
+
+👤 *Expéditeur*
+   - ${transfer.sender?.firstname} ${transfer.sender?.name}
+   - ${transfer.sender?.agency || 'N/A'} (${transfer.sender?.country || 'N/A'})
+   - Tél : ${transfer.sender?.phone || 'N/A'}
+
+👤 *Bénéficiaire*
+   - ${transfer.beneficiary?.firstname} ${transfer.beneficiary?.name}
+   - ${transfer.beneficiary?.agency || 'N/A'} (${transfer.beneficiary?.country || 'N/A'})
+   - Tél : ${transfer.beneficiary?.phone || 'N/A'}
+
+💰 *Montant net reçu :* ${(amountFCFA).toLocaleString()} FCFA
+💵 *Frais de retrait :* ${(withdrawalFeesFCFA || 0).toLocaleString()} FCFA
+💲 *Taux de change :* 1 USD = ${USD_RATE} FCFA
+
+✅ *Statut :* Retrait effectué avec succès
+--------------------------------
+AFRI-LINK LEDGER
+            `.trim();
+
+            // Encoder le message pour l'URL WhatsApp
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+            
+            // Ouvrir WhatsApp dans un nouvel onglet
+            window.open(whatsappUrl, '_blank');
         }
 
         function copyInsufficientFundsAlert() {
@@ -2216,11 +2286,18 @@
                 return dateB - dateA; // Plus récent en premier
             });
 
+            // Calcul des sommes totales pour le résumé
+            let totalWithdrawalsUSD = 0;
+            let totalWithdrawalFeesUSD = 0;
+
             if (withdrawnTransfers.length === 0) {
-                const emptyRow = `<tr><td colspan="10" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
+                const emptyRow = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fa-solid fa-folder-open me-2"></i>Aucun retrait enregistré dans ce registre.</td></tr>`;
                 if (tbody) tbody.innerHTML = emptyRow;
                 if (printTbody) printTbody.innerHTML = emptyRow;
                 if (clearBtn) clearBtn.style.display = 'none';
+                // Mettre à jour les totaux à zéro
+                document.getElementById('totalWithdrawalsSum').innerText = '0 USD';
+                document.getElementById('totalWithdrawalFeesSum').innerText = '0 USD';
             } else {
                 const rows = withdrawnTransfers.map(t => {
                     let rawWithdrawalDate = t.withdrawalDate || t.date || '--';
@@ -2252,9 +2329,36 @@
                         finalAmountFCFA = parseFloat(t.amount || 0);
                         finalAmountUSD = finalAmountFCFA / USD_RATE;
                     }
+
+                    // Récupération des frais de retrait (maintenant stockés dans withdrawalFeesUSD/FCFA)
+                    let withdrawalFeesUSD = 0;
+                    let withdrawalFeesFCFA = 0;
+                    if (t.withdrawalFeesUSD) {
+                        withdrawalFeesUSD = parseFloat(t.withdrawalFeesUSD);
+                        withdrawalFeesFCFA = withdrawalFeesUSD * USD_RATE;
+                    } else if (t.withdrawalFeesFCFA) {
+                        withdrawalFeesFCFA = parseFloat(t.withdrawalFeesFCFA);
+                        withdrawalFeesUSD = withdrawalFeesFCFA / USD_RATE;
+                    } else {
+                        // Fallback: si non trouvé, on essaie de les récupérer à partir des frais d'envoi
+                        if (t.feesUSD) {
+                            withdrawalFeesUSD = parseFloat(t.feesUSD);
+                            withdrawalFeesFCFA = withdrawalFeesUSD * USD_RATE;
+                        } else if (t.feesFCFA) {
+                            withdrawalFeesFCFA = parseFloat(t.feesFCFA);
+                            withdrawalFeesUSD = withdrawalFeesFCFA / USD_RATE;
+                        } else {
+                            withdrawalFeesUSD = 0;
+                            withdrawalFeesFCFA = 0;
+                        }
+                    }
                     
+                    // Ajout aux totaux
+                    totalWithdrawalsUSD += finalAmountUSD;
+                    totalWithdrawalFeesUSD += withdrawalFeesUSD;
+
                     // Récupération du nom de l'opérateur de retrait
-                    const withdrawalOperatorName = t.withdrawalOperator?.name || 'N/A';
+                    const withdrawalOperatorName = (t && t.withdrawalOperator && t.withdrawalOperator.name) ? t.withdrawalOperator.name : 'N/A';
 
                     return `
                         <tr>
@@ -2266,6 +2370,7 @@
                             <td>${t.beneficiary.firstname} ${t.beneficiary.name}<br><small class="text-muted">${t.beneficiary.phone || ''}</small></td>
                             <td>${t.sender.firstname} ${t.sender.name}<br><small class="text-success fw-bold">📍 ${t.sender.agency}</small></td>
                             <td class="text-end fw-bold text-danger">${finalAmountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD<br><small class="text-muted">(${Math.round(finalAmountFCFA).toLocaleString()} FCFA)</small></td>
+                            <td class="text-end text-warning fw-bold">${withdrawalFeesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USD<br><small class="text-muted">(${Math.round(withdrawalFeesFCFA).toLocaleString()} FCFA)</small></td>
                             <td class="text-center"><span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Retiré</span></td>
                             <td><small class="fw-bold text-primary">${withdrawalOperatorName}</small></td>
                         </tr>
@@ -2276,6 +2381,10 @@
                 if (clearBtn && withdrawnTransfers.length > 0) {
                     clearBtn.style.display = 'inline-flex';
                 }
+
+                // Mise à jour du résumé des totaux
+                document.getElementById('totalWithdrawalsSum').innerText = totalWithdrawalsUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+                document.getElementById('totalWithdrawalFeesSum').innerText = totalWithdrawalFeesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
             }
         }
 

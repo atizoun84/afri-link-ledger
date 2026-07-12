@@ -1799,7 +1799,7 @@
                 const fbKey = t.fbKey || '';
                 
                 // Récupération du nom de l'opérateur (utilisateur agissant)
-                const operatorName = t.operator?.name || 'N/A';
+                const operatorName = (t && t.operator && t.operator.name) ? t.operator.name : 'N/A';
                 
                 return `
                     <tr>
@@ -2088,50 +2088,73 @@
             if (selectBeneficiary) selectBeneficiary.innerHTML = beneficiaryOptions;
         }
 
-        // --- NOUVELLE GRILLE TARIFAIRE (remplace l'ancienne) ---
+        // --- NOUVELLE GRILLE TARIFAIRE avec interpolation linéaire et arrondi supérieur ---
         function getFeeInUSD(amountInUSD) {
-            if (amountInUSD >= 0.00 && amountInUSD <= 20.00) return 1.00;
-            if (amountInUSD > 20.00 && amountInUSD <= 40.00) return 2.00;
-            if (amountInUSD > 40.00 && amountInUSD <= 60.00) return 3.00;
-            if (amountInUSD > 60.00 && amountInUSD <= 80.00) return 4.00;
-            if (amountInUSD > 80.00 && amountInUSD <= 105.00) return 5.00;
-            if (amountInUSD > 105.00 && amountInUSD <= 120.00) return 6.00;
-            if (amountInUSD > 120.00 && amountInUSD <= 140.00) return 7.00;
-            if (amountInUSD > 140.00 && amountInUSD <= 160.00) return 8.00;
-            if (amountInUSD > 160.00 && amountInUSD <= 180.00) return 9.00;
-            if (amountInUSD > 180.00 && amountInUSD <= 210.00) return 10.00;
-            // Nouvelle grille pour les paliers > 210
-            if (amountInUSD > 210.00 && amountInUSD <= 315.00) return 11.00;
-            if (amountInUSD > 315.00 && amountInUSD <= 420.00) return 16.00;
-            if (amountInUSD > 420.00 && amountInUSD <= 525.00) return 21.00;
-            if (amountInUSD > 525.00 && amountInUSD <= 630.00) return 27.00;
-            if (amountInUSD > 630.00 && amountInUSD <= 735.00) return 32.00;
-            if (amountInUSD > 735.00 && amountInUSD <= 840.00) return 37.00;
-            if (amountInUSD > 840.00 && amountInUSD <= 945.00) return 42.00;
-            if (amountInUSD > 945.00 && amountInUSD <= 1050.00) return 48.00;
-            if (amountInUSD > 1050.00 && amountInUSD <= 1100.00) return 53.00;
-            if (amountInUSD > 1100.00 && amountInUSD <= 1200.00) return 55.00;
-            if (amountInUSD > 1200.00 && amountInUSD <= 1300.00) return 60.00;
-            if (amountInUSD > 1300.00 && amountInUSD <= 1400.00) return 65.00;
-            if (amountInUSD > 1400.00 && amountInUSD <= 1500.00) return 70.00;
-            if (amountInUSD > 1500.00 && amountInUSD <= 1600.00) return 75.00;
-            if (amountInUSD > 1600.00 && amountInUSD <= 1700.00) return 80.00;
-            if (amountInUSD > 1700.00 && amountInUSD <= 1800.00) return 85.00;
-            if (amountInUSD > 1800.00 && amountInUSD <= 1900.00) return 90.00;
-            if (amountInUSD > 1900.00 && amountInUSD <= 2000.00) return 95.00;
-            if (amountInUSD > 2000.00 && amountInUSD <= 2100.00) return 100.00;
-            if (amountInUSD > 2100.00 && amountInUSD <= 2200.00) return 105.00;
-            if (amountInUSD > 2200.00 && amountInUSD <= 2300.00) return 110.00;
-            if (amountInUSD > 2300.00 && amountInUSD <= 2400.00) return 115.00;
-            if (amountInUSD > 2400.00 && amountInUSD <= 2500.00) return 120.00;
-            if (amountInUSD > 2500.00 && amountInUSD <= 2600.00) return 125.00;
-            if (amountInUSD > 2600.00 && amountInUSD <= 2700.00) return 130.00;
-            if (amountInUSD > 2700.00 && amountInUSD <= 2800.00) return 135.00;
-            if (amountInUSD > 2800.00 && amountInUSD <= 2900.00) return 140.00;
-            if (amountInUSD > 2900.00 && amountInUSD <= 3000.00) return 145.00;
-            // Au-dessus de 3000, on peut éventuellement continuer avec une formule ou 150, mais on laisse 150 pour l'instant
-            if (amountInUSD > 3000.00) return 150.00;
-            return 0.00;
+            // Plages définies selon la grille, avec ajustement pour couvrir tous les montants sans trou
+            const plages = [
+                { minMontant: 0, maxMontant: 20, minFrais: 1, maxFrais: 1 },
+                { minMontant: 20.01, maxMontant: 40, minFrais: 2, maxFrais: 2 },
+                { minMontant: 40.01, maxMontant: 60, minFrais: 3, maxFrais: 3 },
+                { minMontant: 60.01, maxMontant: 80, minFrais: 4, maxFrais: 4 },
+                { minMontant: 80.01, maxMontant: 106, minFrais: 5, maxFrais: 5 }, // Étendu pour couvrir jusqu'à 106.00
+                { minMontant: 106.01, maxMontant: 120, minFrais: 6, maxFrais: 6 },
+                { minMontant: 120.01, maxMontant: 140, minFrais: 7, maxFrais: 7 },
+                { minMontant: 140.01, maxMontant: 160, minFrais: 8, maxFrais: 8 },
+                { minMontant: 160.01, maxMontant: 180, minFrais: 9, maxFrais: 9 },
+                { minMontant: 180.01, maxMontant: 210, minFrais: 10, maxFrais: 10 },
+                { minMontant: 210.01, maxMontant: 315, minFrais: 11, maxFrais: 15 },
+                { minMontant: 315.01, maxMontant: 420, minFrais: 16, maxFrais: 20 },
+                { minMontant: 420.01, maxMontant: 525, minFrais: 21, maxFrais: 25 },
+                { minMontant: 525.01, maxMontant: 630, minFrais: 27, maxFrais: 30 },
+                { minMontant: 630.01, maxMontant: 735, minFrais: 32, maxFrais: 35 },
+                { minMontant: 735.01, maxMontant: 840, minFrais: 37, maxFrais: 40 },
+                { minMontant: 840.01, maxMontant: 945, minFrais: 42, maxFrais: 45 },
+                { minMontant: 945.01, maxMontant: 1050, minFrais: 48, maxFrais: 50 },
+                { minMontant: 1050.01, maxMontant: 1100, minFrais: 53, maxFrais: 55 },
+                { minMontant: 1100.01, maxMontant: 1200, minFrais: 55, maxFrais: 60 },
+                { minMontant: 1200.01, maxMontant: 1300, minFrais: 60, maxFrais: 65 },
+                { minMontant: 1300.01, maxMontant: 1400, minFrais: 65, maxFrais: 70 },
+                { minMontant: 1400.01, maxMontant: 1500, minFrais: 70, maxFrais: 75 },
+                { minMontant: 1500.01, maxMontant: 1600, minFrais: 75, maxFrais: 80 },
+                { minMontant: 1600.01, maxMontant: 1700, minFrais: 80, maxFrais: 85 },
+                { minMontant: 1700.01, maxMontant: 1800, minFrais: 85, maxFrais: 90 },
+                { minMontant: 1800.01, maxMontant: 1900, minFrais: 90, maxFrais: 95 },
+                { minMontant: 1900.01, maxMontant: 2000, minFrais: 95, maxFrais: 100 },
+                { minMontant: 2000.01, maxMontant: 2100, minFrais: 100, maxFrais: 105 },
+                { minMontant: 2100.01, maxMontant: 2200, minFrais: 105, maxFrais: 110 },
+                { minMontant: 2200.01, maxMontant: 2300, minFrais: 110, maxFrais: 115 },
+                { minMontant: 2300.01, maxMontant: 2400, minFrais: 115, maxFrais: 120 },
+                { minMontant: 2400.01, maxMontant: 2500, minFrais: 120, maxFrais: 125 },
+                { minMontant: 2500.01, maxMontant: 2600, minFrais: 125, maxFrais: 130 },
+                { minMontant: 2600.01, maxMontant: 2700, minFrais: 130, maxFrais: 135 },
+                { minMontant: 2700.01, maxMontant: 2800, minFrais: 135, maxFrais: 140 },
+                { minMontant: 2800.01, maxMontant: 2900, minFrais: 140, maxFrais: 145 },
+                { minMontant: 2900.01, maxMontant: 3000, minFrais: 145, maxFrais: 150 }
+            ];
+
+            // Si le montant est supérieur à 3000, on applique 5% de frais (arrondi supérieur)
+            if (amountInUSD > 3000) {
+                let feeBrut = amountInUSD * 0.05;
+                return Math.ceil(feeBrut);
+            }
+
+            // Recherche de la plage
+            for (let plage of plages) {
+                if (amountInUSD >= plage.minMontant && amountInUSD <= plage.maxMontant) {
+                    const minM = plage.minMontant;
+                    const maxM = plage.maxMontant;
+                    const minF = plage.minFrais;
+                    const maxF = plage.maxFrais;
+                    // Interpolation linéaire
+                    const ratio = (amountInUSD - minM) / (maxM - minM);
+                    const feeBrut = minF + ratio * (maxF - minF);
+                    // Arrondi supérieur (Math.ceil)
+                    return Math.ceil(feeBrut);
+                }
+            }
+
+            // Si aucun intervalle trouvé (montant négatif par exemple)
+            return 0;
         }
 
         function handleCurrencyChange() {
@@ -2168,7 +2191,6 @@
                 // Le montant saisi est en FCFA
                 amountFCFA = inputAmount;
                 // Calcul du USD à partir du FCFA pour l'affichage et les calculs de frais
-                // MAIS attention : amountUSD est calculé, pas la source
                 amountUSD = amountFCFA / USD_RATE;
             } else {
                 // Le montant saisi est en USD - C'EST LA SOURCE
