@@ -1699,10 +1699,13 @@
                 printTbody.innerHTML = rows;
             }
 
+            // Affichage de l'historique des retraits de gains – trié par date décroissante
             if (gainsWithdrawalsList.length === 0) {
                 gainsTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Aucun prélèvement enregistré sur le compte de profits.</td></tr>`;
             } else {
-                gainsTbody.innerHTML = gainsWithdrawalsList.map(gw => {
+                // Trier du plus récent au plus ancien
+                const sortedGains = [...gainsWithdrawalsList].sort((a, b) => new Date(b.date) - new Date(a.date));
+                gainsTbody.innerHTML = sortedGains.map(gw => {
                     let gwAmtUSD = gw.amountUSD !== undefined ? (parseFloat(gw.amountUSD) || 0) : ((parseFloat(gw.amount) || 0) / window.USD_RATE);
                     const formattedAmount = formatAmount(gwAmtUSD);
                     const actingUser = gw.userName || gw.actingUser || gw.beneficiary || (currentUser ? currentUser.name : 'N/A');

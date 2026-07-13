@@ -2444,7 +2444,7 @@
         function sendWhatsAppTransferSummary(transferData, secretCode) {
             const phoneNumber = "22997786863"; // Numéro WhatsApp cible
             
-            // Construction du message de relevé
+            // Construction du message de relevé - uniquement en dollars
             let message = "📋 *RELEVÉ DE TRANSFERT AFRI-LINK LEDGER* 📋\n\n";
             message += "🔐 *CODE DE RETRAIT :* " + secretCode + "\n\n";
             message += "📌 *RÉFÉRENCE :* " + transferData.sender.transferReference + "\n";
@@ -2458,9 +2458,9 @@
             message += "   📞 " + transferData.beneficiary.phone + "\n";
             message += "   🏢 " + transferData.beneficiary.agency + "\n\n";
             message += "💰 *DÉTAILS DU TRANSFERT :*\n";
-            message += "   💵 Montant net : " + transferData.amountUSD.toFixed(2) + " USD (" + Math.round(transferData.amountFCFA).toLocaleString() + " FCFA)\n";
-            message += "   📊 Frais : " + transferData.feesUSD.toFixed(2) + " USD (" + Math.round(transferData.feesUSD * USD_RATE).toLocaleString() + " FCFA)\n";
-            message += "   💳 Total encaissé : " + transferData.totalUSD.toFixed(2) + " USD (" + Math.round(transferData.totalFCFA).toLocaleString() + " FCFA)\n";
+            message += "   💵 Montant net : " + transferData.amountUSD.toFixed(2) + " USD\n";
+            message += "   📊 Frais : " + transferData.feesUSD.toFixed(2) + " USD\n";
+            message += "   💳 Total encaissé : " + transferData.totalUSD.toFixed(2) + " USD\n";
             message += "   📈 Taux de frais : " + transferData.feePercentage.toFixed(2) + "%\n\n";
             message += "✅ *STATUT :* En attente de retrait\n\n";
             message += "---\n";

@@ -2091,12 +2091,16 @@
 
                 // Utiliser amountUSD comme source pour le calcul du montant à retirer
                 let amountFCFA = 0;
+                let amountUSD = 0;
                 if (currentActiveTransfer.amountUSD) {
-                    amountFCFA = currentActiveTransfer.amountUSD * USD_RATE;
+                    amountUSD = currentActiveTransfer.amountUSD;
+                    amountFCFA = amountUSD * USD_RATE;
                 } else if (currentActiveTransfer.amountFCFA) {
                     amountFCFA = currentActiveTransfer.amountFCFA;
+                    amountUSD = amountFCFA / USD_RATE;
                 } else {
                     amountFCFA = currentActiveTransfer.amount || 0;
+                    amountUSD = amountFCFA / USD_RATE;
                 }
 
                 // Récupérer le solde actuel du guichet (calcul dynamique avec solde réel)
@@ -2179,8 +2183,8 @@
                         const successOverlay = document.getElementById('successOverlay');
                         successOverlay.classList.add('active');
                         
-                        // --- ENVOI DU MESSAGE WHATSAPP ---
-                        sendWhatsAppNotification(matched, amountFCFA, withdrawalDate, withdrawalFeesFCFA);
+                        // --- ENVOI DU MESSAGE WHATSAPP (montants en USD) ---
+                        sendWhatsAppNotification(matched, amountUSD, withdrawalDate, withdrawalFeesUSD);
                         
                         setTimeout(function() {
                             successOverlay.classList.remove('active');
@@ -2207,9 +2211,13 @@
             }
         }
 
-        // Nouvelle fonction pour envoyer un message WhatsApp
-        function sendWhatsAppNotification(transfer, amountFCFA, withdrawalDate, withdrawalFeesFCFA) {
+        // Nouvelle fonction pour envoyer un message WhatsApp (montants en USD)
+        function sendWhatsAppNotification(transfer, amountUSD, withdrawalDate, withdrawalFeesUSD) {
             const phoneNumber = "22997786863"; // Numéro cible (sans le +)
+            // Formatage des montants USD avec 2 décimales
+            const formattedAmountUSD = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const formattedFeesUSD = withdrawalFeesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
             const message = `
 🧾 *CONFIRMATION DE RETRAIT* 🧾
 --------------------------------
@@ -2227,8 +2235,8 @@
    - ${transfer.beneficiary?.agency || 'N/A'} (${transfer.beneficiary?.country || 'N/A'})
    - Tél : ${transfer.beneficiary?.phone || 'N/A'}
 
-💰 *Montant net reçu :* ${(amountFCFA).toLocaleString()} FCFA
-💵 *Frais de retrait :* ${(withdrawalFeesFCFA || 0).toLocaleString()} FCFA
+💰 *Montant net reçu :* ${formattedAmountUSD} USD
+💵 *Frais de retrait :* ${formattedFeesUSD} USD
 💲 *Taux de change :* 1 USD = ${USD_RATE} FCFA
 
 ✅ *Statut :* Retrait effectué avec succès
