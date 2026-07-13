@@ -2186,6 +2186,10 @@
                         // --- ENVOI DU MESSAGE WHATSAPP (montants en USD) ---
                         sendWhatsAppNotification(matched, amountUSD, withdrawalDate, withdrawalFeesUSD);
                         
+                        // Mise à jour immédiate de l'historique et de la plaquette
+                        updateSupplyPlaquette();
+                        buildHistoryTable();
+                        
                         setTimeout(function() {
                             successOverlay.classList.remove('active');
                             document.getElementById('verificationForm').reset();
@@ -2199,9 +2203,6 @@
                             const searchTime = document.getElementById('searchTime');
                             if (searchDate) searchDate.value = '';
                             if (searchTime) searchTime.value = '';
-                            // Mettre à jour la plaquette et l'historique
-                            updateSupplyPlaquette();
-                            buildHistoryTable();
                         }, 2000);
                     }).catch(err => {
                         console.error("Échec de mise à jour Firebase:", err);
