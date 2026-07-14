@@ -1259,7 +1259,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+        import { getDatabase, ref, set, push, onValue, remove, get } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
         // Configuration Firebase unifiée
         const firebaseConfig = {
@@ -2362,7 +2362,28 @@
             }, 2000);
         }
 
-        function openHistoryFilterModal() {
+        // --- Fonction pour ouvrir le filtre avec mise à jour garantie du cache ---
+        async function openHistoryFilterModal() {
+            // Récupération des données les plus récentes depuis Firebase pour garantir que le cache est à jour
+            try {
+                const snapshot = await get(ref(db, "transfers"));
+                const data = snapshot.val();
+                if (data) {
+                    let freshTransfers = [];
+                    if (Array.isArray(data)) {
+                        freshTransfers = data.filter(Boolean);
+                    } else {
+                        freshTransfers = Object.keys(data).map(key => ({ fbKey: key, ...data[key] }));
+                    }
+                    freshTransfers.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    cacheTransfers = freshTransfers;
+                    transfersReceived = true;
+                    updateSupplyPlaquette();
+                }
+            } catch (err) {
+                console.warn("Impossible de rafraîchir les données pour le filtre, utilisation du cache existant.", err);
+            }
+
             const config = JSON.parse(localStorage.getItem('ledger_config'));
             let desks = [];
             if (config && config.desks) {
@@ -2439,40 +2460,6 @@
                 displayModal.show();
             }, 400);
         };
-
-        // --- Fonction pour envoyer le relevé WhatsApp ---
-        function sendWhatsAppTransferSummary(transferData, secretCode) {
-            const phoneNumber = "22997786863"; // Numéro WhatsApp cible
-            
-            // Construction du message de relevé - uniquement en dollars
-            let message = "📋 *RELEVÉ DE TRANSFERT AFRI-LINK LEDGER* 📋\n\n";
-            message += "🔐 *CODE DE RETRAIT :* " + secretCode + "\n\n";
-            message += "📌 *RÉFÉRENCE :* " + transferData.sender.transferReference + "\n";
-            message += "📅 *DATE/HEURE :* " + transferData.sender.transferDate + " à " + transferData.sender.transferTime + "\n\n";
-            message += "👤 *EXPÉDITEUR :*\n";
-            message += "   " + transferData.sender.firstname + " " + transferData.sender.name + "\n";
-            message += "   📞 " + transferData.sender.phone + "\n";
-            message += "   🏢 " + transferData.sender.agency + "\n\n";
-            message += "👥 *BÉNÉFICIAIRE :*\n";
-            message += "   " + transferData.beneficiary.firstname + " " + transferData.beneficiary.name + "\n";
-            message += "   📞 " + transferData.beneficiary.phone + "\n";
-            message += "   🏢 " + transferData.beneficiary.agency + "\n\n";
-            message += "💰 *DÉTAILS DU TRANSFERT :*\n";
-            message += "   💵 Montant net : " + transferData.amountUSD.toFixed(2) + " USD\n";
-            message += "   📊 Frais : " + transferData.feesUSD.toFixed(2) + " USD\n";
-            message += "   💳 Total encaissé : " + transferData.totalUSD.toFixed(2) + " USD\n";
-            message += "   📈 Taux de frais : " + transferData.feePercentage.toFixed(2) + "%\n\n";
-            message += "✅ *STATUT :* En attente de retrait\n\n";
-            message += "---\n";
-            message += "AFRI-LINK LEDGER - Architecture de Finance Bilatérale";
-            
-            // Encoder le message pour l'URL WhatsApp
-            const encodedMessage = encodeURIComponent(message);
-            
-            // Ouvrir WhatsApp avec le message pré-rempli
-            const whatsappUrl = "https://wa.me/" + phoneNumber + "?text=" + encodedMessage;
-            window.open(whatsappUrl, "_blank");
-        }
 
         document.getElementById('transferForm').onsubmit = function(e) {
             e.preventDefault();
@@ -2560,9 +2547,6 @@
             const newTransferRef = push(ref(db, "transfers"));
             set(newTransferRef, transferData)
             .then(() => {
-                // Envoyer automatiquement le relevé WhatsApp
-                sendWhatsAppTransferSummary(transferData, secretCode);
-                
                 document.getElementById('secretCode').innerText = secretCode;
                 document.getElementById('modalReference').innerText = transferRefVal;
                 document.getElementById('modalDateTime').innerText = `${transferDateVal} à ${transferTimeVal}`;

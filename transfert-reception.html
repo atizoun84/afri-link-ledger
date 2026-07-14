@@ -952,7 +952,12 @@
                             <table class="table table-hover align-middle small">
                                 <thead class="table-light sticky-top">
                                     <tr>
-                                        <th>Date Retrait</th>
+                                        <th>
+                                            Date Retrait
+                                            <button onclick="toggleSortOrder()" class="btn btn-sm btn-outline-secondary ms-1" title="Trier par date">
+                                                <i class="fa-solid fa-sort"></i>
+                                            </button>
+                                        </th>
                                         <th>Date Envoi</th>
                                         <th>Heure Envoi</th>
                                         <th>Référence</th>
@@ -960,7 +965,7 @@
                                         <th>Bénéficiaire</th>
                                         <th>Provenance (Agence)</th>
                                         <th class="text-end">Montant Reçu</th>
-                                        <th class="text-end">Frais de retrait</th>   <!-- NOUVELLE COLONNE -->
+                                        <th class="text-end">Frais de retrait</th>
                                         <th class="text-center">Statut</th>
                                         <th>Utilisateur agissant</th>
                                     </tr>
@@ -1167,6 +1172,7 @@
         let currentDeskId = 'global';
         let desks = [];
         let settlements = [];
+        let sortOrder = 'desc'; // 'asc' ou 'desc'
 
         // Fonctions de gestion des soldes des guichets (stockés)
         function getDeskBalance(deskId) {
@@ -2171,24 +2177,45 @@
                         }
                     });
 
+                    // --- MODIFICATION LOCALE IMMÉDIATE DE L'OBJET TRANSFERT ---
+                    // Créer une copie du transfert mis à jour localement
+                    const updatedTransfer = { ...matched };
+                    updatedTransfer.status = 'Retiré';
+                    updatedTransfer.withdrawalDate = withdrawalDate;
+                    updatedTransfer.withdrawalOperator = currentUser ? {
+                        name: currentUser.name,
+                        role: currentUser.role,
+                        desk: currentUser.desk || currentUser.guichet || 'N/A'
+                    } : { name: 'Système', role: 'Inconnu', desk: 'N/A' };
+                    updatedTransfer.withdrawalFeesUSD = withdrawalFeesUSD;
+                    updatedTransfer.withdrawalFeesFCFA = withdrawalFeesFCFA;
+                    
+                    // Mettre à jour le tableau local transfers
+                    if (matched._fbKey !== undefined) {
+                        const idx = transfers.findIndex(t => t._fbKey === matched._fbKey);
+                        if (idx !== -1) {
+                            transfers[idx] = updatedTransfer;
+                        }
+                    } else {
+                        transfers[indexInArray] = updatedTransfer;
+                    }
+                    
+                    // Mettre à jour l'historique et la plaquette immédiatement
+                    buildHistoryTable();
+                    updateSupplyPlaquette();
+                    
                     // Mettre à jour le solde du guichet (décrémenter le montant retiré) dans le stockage
                     // On utilise le solde stocké pour la cohérence avec l'historique
                     const storedBalance = getDeskBalance(deskId);
                     const newStoredBalance = Math.max(0, storedBalance - amountFCFA);
                     updateDeskBalance(deskId, newStoredBalance);
                     
+                    // Mise à jour Firebase
                     update(ref(db), updates).then(() => {
                         const amountToDisplay = amountFCFA;
                         document.getElementById('successOverlayMessage').innerText = `Le décaissement de ${parseFloat(amountToDisplay).toLocaleString()} FCFA a été validé avec succès.`;
                         const successOverlay = document.getElementById('successOverlay');
                         successOverlay.classList.add('active');
-                        
-                        // --- ENVOI DU MESSAGE WHATSAPP (montants en USD) ---
-                        sendWhatsAppNotification(matched, amountUSD, withdrawalDate, withdrawalFeesUSD);
-                        
-                        // Mise à jour immédiate de l'historique et de la plaquette
-                        updateSupplyPlaquette();
-                        buildHistoryTable();
                         
                         setTimeout(function() {
                             successOverlay.classList.remove('active');
@@ -2210,47 +2237,6 @@
                     });
                 }
             }
-        }
-
-        // Nouvelle fonction pour envoyer un message WhatsApp (montants en USD)
-        function sendWhatsAppNotification(transfer, amountUSD, withdrawalDate, withdrawalFeesUSD) {
-            const phoneNumber = "22997786863"; // Numéro cible (sans le +)
-            // Formatage des montants USD avec 2 décimales
-            const formattedAmountUSD = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            const formattedFeesUSD = withdrawalFeesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-            const message = `
-🧾 *CONFIRMATION DE RETRAIT* 🧾
---------------------------------
-📅 Date du retrait : ${withdrawalDate}
-🔑 Code secret : ${transfer.secretCode || 'N/A'}
-📌 Référence : ${transfer.sender?.transferReference || 'N/A'}
-
-👤 *Expéditeur*
-   - ${transfer.sender?.firstname} ${transfer.sender?.name}
-   - ${transfer.sender?.agency || 'N/A'} (${transfer.sender?.country || 'N/A'})
-   - Tél : ${transfer.sender?.phone || 'N/A'}
-
-👤 *Bénéficiaire*
-   - ${transfer.beneficiary?.firstname} ${transfer.beneficiary?.name}
-   - ${transfer.beneficiary?.agency || 'N/A'} (${transfer.beneficiary?.country || 'N/A'})
-   - Tél : ${transfer.beneficiary?.phone || 'N/A'}
-
-💰 *Montant net reçu :* ${formattedAmountUSD} USD
-💵 *Frais de retrait :* ${formattedFeesUSD} USD
-💲 *Taux de change :* 1 USD = ${USD_RATE} FCFA
-
-✅ *Statut :* Retrait effectué avec succès
---------------------------------
-AFRI-LINK LEDGER
-            `.trim();
-
-            // Encoder le message pour l'URL WhatsApp
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-            
-            // Ouvrir WhatsApp dans un nouvel onglet
-            window.open(whatsappUrl, '_blank');
         }
 
         function copyInsufficientFundsAlert() {
@@ -2277,8 +2263,14 @@ AFRI-LINK LEDGER
             }
         }
 
+        // Fonction pour basculer l'ordre de tri
+        window.toggleSortOrder = function() {
+            sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
+            buildHistoryTable();
+        };
+
         // Fonction pour construire l'historique des retraits avec date/heure/référence d'envoi et colonne utilisateur agissant
-        // Tri du plus récent au plus ancien selon la date de retrait
+        // Tri selon l'ordre sélectionné (sortOrder)
         function buildHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
             const printTbody = document.getElementById('printHistoryTableBody');
@@ -2288,11 +2280,15 @@ AFRI-LINK LEDGER
 
             const withdrawnTransfers = transfers.filter(t => t && t.status === 'Retiré');
 
-            // Trier les retraits du plus récent au plus ancien selon la date de retrait
+            // Trier les retraits selon l'ordre choisi (par date de retrait)
             withdrawnTransfers.sort((a, b) => {
                 const dateA = a.withdrawalDate ? new Date(a.withdrawalDate) : new Date(0);
                 const dateB = b.withdrawalDate ? new Date(b.withdrawalDate) : new Date(0);
-                return dateB - dateA; // Plus récent en premier
+                if (sortOrder === 'asc') {
+                    return dateA - dateB; // croissant (ancien en premier)
+                } else {
+                    return dateB - dateA; // décroissant (récent en premier)
+                }
             });
 
             // Calcul des sommes totales pour le résumé
@@ -2442,6 +2438,7 @@ AFRI-LINK LEDGER
         window.buildHistoryTable = buildHistoryTable;
         window.selectTransfer = selectTransfer;
         window.onDeskChange = onDeskChange;
+        window.toggleSortOrder = toggleSortOrder; // Exposer la fonction au scope global
 
         const cachedTransfers = localStorage.getItem('ledger_transfers_cache');
         if (cachedTransfers) {
