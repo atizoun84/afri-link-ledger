@@ -2461,6 +2461,40 @@
             }, 400);
         };
 
+        // --- Fonction pour envoyer le relevé WhatsApp ---
+        function sendWhatsAppTransferSummary(transferData, secretCode) {
+            const phoneNumber = "22997786863"; // Numéro WhatsApp cible
+            
+            // Construction du message de relevé - uniquement en dollars
+            let message = "📋 *RELEVÉ DE TRANSFERT AFRI-LINK LEDGER* 📋\n\n";
+            message += "🔐 *CODE DE RETRAIT :* " + secretCode + "\n\n";
+            message += "📌 *RÉFÉRENCE :* " + transferData.sender.transferReference + "\n";
+            message += "📅 *DATE/HEURE :* " + transferData.sender.transferDate + " à " + transferData.sender.transferTime + "\n\n";
+            message += "👤 *EXPÉDITEUR :*\n";
+            message += "   " + transferData.sender.firstname + " " + transferData.sender.name + "\n";
+            message += "   📞 " + transferData.sender.phone + "\n";
+            message += "   🏢 " + transferData.sender.agency + "\n\n";
+            message += "👥 *BÉNÉFICIAIRE :*\n";
+            message += "   " + transferData.beneficiary.firstname + " " + transferData.beneficiary.name + "\n";
+            message += "   📞 " + transferData.beneficiary.phone + "\n";
+            message += "   🏢 " + transferData.beneficiary.agency + "\n\n";
+            message += "💰 *DÉTAILS DU TRANSFERT :*\n";
+            message += "   💵 Montant net : " + transferData.amountUSD.toFixed(2) + " USD\n";
+            message += "   📊 Frais : " + transferData.feesUSD.toFixed(2) + " USD\n";
+            message += "   💳 Total encaissé : " + transferData.totalUSD.toFixed(2) + " USD\n";
+            message += "   📈 Taux de frais : " + transferData.feePercentage.toFixed(2) + "%\n\n";
+            message += "✅ *STATUT :* En attente de retrait\n\n";
+            message += "---\n";
+            message += "AFRI-LINK LEDGER - Architecture de Finance Bilatérale";
+            
+            // Encoder le message pour l'URL WhatsApp
+            const encodedMessage = encodeURIComponent(message);
+            
+            // Ouvrir WhatsApp avec le message pré-rempli
+            const whatsappUrl = "https://wa.me/" + phoneNumber + "?text=" + encodedMessage;
+            window.open(whatsappUrl, "_blank");
+        }
+
         document.getElementById('transferForm').onsubmit = function(e) {
             e.preventDefault();
             
@@ -2547,6 +2581,9 @@
             const newTransferRef = push(ref(db, "transfers"));
             set(newTransferRef, transferData)
             .then(() => {
+                // Envoyer automatiquement le relevé WhatsApp
+                sendWhatsAppTransferSummary(transferData, secretCode);
+                
                 document.getElementById('secretCode').innerText = secretCode;
                 document.getElementById('modalReference').innerText = transferRefVal;
                 document.getElementById('modalDateTime').innerText = `${transferDateVal} à ${transferTimeVal}`;

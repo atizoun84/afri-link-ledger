@@ -2217,6 +2217,9 @@
                         const successOverlay = document.getElementById('successOverlay');
                         successOverlay.classList.add('active');
                         
+                        // --- ENVOI DU MESSAGE WHATSAPP (montants en USD) ---
+                        sendWhatsAppNotification(matched, amountUSD, withdrawalDate, withdrawalFeesUSD);
+                        
                         setTimeout(function() {
                             successOverlay.classList.remove('active');
                             document.getElementById('verificationForm').reset();
@@ -2237,6 +2240,47 @@
                     });
                 }
             }
+        }
+
+        // Nouvelle fonction pour envoyer un message WhatsApp (montants en USD)
+        function sendWhatsAppNotification(transfer, amountUSD, withdrawalDate, withdrawalFeesUSD) {
+            const phoneNumber = "22997786863"; // Numéro cible (sans le +)
+            // Formatage des montants USD avec 2 décimales
+            const formattedAmountUSD = amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const formattedFeesUSD = withdrawalFeesUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const message = `
+🧾 *CONFIRMATION DE RETRAIT* 🧾
+--------------------------------
+📅 Date du retrait : ${withdrawalDate}
+🔑 Code secret : ${transfer.secretCode || 'N/A'}
+📌 Référence : ${transfer.sender?.transferReference || 'N/A'}
+
+👤 *Expéditeur*
+   - ${transfer.sender?.firstname} ${transfer.sender?.name}
+   - ${transfer.sender?.agency || 'N/A'} (${transfer.sender?.country || 'N/A'})
+   - Tél : ${transfer.sender?.phone || 'N/A'}
+
+👤 *Bénéficiaire*
+   - ${transfer.beneficiary?.firstname} ${transfer.beneficiary?.name}
+   - ${transfer.beneficiary?.agency || 'N/A'} (${transfer.beneficiary?.country || 'N/A'})
+   - Tél : ${transfer.beneficiary?.phone || 'N/A'}
+
+💰 *Montant net reçu :* ${formattedAmountUSD} USD
+💵 *Frais de retrait :* ${formattedFeesUSD} USD
+💲 *Taux de change :* 1 USD = ${USD_RATE} FCFA
+
+✅ *Statut :* Retrait effectué avec succès
+--------------------------------
+AFRI-LINK LEDGER
+            `.trim();
+
+            // Encoder le message pour l'URL WhatsApp
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+            
+            // Ouvrir WhatsApp dans un nouvel onglet
+            window.open(whatsappUrl, '_blank');
         }
 
         function copyInsufficientFundsAlert() {
